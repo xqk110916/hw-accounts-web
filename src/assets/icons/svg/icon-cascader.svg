@@ -1,0 +1,16 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="a">
+      <rect rx="0" height="24" width="24" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#a)">
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M1 2.286v4.428q0 .532.377.91.377.376.91.376h9.427q.532 0 .91-.377.376-.377.376-.91V2.287q0-.532-.377-.91Q12.246 1 11.713 1H2.287q-.532 0-.91.377Q1 1.754 1 2.287ZM3 6h8V3H3v3ZM13 10.286v3.428q0 .532.377.91.377.376.91.376h6.427q.532 0 .91-.377.376-.377.376-.91v-3.427q0-.532-.377-.91Q21.246 9 20.713 9h-6.427q-.532 0-.91.377-.376.377-.376.91ZM15 13h5v-2h-5v2ZM13 18.286v3.428q0 .532.377.91.377.376.91.376h6.427q.532 0 .91-.377.376-.377.376-.91v-3.427q0-.532-.377-.91-.377-.376-.91-.376h-6.427q-.532 0-.91.377-.376.377-.376.91ZM15 21h5v-2h-5v2Z"
+      data-follow-fill="currentColor" />
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M9 13h6v-2H9q-.414 0-.707-.293T8 10V7H6v3q0 1.243.879 2.121Q7.757 13 9 13Z" data-follow-fill="currentColor" />
+    <path fill="currentColor" fill-rule="evenodd"
+      d="M9 21h6v-2H9q-.414 0-.707-.293T8 18v-8H6v8q0 1.243.879 2.121Q7.757 21 9 21Z" data-follow-fill="currentColor" />
+  </g>
+</svg>

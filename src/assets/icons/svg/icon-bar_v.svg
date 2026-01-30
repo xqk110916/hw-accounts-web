@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="21px" height="23px" viewBox="0 0 21 23" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>竖向柱图</title>
+    <g id="图表器" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="统计图表/筛选" transform="translate(-144.000000, -138.000000)">
+            <g id="编组-38备份" transform="translate(21.000000, 74.000000)">
+                <g id="编组-9" transform="translate(123.370078, 64.616402)">
+                    <g id="竖向柱图" transform="translate(10.129922, 10.883598) rotate(-270.000000) translate(-10.129922, -10.883598) translate(-0.753676, 0.753676)">
+                        <path d="M5.98597884,0 L9.7952381,0 L9.7952381,20.2598444 L5.98597884,20.2598444 L5.98597884,0 Z" id="柱" fill="#1890FF"></path>
+                        <path d="M0,9.59676842 L3.80925926,9.59676842 L3.80925926,20.0547853 L0,20.0547853 L0,9.59676842 Z" id="柱" fill="#00B42A"></path>
+                        <path d="M11.9719577,4.26523041 L15.7812169,4.26523041 L15.7812169,20.2137061 L11.9719577,20.2137061 L11.9719577,4.26523041 Z" id="柱" fill="#00B42A"></path>
+                        <path d="M17.9579365,7.46415321 L21.7671958,7.46415321 L21.7671958,20.0137734 L17.9579365,20.0137734 L17.9579365,7.46415321 Z" id="柱" fill="#1890FF"></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

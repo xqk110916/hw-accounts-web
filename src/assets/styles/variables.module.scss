@@ -1,0 +1,56 @@
+// base color
+$blue: #324157;
+$light-blue: #3a71a8;
+$red: #c03639;
+$pink: #e65d6e;
+$green: #30b08f;
+$tiffany: #4ab7bd;
+$yellow: #fec171;
+$panGreen: #30b08f;
+$theme1: #E72F41;
+
+// 默认layout主题定制
+$base-sidebar-width: 200px;
+$base-nav-height: 50px;
+$base-nav-left-icon-padding: 0 16px;
+$base-nav-right-text-color: #1890ff;
+$base-nav-font-family: 思源黑体;
+$base-nav-font-size: 24px;
+$base-nav-text-color: #333333;
+$base-tagsview-height: 50px;
+$base-app-main-page-padding: 12px;
+$base-app-main-page-background-color: #f5f7f8;
+
+// 默认菜单主题风格
+$base-menu-color: #bfcbd9;
+$base-menu-light-color: rgba(0, 0, 0, 0.7);
+$base-menu-background: #304156;
+$base-menu-color-active: #E72F41;
+$base-menu-light-background: #ffffff;
+
+// $base-menu-color: #1B2129;
+// $base-menu-light-color: #ffffff;
+// $base-menu-background: #ffffff;
+// $base-menu-color-active: #E72F41;
+// $base-menu-light-background: #ffffff;
+
+$base-sub-menu-hover: #FCEDED;
+$base-sub-menu-background: #ffffff;
+
+$base-logo-title-color: #ffffff;
+$base-logo-light-title-color: #001529;
+
+// the :export directive is the magic sauce for webpack
+// https://www.bluematador.com/blog/how-to-share-variables-between-js-and-sass
+:export {
+  menuColor: $base-menu-color;
+  menuLightColor: $base-menu-light-color;
+  menuBackground: $base-menu-background;
+  menuColorActive: $base-menu-color-active;
+  menuLightBackground: $base-menu-light-background;
+  subMenuHover: $base-sub-menu-hover;
+  subMenuBackground: $base-sub-menu-background;
+  sideBarWidth: $base-sidebar-width;
+  logoTitleColor: $base-logo-title-color;
+  logoLightTitleColor: $base-logo-light-title-color;
+}

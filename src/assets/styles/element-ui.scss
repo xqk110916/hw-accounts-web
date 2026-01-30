@@ -1,0 +1,150 @@
+// cover some element-ui styles
+
+.el-breadcrumb__inner,
+.el-breadcrumb__inner a {
+  font-weight: 400 !important;
+}
+
+.el-upload {
+  input[type='file'] {
+    display: none !important;
+  }
+}
+
+.el-upload__input {
+  display: none;
+}
+
+.cell {
+  .el-tag {
+    margin-right: 0px;
+  }
+}
+
+.small-padding {
+  .cell {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+}
+
+.fixed-width {
+  .el-button--mini {
+    padding: 7px 10px;
+    width: 60px;
+  }
+}
+
+.status-col {
+  .cell {
+    padding: 0 10px;
+    text-align: center;
+
+    .el-tag {
+      margin-right: 0px;
+    }
+  }
+}
+
+// to fixed https://github.com/ElemeFE/element/issues/2461
+.el-dialog {
+  transform: none;
+  left: 0;
+  position: relative;
+  margin: 0 auto;
+}
+
+// refine element ui upload
+.upload-container {
+  .el-upload {
+    width: 100%;
+
+    .el-upload-dragger {
+      width: 100%;
+      height: 200px;
+    }
+  }
+}
+
+// dropdown
+.el-dropdown-menu {
+  a {
+    display: block;
+  }
+}
+
+// fix date-picker ui bug in filter-item
+.el-range-editor.el-input__inner {
+  display: inline-flex !important;
+}
+
+// to fix el-date-picker css style
+.el-range-separator {
+  box-sizing: content-box;
+}
+
+/**修改全局的滚动条*/
+::-webkit-scrollbar {
+  width: 5px; /*竖向*/
+  height: 5px; /*横向*/
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background-color: #cdcdcd;
+}
+
+// el-radio的获取焦点样式
+.el-radio:focus:not(.is-focus):not(:active):not(.is-disabled) .el-radio__inner {
+  box-shadow: 0 0 2px 2px #fff;
+}
+
+.el-dialog:not(.is-fullscreen) {
+  margin-top: 6vh !important;
+}
+
+.el-dialog__wrapper.scrollbar .el-dialog .el-dialog__body {
+  overflow: auto;
+  overflow-x: hidden;
+  max-height: 70vh;
+  padding: 10px 20px 0;
+}
+
+.el-table .el-dropdown,
+.el-icon-arrow-down {
+  font-size: 12px;
+}
+
+.el-tree-node__content > .el-checkbox {
+  margin-right: 8px;
+}
+
+/* button color */
+.el-button--cyan.is-active,
+.el-button--cyan:active {
+  background: #20b2aa;
+  border-color: #20b2aa;
+  color: #ffffff;
+}
+
+.el-button--cyan:focus,
+.el-button--cyan:hover {
+  background: #48d1cc;
+  border-color: #48d1cc;
+  color: #ffffff;
+}
+
+.el-button--cyan {
+  background-color: #20b2aa;
+  border-color: #20b2aa;
+  color: #ffffff;
+}
+
+//默认字体类型
+.el-button,
+.el-input__inner,
+input {
+  font-family: '思源宋体', 'Source Han Serif SC', '微软雅黑', 'Microsoft YaHei', Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Arial,
+    sans-serif;
+  font-style: normal;
+}

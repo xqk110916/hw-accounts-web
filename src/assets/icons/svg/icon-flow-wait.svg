@@ -1,0 +1,15 @@
+<svg viewBox="0 0 23.886 29" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g style="mix-blend-mode:passthrough">
+    <g style="mix-blend-mode:passthrough">
+      <path fill="#0090ff"
+        d="M1.433 0C1.075 0 .693.143.43.43.167.717 0 1.075 0 1.433v26.134c0 .358.143.74.43 1.003.287.287.645.43 1.003.43h21.02c.358 0 .74-.143 1.002-.43.287-.287.43-.645.43-1.003V8.12L15.765 0H1.432Z"
+        style="mix-blend-mode:passthrough" />
+      <path fill-opacity=".5" fill="#FFF"
+        d="M23.886 8.121h-6.688c-.359 0-.74-.143-1.003-.43a1.375 1.375 0 0 1-.43-1.003V0l8.12 8.121Z"
+        style="mix-blend-mode:passthrough" />
+    </g>
+    <path fill="#FFF" fill-rule="evenodd"
+      d="M18.044 11.8v.2H7.165v-1.2h10.88v1ZM9.604 15h-1v1h8v-1h-7Zm8.44 5v.2H7.165V19h10.88v1Z"
+      style="mix-blend-mode:passthrough" />
+  </g>
+</svg>

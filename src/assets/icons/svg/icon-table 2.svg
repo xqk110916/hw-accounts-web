@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="26px" height="26px" viewBox="0 0 26 26" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>透视表</title>
+    <g id="图表器" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="统计图表/筛选" transform="translate(-57.000000, -395.000000)">
+            <g id="编组-38备份" transform="translate(21.000000, 74.000000)">
+                <g id="编组" transform="translate(38.000000, 323.000000)">
+                    <polygon id="路径" stroke="#1890FF" stroke-width="2.052864" stroke-linecap="round" stroke-linejoin="round" points="0 22 0 5.5 5.5 0 22 0 22 16.5 16.5 22"></polygon>
+                    <line x1="16.5" y1="5.5" x2="16.5" y2="22" id="路径" stroke="#1890FF" stroke-width="2.052864" stroke-linecap="round" stroke-linejoin="round"></line>
+                    <line x1="5.5" y1="0" x2="5.5" y2="16.5" id="路径" stroke="#1890FF" stroke-width="2.052864" stroke-linecap="round" stroke-linejoin="round"></line>
+                    <line x1="0" y1="5.5" x2="16.5" y2="5.5" id="路径" stroke="#1890FF" stroke-width="2.052864" stroke-linecap="round" stroke-linejoin="round"></line>
+                    <line x1="22" y1="0" x2="16.5" y2="5.5" id="路径" stroke="#1890FF" stroke-width="2.052864" stroke-linecap="round" stroke-linejoin="round"></line>
+                    <line x1="0" y1="22" x2="5.5" y2="16.5" id="路径" stroke="#1890FF" stroke-width="2.052864" stroke-linecap="round" stroke-linejoin="round"></line>
+                    <line x1="5.5" y1="16.5" x2="22" y2="16.5" id="路径" stroke="#1890FF" stroke-width="2.052864" stroke-linecap="round" stroke-linejoin="round"></line>
+                    <rect id="矩形" fill="#00B42A" x="2.75" y="7.33333333" width="11" height="12.8333333"></rect>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

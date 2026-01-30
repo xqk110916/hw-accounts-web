@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="46px" height="46px" viewBox="0 0 46 46" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>双轴图</title>
+    <defs>
+        <rect id="path-1" x="0" y="0" width="44" height="44" rx="3"></rect>
+    </defs>
+    <g id="图表器" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="统计图表/筛选" transform="translate(-42.000000, -213.000000)">
+            <g id="双轴图" transform="translate(43.000000, 214.000000)">
+                <mask id="mask-2" fill="white">
+                    <use xlink:href="#path-1"></use>
+                </mask>
+                <use id="组-457备份-14" stroke="#DCDEE0" stroke-dasharray="2" fill-rule="nonzero" xlink:href="#path-1"></use>
+                <g id="编组-9" transform="translate(11.000000, 13.000000)" fill-rule="nonzero">
+                    <polygon id="路径" fill="#00B42A" points="22 4.83636363 20.9411765 3.8 16.2352941 8.2909091 5.29411764 5.06666667 0 10.3636364 0.941176455 11.4 5.88235294 6.67878788 16.7058824 9.9030303"></polygon>
+                    <polygon id="路径" fill="#1890FF" points="15.0588235 10.7090909 11.8823529 9.67272727 11.8823529 15.7757576 15.0588235 15.7757576"></polygon>
+                    <polygon id="路径" fill="#1890FF" points="5.64705882 8.52121212 2.35294117 11.630303 2.35294117 15.8909091 5.64705882 15.8909091"></polygon>
+                    <polygon id="路径" fill="#1890FF" points="2.35294117 6.67878788 5.64705882 3.45454545 5.64705882 2.1878788 2.35294117 2.1878788"></polygon>
+                    <polygon id="路径" fill="#1890FF" points="19.8823529 8.52121212 16.5882353 11.5151515 16.5882353 15.7757576 19.8823529 15.7757576"></polygon>
+                    <polygon id="路径" fill="#1890FF" points="10.3529412 9.2121212 7.17647059 8.2909091 7.17647059 15.7757576 10.3529412 15.7757576"></polygon>
+                    <polygon id="路径" fill="#1890FF" points="10.3529412 5.4121212 10.3529412 0 7.17647059 0 7.17647059 4.4909091"></polygon>
+                    <polygon id="路径" fill="#1890FF" points="0 17.5030303 22 17.5030303 22 19 0 19"></polygon>
+                    <polygon id="路径" fill="#1890FF" points="15.0588235 6.7939394 15.0588235 4.03030303 11.8823529 4.03030303 11.8823529 5.87272727"></polygon>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

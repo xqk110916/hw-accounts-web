@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="46px" height="46px" viewBox="0 0 46 46" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>横向柱图</title>
+    <defs>
+        <rect id="path-1" x="0" y="0" width="44" height="44" rx="3"></rect>
+    </defs>
+    <g id="图表器" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="统计图表/筛选" transform="translate(-42.000000, -126.000000)">
+            <g id="横向柱图" transform="translate(43.000000, 127.000000)">
+                <path d="M17.05,12 L20.9,12 L20.9,32 L17.05,32 L17.05,12 Z" id="柱" fill="#1890FF"></path>
+                <path d="M11,21.4736842 L14.85,21.4736842 L14.85,31.7975709 L11,31.7975709 L11,21.4736842 Z" id="柱" fill="#00B42A"></path>
+                <path d="M23.1,16.2105263 L26.95,16.2105263 L26.95,31.9544534 L23.1,31.9544534 L23.1,16.2105263 Z" id="柱" fill="#00B42A"></path>
+                <path d="M29.15,19.3684211 L33,19.3684211 L33,31.757085 L29.15,31.757085 L29.15,19.3684211 Z" id="柱" fill="#1890FF"></path>
+                <mask id="mask-2" fill="white">
+                    <use xlink:href="#path-1"></use>
+                </mask>
+                <use id="组-457备份-12" stroke="#DCDEE0" stroke-dasharray="2" fill-rule="nonzero" xlink:href="#path-1"></use>
+            </g>
+        </g>
+    </g>
+</svg>
