@@ -5,14 +5,14 @@
         <i class="el-icon-s-data"></i>
         入库时间图例
       </h4>
-      <el-button 
+      <!-- <el-button 
         type="text" 
         size="mini" 
         @click="toggleExpand"
       >
         {{ isExpanded ? '收起' : '展开' }}
         <i :class="isExpanded ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
-      </el-button>
+      </el-button> -->
     </div>
     
     <div class="legend-content" v-show="isExpanded">
@@ -157,7 +157,7 @@ export default {
   
   .legend-content {
     padding: 12px;
-    max-height: 300px;
+    // max-height: 300px;
     overflow-y: auto;
     
     &::-webkit-scrollbar {
@@ -171,8 +171,8 @@ export default {
   }
   
   .legend-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
   

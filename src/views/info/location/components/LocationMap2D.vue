@@ -1,13 +1,9 @@
 <template>
-  <div class="location-map-2d">
+  <div class="location-map-2d" ref="mapRoot">
     <div class="map-header">
       <div class="warehouse-info">
         <span class="warehouse-name">{{ warehouseName }}</span>
         <span class="warehouse-size">尺寸: {{ warehouseWidth }}m × {{ warehouseHeight }}m</span>
-      </div>
-      <div class="map-scale">
-        <div class="scale-bar"></div>
-        <span>1米</span>
       </div>
     </div>
     
@@ -16,62 +12,44 @@
         class="warehouse-floor"
         :style="floorStyle"
       >
-        <!-- 货架网格 -->
+        <!-- 货架卡片 -->
         <div
           v-for="shelf in shelves"
           :key="shelf.id"
-          class="shelf-item"
+          class="shelf-card"
           :style="getShelfStyle(shelf)"
           :class="{ 'selected': selectedShelf && selectedShelf.id === shelf.id }"
           @click="handleShelfClick(shelf)"
-          @mouseenter="handleShelfHover(shelf, $event)"
-          @mouseleave="handleShelfLeave"
         >
-          <div class="shelf-label">{{ shelf.name }}</div>
-          <!-- 容器格子 -->
-          <div class="container-grid">
-            <div
-              v-for="container in shelf.containers"
-              :key="container.id"
-              class="container-cell"
-              :style="{ backgroundColor: getContainerColor(container) }"
-              :title="getContainerTooltip(container)"
-            >
-              <span class="container-code">{{ container.materialName || '-' }}</span>
+          <div class="shelf-header">
+            <span class="shelf-name">{{ shelf.name }}</span>
+            <span class="shelf-count">{{ getFilledCount(shelf) }}/{{ shelf.layers ? shelf.layers.length * 3 : 9 }}</span>
+          </div>
+          <div class="shelf-body">
+            <!-- 显示容器层级 -->
+            <div class="layer-row" v-for="layer in (shelf.layers || []).slice().reverse()" :key="layer.level">
+              <div 
+                v-for="container in layer.containers" 
+                :key="container.id"
+                class="container-box"
+                :style="{ backgroundColor: getContainerColor(container) }"
+                :title="getContainerTooltip(container)"
+                @click.stop="handleContainerClick(container)"
+              >
+                <span class="container-label" v-if="container.materialName">
+                  {{ container.materialName.slice(0, 4) }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-        
-        <!-- 过道标记 -->
-        <div 
-          v-for="(aisle, index) in aisles" 
-          :key="'aisle-' + index"
-          class="aisle"
-          :style="getAisleStyle(aisle)"
-        >
-          <span class="aisle-label">通道</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 悬浮信息框 -->
-    <div 
-      v-if="hoverInfo.visible" 
-      class="hover-tooltip"
-      :style="{ left: hoverInfo.x + 'px', top: hoverInfo.y + 'px' }"
-    >
-      <div class="tooltip-title">{{ hoverInfo.shelf.name }}</div>
-      <div class="tooltip-content">
-        <p>位置: ({{ hoverInfo.shelf.position.x }}m, {{ hoverInfo.shelf.position.y }}m)</p>
-        <p>容器数量: {{ hoverInfo.shelf.containers ? hoverInfo.shelf.containers.length : 0 }}</p>
-        <p>货架层数: {{ hoverInfo.shelf.layerCount || 3 }}层</p>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { getColorByDate, generateDateColorMap } from '../utils/colorHelper';
+import { getColorByDate } from '../utils/colorHelper';
 
 export default {
   name: 'LocationMap2D',
@@ -95,79 +73,84 @@ export default {
     dateColorMap: {
       type: Object,
       default: () => ({})
-    },
-    scale: {
-      type: Number,
-      default: 30 // 每米对应的像素数
     }
   },
   data() {
     return {
       selectedShelf: null,
-      hoverInfo: {
-        visible: false,
-        x: 0,
-        y: 0,
-        shelf: {}
-      }
+      scale: 30,
+      containerWidth: 100,
+      containerHeight: 100
     };
   },
   computed: {
     floorStyle() {
       return {
-        width: this.warehouseWidth * this.scale + 'px',
-        height: this.warehouseHeight * this.scale + 'px'
+        width: '100%',
+        minHeight: '100%',
+        position: 'relative'
       };
-    },
-    aisles() {
-      // 生成通道位置
-      return [
-        { x: this.warehouseWidth / 2 - 1, y: 0, width: 2, height: this.warehouseHeight }
-      ];
     }
   },
+  mounted() {
+    this.updateScale();
+    window.addEventListener('resize', this.updateScale);
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.updateScale);
+  },
   methods: {
-    getShelfStyle(shelf) {
-      return {
-        left: shelf.position.x * this.scale + 'px',
-        top: shelf.position.y * this.scale + 'px',
-        width: (shelf.width || 2) * this.scale + 'px',
-        height: (shelf.height || 1.5) * this.scale + 'px'
-      };
+    updateScale() {
+      this.$nextTick(() => {
+        if (this.$refs.mapContainer) {
+          const containerWidth = this.$refs.mapContainer.clientWidth - 40;
+          const containerHeight = this.$refs.mapContainer.clientHeight - 40;
+          const scaleX = containerWidth / this.warehouseWidth;
+          const scaleY = containerHeight / this.warehouseHeight;
+          this.scale = Math.min(scaleX, scaleY, 60);
+        }
+      });
     },
-    getAisleStyle(aisle) {
+    getShelfStyle(shelf) {
+      // 计算货架卡片的大小和位置
+      const shelfWidth = (shelf.width || 4) * this.scale;
+      const shelfHeight = (shelf.height || 3) * this.scale;
       return {
-        left: aisle.x * this.scale + 'px',
-        top: aisle.y * this.scale + 'px',
-        width: aisle.width * this.scale + 'px',
-        height: aisle.height * this.scale + 'px'
+        left: shelf.position.x * this.scale + 20 + 'px',
+        top: shelf.position.y * this.scale + 20 + 'px',
+        width: Math.max(shelfWidth, 120) + 'px',
+        height: Math.max(shelfHeight, 100) + 'px'
       };
     },
     getContainerColor(container) {
       if (!container || !container.storageDate) {
-        return '#e0e0e0';
+        return 'rgba(255,255,255,0.3)';
       }
       return this.dateColorMap[container.storageDate] || getColorByDate(container.storageDate);
     },
     getContainerTooltip(container) {
-      if (!container) return '';
-      return `容器: ${container.code}\n物料: ${container.materialName || '-'}\n入库时间: ${container.storageDate || '-'}`;
+      if (!container || !container.materialName) return '空位';
+      return `容器: ${container.code}\n物料: ${container.materialName}\n入库: ${container.storageDate || '-'}`;
+    },
+    getFilledCount(shelf) {
+      let count = 0;
+      if (shelf.layers) {
+        shelf.layers.forEach(layer => {
+          layer.containers.forEach(c => {
+            if (c.materialCode) count++;
+          });
+        });
+      }
+      return count;
     },
     handleShelfClick(shelf) {
       this.selectedShelf = shelf;
       this.$emit('shelf-select', shelf);
     },
-    handleShelfHover(shelf, event) {
-      const rect = this.$refs.mapContainer.getBoundingClientRect();
-      this.hoverInfo = {
-        visible: true,
-        x: event.clientX - rect.left + 15,
-        y: event.clientY - rect.top + 10,
-        shelf: shelf
-      };
-    },
-    handleShelfLeave() {
-      this.hoverInfo.visible = false;
+    handleContainerClick(container) {
+      if (container && container.materialCode) {
+        this.$emit('container-click', container);
+      }
     }
   }
 };
@@ -175,173 +158,132 @@ export default {
 
 <style lang="scss" scoped>
 .location-map-2d {
-  background: #f5f7fa;
+  background: #fff;
   border-radius: 8px;
-  padding: 16px;
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   
   .map-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e4e7ed;
+    padding: 12px 16px;
+    border-bottom: 1px solid #ebeef5;
+    flex-shrink: 0;
     
     .warehouse-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      
       .warehouse-name {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
         color: #303133;
-        margin-right: 16px;
       }
       .warehouse-size {
         font-size: 13px;
         color: #909399;
       }
     }
-    
-    .map-scale {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: #606266;
-      
-      .scale-bar {
-        width: 30px;
-        height: 4px;
-        background: linear-gradient(90deg, #409EFF, #67C23A);
-        border-radius: 2px;
-      }
-    }
   }
   
   .map-container {
+    flex: 1;
     overflow: auto;
-    background: #fff;
-    border-radius: 6px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
     padding: 20px;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.06);
-    position: relative;
+    min-height: 0;
   }
   
   .warehouse-floor {
     position: relative;
-    background: 
-      linear-gradient(90deg, #f0f0f0 1px, transparent 1px),
-      linear-gradient(#f0f0f0 1px, transparent 1px);
-    background-size: 30px 30px;
-    border: 2px solid #dcdfe6;
-    border-radius: 4px;
+    min-height: 100%;
   }
   
-  .shelf-item {
+  .shelf-card {
     position: absolute;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 4px;
+    background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    padding: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+    display: flex;
+    flex-direction: column;
     
     &:hover {
-      transform: scale(1.02);
-      box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.45);
       z-index: 10;
     }
     
     &.selected {
       outline: 3px solid #E6A23C;
       outline-offset: 2px;
+      box-shadow: 0 8px 24px rgba(230, 162, 60, 0.4);
     }
     
-    .shelf-label {
-      position: absolute;
-      top: 2px;
-      left: 4px;
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.9);
-      font-weight: 500;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    }
-    
-    .container-grid {
+    .shelf-header {
       display: flex;
-      flex-wrap: wrap;
-      gap: 2px;
-      padding: 18px 4px 4px 4px;
-      height: 100%;
-      box-sizing: border-box;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      
+      .shelf-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: #fff;
+      }
+      
+      .shelf-count {
+        font-size: 10px;
+        color: rgba(255,255,255,0.8);
+        background: rgba(0,0,0,0.2);
+        padding: 2px 6px;
+        border-radius: 10px;
+      }
     }
     
-    .container-cell {
+    .shelf-body {
       flex: 1;
-      min-width: 20px;
-      min-height: 18px;
-      border-radius: 2px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+    }
+    
+    .layer-row {
+      display: flex;
+      gap: 3px;
+      flex: 1;
+    }
+    
+    .container-box {
+      flex: 1;
+      border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
+      min-height: 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      transition: all 0.2s;
       
-      .container-code {
-        font-size: 8px;
-        color: #fff;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      }
+      
+      .container-label {
+        font-size: 9px;
+        color: #000;
+        font-weight: 500;
+        text-shadow: 0 1px 2px rgba(255,255,255, 0.5);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        max-width: 100%;
-        padding: 0 2px;
       }
-    }
-  }
-  
-  .aisle {
-    position: absolute;
-    background: repeating-linear-gradient(
-      45deg,
-      #fafafa,
-      #fafafa 5px,
-      #f0f0f0 5px,
-      #f0f0f0 10px
-    );
-    border: 1px dashed #c0c4cc;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    .aisle-label {
-      font-size: 12px;
-      color: #909399;
-      writing-mode: vertical-lr;
-      letter-spacing: 4px;
-    }
-  }
-  
-  .hover-tooltip {
-    position: absolute;
-    background: rgba(48, 49, 51, 0.95);
-    color: #fff;
-    padding: 12px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    z-index: 100;
-    pointer-events: none;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-    min-width: 160px;
-    
-    .tooltip-title {
-      font-weight: 600;
-      margin-bottom: 8px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    .tooltip-content p {
-      margin: 4px 0;
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.85);
     }
   }
 }

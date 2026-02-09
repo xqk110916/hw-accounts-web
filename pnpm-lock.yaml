@@ -77,6 +77,9 @@ importers:
       standard-version:
         specifier: ^9.5.0
         version: 9.5.0
+      three:
+        specifier: ^0.182.0
+        version: 0.182.0
       throttle-debounce:
         specifier: 1.1.0
         version: 1.1.0
@@ -5787,6 +5790,9 @@ packages:
     engines: {node: '>= 10.13.0'}
     peerDependencies:
       webpack: ^4.27.0 || ^5.0.0
+
+  three@0.182.0:
+    resolution: {integrity: sha512-GbHabT+Irv+ihI1/f5kIIsZ+Ef9Sl5A1Y7imvS5RQjWgtTPfPnZ43JmlYI7NtCRDK9zir20lQpfg8/9Yd02OvQ==}
 
   throttle-debounce@1.1.0:
     resolution: {integrity: sha512-XH8UiPCQcWNuk2LYePibW/4qL97+ZQ1AN3FNXwZRBNPPowo/NRU5fAlDCSNBJIYCKbioZfuYtMhG4quqoJhVzg==}
@@ -13275,6 +13281,8 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       webpack: 5.104.1(webpack-cli@5.1.4)
+
+  three@0.182.0: {}
 
   throttle-debounce@1.1.0: {}
 

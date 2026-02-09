@@ -6,94 +6,52 @@
         {{ shelfName || '货架视图' }}
       </h3>
       <div class="view-controls">
-        <el-button-group size="mini">
+        <!-- <el-button-group size="mini">
           <el-button 
             :type="viewMode === 'front' ? 'primary' : 'default'"
-            @click="viewMode = 'front'"
+            @click="setViewMode('front')"
           >正视图</el-button>
           <el-button 
-            :type="viewMode === 'view-3d' ? 'primary' : 'default'"
-            @click="viewMode = 'view-3d'"
+            :type="viewMode === '3d' ? 'primary' : 'default'"
+            @click="setViewMode('3d')"
           >立体图</el-button>
-        </el-button-group>
+        </el-button-group> -->
+        <el-button 
+          size="mini" 
+          icon="el-icon-refresh"
+          @click="resetCamera"
+          title="重置视角"
+        ></el-button>
       </div>
     </div>
 
-    <div class="shelf-container" :class="viewMode">
-      <!-- 3D 货架 -->
-      <div class="shelf-3d-wrapper">
-        <div class="shelf-structure">
-          <!-- 货架层 -->
-          <div 
-            v-for="layer in reversedLayers" 
-            :key="layer.level"
-            class="shelf-layer"
-            :class="{ 'selected': selectedLayer === layer.level }"
-            @click="handleLayerClick(layer)"
-          >
-            <div class="layer-label">第{{ layer.level }}层</div>
-            <div class="layer-containers">
-              <div
-                v-for="container in layer.containers"
-                :key="container.id"
-                class="container-slot"
-                :style="{ backgroundColor: getContainerColor(container) }"
-                :class="{ 'empty': !container.materialCode }"
-                @click.stop="handleContainerClick(container)"
-                @mouseenter="showContainerInfo(container, $event)"
-                @mouseleave="hideContainerInfo"
-              >
-                <div class="container-visual">
-                  <div class="container-cap"></div>
-                  <div class="container-body">
-                    <span class="material-name">{{ container.materialName || '空' }}</span>
-                  </div>
-                  <div class="container-base"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 货架支柱 -->
-          <div class="shelf-frame">
-            <div class="frame-left"></div>
-            <div class="frame-right"></div>
-          </div>
-          
-          <!-- 货架底座 -->
-          <div class="shelf-base">
-            <div class="base-surface"></div>
-          </div>
-        </div>
-      </div>
+    <!-- Three.js 渲染容器 -->
+    <div class="canvas-container" ref="canvasContainer">
+      <canvas ref="threeCanvas"></canvas>
     </div>
 
-    <!-- 容器详情弹出框 -->
+    <!-- 容器详情提示 -->
     <div 
-      v-if="containerTooltip.visible" 
+      v-if="tooltip.visible" 
       class="container-tooltip"
-      :style="{ left: containerTooltip.x + 'px', top: containerTooltip.y + 'px' }"
+      :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
     >
       <div class="tooltip-header">
         <span class="container-icon">🛢️</span>
-        <span>{{ containerTooltip.container.code || '容器' }}</span>
+        <span>{{ tooltip.container.code || '容器' }}</span>
       </div>
       <div class="tooltip-body">
         <div class="info-row">
           <span class="label">物料代码:</span>
-          <span class="value">{{ containerTooltip.container.materialCode || '-' }}</span>
+          <span class="value">{{ tooltip.container.materialCode || '-' }}</span>
         </div>
         <div class="info-row">
           <span class="label">物料名称:</span>
-          <span class="value">{{ containerTooltip.container.materialName || '-' }}</span>
+          <span class="value">{{ tooltip.container.materialName || '-' }}</span>
         </div>
         <div class="info-row">
           <span class="label">入库时间:</span>
-          <span class="value">{{ containerTooltip.container.storageDate || '-' }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">物料类型:</span>
-          <span class="value">{{ containerTooltip.container.materialType || '-' }}</span>
+          <span class="value">{{ tooltip.container.storageDate || '-' }}</span>
         </div>
       </div>
     </div>
@@ -103,10 +61,17 @@
       <i class="el-icon-box"></i>
       <p>请选择货架查看详情</p>
     </div>
+
+    <!-- 操作提示 -->
+    <div class="control-hint" v-if="layers && layers.length > 0">
+      <span>🖱️ 左键拖拽旋转 | 滚轮缩放 | 右键平移</span>
+    </div>
   </div>
 </template>
 
 <script>
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { getColorByDate } from '../utils/colorHelper';
 
 export default {
@@ -127,47 +92,372 @@ export default {
   },
   data() {
     return {
-      viewMode: 'view-3d', // 'front' 或 'view-3d'
-      selectedLayer: null,
-      containerTooltip: {
+      viewMode: 'front',
+      scene: null,
+      camera: null,
+      renderer: null,
+      controls: null,
+      containerMeshes: [],
+      raycaster: null,
+      mouse: null,
+      tooltip: {
         visible: false,
         x: 0,
         y: 0,
         container: {}
-      }
+      },
+      animationId: null
     };
   },
-  computed: {
-    reversedLayers() {
-      // 从上到下排列（第3层在最上面）
-      return [...this.layers].sort((a, b) => b.level - a.level);
+  watch: {
+    layers: {
+      handler() {
+        this.rebuildShelf();
+      },
+      deep: true
+    }
+  },
+  mounted() {
+    this.initThree();
+    this.buildShelf();
+    this.setViewMode(this.viewMode); // 初始化视角
+    this.animate();
+    window.addEventListener('resize', this.handleResize);
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.handleResize);
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+    }
+    if (this.controls) {
+      this.controls.dispose();
+    }
+    if (this.renderer) {
+      this.renderer.dispose();
     }
   },
   methods: {
-    getContainerColor(container) {
-      if (!container || !container.storageDate) {
-        return '#e0e0e0';
+    initThree() {
+      const container = this.$refs.canvasContainer;
+      const canvas = this.$refs.threeCanvas;
+      const width = container.clientWidth;
+      const height = container.clientHeight || 350;
+
+      // 场景
+      this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(0x1a1a2e);
+
+      // 相机
+      this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      this.camera.position.set(0, 3, 8);
+
+      // 渲染器
+      this.renderer = new THREE.WebGLRenderer({ 
+        canvas: canvas,
+        antialias: true 
+      });
+      this.renderer.setSize(width, height);
+      this.renderer.setPixelRatio(window.devicePixelRatio);
+      this.renderer.shadowMap.enabled = true;
+
+      // 轨道控制器
+      this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+      this.controls.enableDamping = true;
+      this.controls.dampingFactor = 0.05;
+      this.controls.minDistance = 5;
+      this.controls.maxDistance = 30;
+
+      // 光照
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      this.scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(10, 15, 10);
+      directionalLight.castShadow = true;
+      this.scene.add(directionalLight);
+
+      // 射线检测
+      this.raycaster = new THREE.Raycaster();
+      this.mouse = new THREE.Vector2();
+
+      // 鼠标事件
+      canvas.addEventListener('mousemove', this.onMouseMove);
+      canvas.addEventListener('click', this.onMouseClick);
+    },
+
+    buildShelf() {
+      // 清除旧的货架
+      this.clearShelf();
+
+      if (!this.layers || this.layers.length === 0) return;
+
+      // 货架框架尺寸
+      const shelfWidth = 6;
+      const shelfDepth = 2;
+      const layerHeight = 1.5;
+      const layerCount = this.layers.length;
+      const totalHeight = layerCount * layerHeight + 0.5;
+
+      // 创建货架框架
+      this.createShelfFrame(shelfWidth, shelfDepth, totalHeight, layerCount, layerHeight);
+
+      // 创建每层的容器
+      this.layers.forEach((layer, layerIndex) => {
+        const y = layerIndex * layerHeight + 0.5;
+        this.createLayerContainers(layer, y, shelfWidth, shelfDepth);
+      });
+
+      // 创建底座
+      this.createBase(shelfWidth, shelfDepth);
+    },
+
+    createShelfFrame(width, depth, height, layerCount, layerHeight) {
+      const frameMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x4a5568,
+        metalness: 0.5,
+        roughness: 0.5
+      });
+
+      // 四根立柱
+      const pillarGeometry = new THREE.BoxGeometry(0.15, height, 0.15);
+      const positions = [
+        [-width/2, height/2, -depth/2],
+        [width/2, height/2, -depth/2],
+        [-width/2, height/2, depth/2],
+        [width/2, height/2, depth/2]
+      ];
+
+      positions.forEach(pos => {
+        const pillar = new THREE.Mesh(pillarGeometry, frameMaterial);
+        pillar.position.set(...pos);
+        pillar.castShadow = true;
+        this.scene.add(pillar);
+      });
+
+      // 每层的横梁
+      for (let i = 0; i <= layerCount; i++) {
+        const y = i * layerHeight + 0.4;
+        
+        // 前后横梁
+        const beamGeometryFB = new THREE.BoxGeometry(width, 0.08, 0.08);
+        [-depth/2, depth/2].forEach(z => {
+          const beam = new THREE.Mesh(beamGeometryFB, frameMaterial);
+          beam.position.set(0, y, z);
+          this.scene.add(beam);
+        });
+
+        // 左右横梁
+        const beamGeometryLR = new THREE.BoxGeometry(0.08, 0.08, depth);
+        [-width/2, width/2].forEach(x => {
+          const beam = new THREE.Mesh(beamGeometryLR, frameMaterial);
+          beam.position.set(x, y, 0);
+          this.scene.add(beam);
+        });
+
+        // 层板
+        if (i < layerCount) {
+          const shelfBoardGeometry = new THREE.BoxGeometry(width - 0.1, 0.05, depth - 0.1);
+          const shelfBoardMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2d3748,
+            metalness: 0.3,
+            roughness: 0.7
+          });
+          const shelfBoard = new THREE.Mesh(shelfBoardGeometry, shelfBoardMaterial);
+          shelfBoard.position.set(0, y + 0.05, 0);
+          shelfBoard.receiveShadow = true;
+          this.scene.add(shelfBoard);
+        }
       }
-      return this.dateColorMap[container.storageDate] || getColorByDate(container.storageDate);
     },
-    handleLayerClick(layer) {
-      this.selectedLayer = layer.level;
-      this.$emit('layer-select', layer);
+
+    createLayerContainers(layer, y, shelfWidth, shelfDepth) {
+      const containers = layer.containers || [];
+      // 只显示有物料的容器
+      const filledContainers = containers.filter(c => c.materialCode);
+      const containerCount = filledContainers.length;
+      
+      if (containerCount === 0) return;
+      
+      const spacing = shelfWidth / (containers.length + 1);
+
+      filledContainers.forEach((container) => {
+        // 计算容器在原数组中的索引位置
+        const originalIndex = containers.findIndex(c => c.id === container.id);
+        const x = -shelfWidth/2 + spacing * (originalIndex + 1);
+        
+        // 容器圆柱体 (模拟核废料储存罐)
+        const radius = 0.35;
+        const height = 1.0;
+        const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 16);
+        
+        // 根据入库时间确定颜色
+        let color = 0xe0e0e0;
+        if (container.storageDate) {
+          const hexColor = this.dateColorMap[container.storageDate] || getColorByDate(container.storageDate);
+          color = parseInt(hexColor.replace('#', ''), 16);
+        }
+
+        const material = new THREE.MeshStandardMaterial({ 
+          color: color,
+          metalness: 0.4,
+          roughness: 0.6
+        });
+
+        const cylinder = new THREE.Mesh(cylinderGeometry, material);
+        cylinder.position.set(x, y + height/2 + 0.1, 0);
+        cylinder.castShadow = true;
+        cylinder.receiveShadow = true;
+        
+        // 存储容器数据用于点击交互
+        cylinder.userData = {
+          type: 'container',
+          container: container
+        };
+        
+        this.scene.add(cylinder);
+        this.containerMeshes.push(cylinder);
+
+        // 添加顶部盖子
+        const lidGeometry = new THREE.CylinderGeometry(radius, radius * 0.95, 0.05, 16);
+        const lidMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x1a1a1a,
+          metalness: 0.8,
+          roughness: 0.3
+        });
+        const lid = new THREE.Mesh(lidGeometry, lidMaterial);
+        lid.position.set(x, y + height + 0.125, 0);
+        lid.castShadow = true;
+        this.scene.add(lid);
+      });
     },
-    handleContainerClick(container) {
-      this.$emit('container-click', container);
+
+    createBase(width, depth) {
+      const baseGeometry = new THREE.BoxGeometry(width + 0.5, 0.2, depth + 0.5);
+      const baseMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x2d3748,
+        metalness: 0.3,
+        roughness: 0.8
+      });
+      const base = new THREE.Mesh(baseGeometry, baseMaterial);
+      base.position.set(0, 0.1, 0);
+      base.receiveShadow = true;
+      this.scene.add(base);
+
+      // 地面
+      const groundGeometry = new THREE.PlaneGeometry(20, 20);
+      const groundMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x16213e,
+        side: THREE.DoubleSide
+      });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = 0;
+      ground.receiveShadow = true;
+      this.scene.add(ground);
     },
-    showContainerInfo(container, event) {
-      const rect = this.$el.getBoundingClientRect();
-      this.containerTooltip = {
-        visible: true,
-        x: event.clientX - rect.left + 15,
-        y: event.clientY - rect.top - 10,
-        container: container
-      };
+
+    clearShelf() {
+      // 移除所有对象(保留光照)
+      const objectsToRemove = [];
+      this.scene.traverse((object) => {
+        if (object.isMesh) {
+          objectsToRemove.push(object);
+        }
+      });
+      objectsToRemove.forEach(obj => {
+        this.scene.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
+      this.containerMeshes = [];
     },
-    hideContainerInfo() {
-      this.containerTooltip.visible = false;
+
+    rebuildShelf() {
+      this.buildShelf();
+    },
+
+    setViewMode(mode) {
+      this.viewMode = mode;
+      if (mode === 'front') {
+        this.camera.position.set(0, 3, 8);
+        this.controls.target.set(0, 2, 0);
+      } else {
+        // 3D视图 - 斜视角
+        this.camera.position.set(8, 6, 10);
+        this.controls.target.set(0, 2, 0);
+      }
+      this.controls.update();
+    },
+
+    resetCamera() {
+      this.setViewMode(this.viewMode);
+    },
+
+    animate() {
+      this.animationId = requestAnimationFrame(this.animate);
+      if (this.controls) {
+        this.controls.update();
+      }
+      if (this.renderer && this.scene && this.camera) {
+        this.renderer.render(this.scene, this.camera);
+      }
+    },
+
+    handleResize() {
+      const container = this.$refs.canvasContainer;
+      if (!container) return;
+      
+      const width = container.clientWidth;
+      const height = container.clientHeight || 350;
+
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(width, height);
+    },
+
+    onMouseMove(event) {
+      const canvas = this.$refs.threeCanvas;
+      const rect = canvas.getBoundingClientRect();
+      
+      this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+      const intersects = this.raycaster.intersectObjects(this.containerMeshes);
+
+      if (intersects.length > 0) {
+        const object = intersects[0].object;
+        if (object.userData.container) {
+          this.tooltip = {
+            visible: true,
+            x: event.clientX - rect.left + 15,
+            y: event.clientY - rect.top - 10,
+            container: object.userData.container
+          };
+          canvas.style.cursor = 'pointer';
+        }
+      } else {
+        this.tooltip.visible = false;
+        canvas.style.cursor = 'default';
+      }
+    },
+
+    onMouseClick(event) {
+      const canvas = this.$refs.threeCanvas;
+      const rect = canvas.getBoundingClientRect();
+      
+      this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+      const intersects = this.raycaster.intersectObjects(this.containerMeshes);
+
+      if (intersects.length > 0) {
+        const object = intersects[0].object;
+        if (object.userData.container && object.userData.container.code) {
+          this.$emit('container-click', object.userData.container);
+        }
+      }
     }
   }
 };
@@ -178,15 +468,18 @@ export default {
   background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
   border-radius: 12px;
   padding: 20px;
-  min-height: 400px;
+  height: 100%;
+  box-sizing: border-box;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 
   .view-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     
     .shelf-title {
       margin: 0;
@@ -201,177 +494,24 @@ export default {
         color: #67C23A;
       }
     }
-  }
 
-  .shelf-container {
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    min-height: 320px;
-    perspective: 1000px;
-    
-    &.front {
-      .shelf-3d-wrapper {
-        transform: rotateX(0deg) rotateY(0deg);
-      }
-    }
-    
-    &.view-3d {
-      .shelf-3d-wrapper {
-        transform: rotateX(15deg) rotateY(-20deg);
-      }
-    }
-  }
-
-  .shelf-3d-wrapper {
-    transform-style: preserve-3d;
-    transition: transform 0.5s ease;
-  }
-
-  .shelf-structure {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 0 20px;
-  }
-
-  .shelf-layer {
-    display: flex;
-    align-items: center;
-    background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
-    border-radius: 4px;
-    padding: 8px 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    
-    &:hover {
-      background: linear-gradient(180deg, #5a6778 0%, #3d4758 100%);
-      transform: translateX(5px);
-    }
-    
-    &.selected {
-      border-color: #E6A23C;
-      box-shadow: 0 0 20px rgba(230, 162, 60, 0.3);
-    }
-    
-    .layer-label {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 12px;
-      min-width: 50px;
-      text-align: center;
-      padding-right: 12px;
-      border-right: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .layer-containers {
+    .view-controls {
       display: flex;
-      gap: 12px;
-      padding-left: 12px;
-      flex: 1;
-      justify-content: center;
+      gap: 8px;
     }
   }
 
-  .container-slot {
-    width: 70px;
-    height: 80px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .canvas-container {
+    width: 100%;
+    flex: 1;
+    min-height: 200px;
+    border-radius: 8px;
+    overflow: hidden;
     
-    &:hover {
-      transform: scale(1.08);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      z-index: 10;
-    }
-    
-    &.empty {
-      background: rgba(255, 255, 255, 0.1) !important;
-      border: 2px dashed rgba(255, 255, 255, 0.2);
-    }
-    
-    .container-visual {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    canvas {
+      display: block;
       width: 100%;
       height: 100%;
-      padding: 4px;
-      
-      .container-cap {
-        width: 30px;
-        height: 8px;
-        background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 100%);
-        border-radius: 3px 3px 0 0;
-      }
-      
-      .container-body {
-        flex: 1;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        
-        .material-name {
-          color: #fff;
-          font-size: 10px;
-          text-align: center;
-          padding: 2px 4px;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-          word-break: break-all;
-          line-height: 1.2;
-        }
-      }
-      
-      .container-base {
-        width: 50px;
-        height: 6px;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 0 0 4px 4px;
-      }
-    }
-  }
-
-  .shelf-frame {
-    position: absolute;
-    top: 0;
-    bottom: 30px;
-    left: 0;
-    right: 0;
-    pointer-events: none;
-    
-    .frame-left,
-    .frame-right {
-      position: absolute;
-      width: 8px;
-      height: 100%;
-      background: linear-gradient(90deg, #718096 0%, #4a5568 100%);
-      border-radius: 2px;
-    }
-    
-    .frame-left {
-      left: 0;
-    }
-    
-    .frame-right {
-      right: 0;
-    }
-  }
-
-  .shelf-base {
-    margin-top: 8px;
-    
-    .base-surface {
-      height: 20px;
-      background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
-      border-radius: 4px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
   }
 
@@ -420,11 +560,14 @@ export default {
   }
 
   .empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 300px;
     color: rgba(255, 255, 255, 0.5);
     
     i {
@@ -435,6 +578,18 @@ export default {
     p {
       font-size: 14px;
     }
+  }
+
+  .control-hint {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
   }
 }
 </style>
