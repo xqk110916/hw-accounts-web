@@ -66,26 +66,52 @@ const user = {
     // 获取用户信息
     GetInfo({ commit, state }) {
       return new Promise((resolve, reject) => {
-        getInfo()
-          .then(res => {
-            const userInfo = res.data.userBo;
-            userInfo.orgId = 1;
-            userInfo.orgName = '中州国际饭店';
-            userInfo.mainDept = res.data.mainDept;
-            const menuList = res.data.menuTreeBoList;
-            const headIcon =
-              userInfo.headIcon == '' || userInfo.headIcon == null
-                ? require('@/assets/images/header-photo.png')
-                : process.env.VUE_APP_FILE_ACCESS_PATH + userInfo.headIcon;
-            userInfo.headIcon = headIcon;
-            commit('SET_USERINFO', userInfo);
-            commit('SET_MENULIST', menuList);
-            resolve(res);
-          })
-          .catch(error => {
-            reject(error);
-            Message.error(error);
-          });
+        // TODO: 暂时注释掉真实接口调用,使用模拟数据,因为没有后端服务
+        // getInfo()
+        //   .then(res => {
+        //     const userInfo = res.data.userBo;
+        //     userInfo.orgId = 1;
+        //     userInfo.orgName = '中州国际饭店';
+        //     userInfo.mainDept = res.data.mainDept;
+        //     const menuList = res.data.menuTreeBoList;
+        //     const headIcon =
+        //       userInfo.headIcon == '' || userInfo.headIcon == null
+        //         ? require('@/assets/images/header-photo.png')
+        //         : process.env.VUE_APP_FILE_ACCESS_PATH + userInfo.headIcon;
+        //     userInfo.headIcon = headIcon;
+        //     commit('SET_USERINFO', userInfo);
+        //     commit('SET_MENULIST', menuList);
+        //     resolve(res);
+        //   })
+        //   .catch(error => {
+        //     reject(error);
+        //     Message.error(error);
+        //   });
+
+        // 使用模拟数据
+        const mockRes = {
+          data: {
+            userBo: {
+              id: 1,
+              username: 'admin',
+              realName: '测试用户',
+              headIcon: require('@/assets/images/header-photo.png'),
+              orgId: 1,
+              orgName: '中州国际饭店',
+            },
+            mainDept: { id: 1, name: '测试部门' },
+            menuTreeBoList: [], // 空菜单列表
+          },
+        };
+        
+        const userInfo = mockRes.data.userBo;
+        userInfo.orgId = 1;
+        userInfo.orgName = '中州国际饭店';
+        userInfo.mainDept = mockRes.data.mainDept;
+        const menuList = mockRes.data.menuTreeBoList;
+        commit('SET_USERINFO', userInfo);
+        commit('SET_MENULIST', menuList);
+        resolve(mockRes);
       });
     },
 

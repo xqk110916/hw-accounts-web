@@ -79,6 +79,22 @@ export const constantRoutes = [
       },
     ],
   },
+  {
+    path: '/test',
+    component: Layout,
+    children: [
+      {
+        path: 'test',
+        name: 'Test',
+        component: resolve => require(['@/views/info/location/index.vue'], resolve),
+        meta: {
+          title: '测试',
+          icon: 'dashboard',
+          auth: true,
+        },
+      },
+    ],
+  },
   // 固定的路由配置项，用于点击侧边菜单栏头像，跳转至个人信息页面
   {
     path: '/usercenter',

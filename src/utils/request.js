@@ -16,12 +16,13 @@ const service = axios.create({
 service.interceptors.request.use(
   config => {
     // 是否需要设置 token
-    const isToken = (config.headers || {}).isToken === false;
-    const tokenName = getTokenName();
-    const tokenValue = getTokenValue();
-    if (tokenValue && !isToken) {
-      config.headers[tokenName] = tokenValue; // 让每个请求携带自定义token 请根据实际情况自行修改
-    }
+    // TODO: 暂时注释掉 token 校验,因为没有后端服务
+    // const isToken = (config.headers || {}).isToken === false;
+    // const tokenName = getTokenName();
+    // const tokenValue = getTokenValue();
+    // if (tokenValue && !isToken) {
+    //   config.headers[tokenName] = tokenValue; // 让每个请求携带自定义token 请根据实际情况自行修改
+    // }
     // get请求映射params参数
     if (config.method === 'get' && config.params) {
       let url = config.url + '?';
@@ -62,18 +63,20 @@ service.interceptors.response.use(
     const code = res.data.code || 1;
     // 获取错误信息
     const msg = errorCode[code] || res.data.msg || errorCode['default'];
-    if (matchingList.indexOf(code) > -1) {
-      MessageBox.confirm('登录状态已过期，您可以继续留在该页面，或者重新登录', '系统提示', {
-        confirmButtonText: '重新登录',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }).then(() => {
-        store.dispatch('LogOut').then(() => {
-          location.href = '/admin/index';
-        });
-      });
-      return Promise.reject('无效的会话，或者会话已过期，请重新登录。');
-    } else if (code === 500) {
+    // TODO: 暂时注释掉 token 过期处理,因为没有后端服务
+    // if (matchingList.indexOf(code) > -1) {
+    //   MessageBox.confirm('登录状态已过期，您可以继续留在该页面，或者重新登录', '系统提示', {
+    //     confirmButtonText: '重新登录',
+    //     cancelButtonText: '取消',
+    //     type: 'warning',
+    //   }).then(() => {
+    //     store.dispatch('LogOut').then(() => {
+    //       location.href = '/admin/index';
+    //     });
+    //   });
+    //   return Promise.reject('无效的会话，或者会话已过期，请重新登录。');
+    // } else 
+    if (code === 500) {
       Message({ message: 'code为' + code + msg, type: 'error' });
       return Promise.reject(new Error(msg));
     } else if (code === 10001) {
@@ -96,7 +99,7 @@ service.interceptors.response.use(
     } else if (message.includes('Request failed with status code')) {
       message = '系统接口' + message.substr(message.length - 3) + '异常';
     }
-    Message({ message: message, type: 'error', duration: 5 * 1000 });
+    // Message({ message: message, type: 'error', duration: 5 * 1000 });
     return Promise.reject(error);
   },
 );
