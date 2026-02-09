@@ -70,7 +70,7 @@
     "vuedraggable": "^2.24.3",
     "vuex": "^3.6.0",
     "wl-gantt": "^1.0.6",
-    "zc-framework-ui": "^2.1.46"
+    "zc-framework-ui": "^3.1.39"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^5.0.8",

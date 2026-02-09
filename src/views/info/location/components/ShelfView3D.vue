@@ -12,8 +12,8 @@
             @click="viewMode = 'front'"
           >正视图</el-button>
           <el-button 
-            :type="viewMode === '3d' ? 'primary' : 'default'"
-            @click="viewMode = '3d'"
+            :type="viewMode === 'view-3d' ? 'primary' : 'default'"
+            @click="viewMode = 'view-3d'"
           >立体图</el-button>
         </el-button-group>
       </div>
@@ -127,7 +127,7 @@ export default {
   },
   data() {
     return {
-      viewMode: '3d', // 'front' 或 '3d'
+      viewMode: 'view-3d', // 'front' 或 'view-3d'
       selectedLayer: null,
       containerTooltip: {
         visible: false,
@@ -216,7 +216,7 @@ export default {
       }
     }
     
-    &.3d {
+    &.view-3d {
       .shelf-3d-wrapper {
         transform: rotateX(15deg) rotateY(-20deg);
       }

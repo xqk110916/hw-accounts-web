@@ -60,6 +60,10 @@ export const constantRoutes = [
     hidden: true,
     component: resolve => require(['@/views/error/401'], resolve),
   },
+  {
+    path: '/testInfo',
+    component: resolve => require(['@/views/info/location/index.vue'], resolve),
+  },
   // 内置首页，
   {
     path: '/',
@@ -82,10 +86,11 @@ export const constantRoutes = [
   {
     path: '/test',
     component: Layout,
+    redirect: '/test/index',
     children: [
       {
-        path: 'test',
-        name: 'Test',
+        path: 'index',
+        name: 'index',
         component: resolve => require(['@/views/info/location/index.vue'], resolve),
         meta: {
           title: '测试',
