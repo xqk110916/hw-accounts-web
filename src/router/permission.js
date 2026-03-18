@@ -54,6 +54,7 @@ router.beforeEach((to, from, next) => {
       }
     }
   } else {
+    return next();
     if (whiteList.indexOf(to.path) !== -1) {
       next();
     } else {
