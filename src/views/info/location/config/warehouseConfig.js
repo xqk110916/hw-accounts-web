@@ -3,10 +3,36 @@
  * 所有数据集中在此文件管理,方便后续替换为真实数据
  */
 
+// ==================== 平衡区配置 ====================
+export const balanceAreaConfig = [
+  {
+    id: 'ba001',
+    name: '一号平衡区',
+    position: { x: -6, y: 0, z: 0 },   // 3D场景中的位置
+    color: 0x4a90d9,
+    warehouseIds: ['wh001', 'wh002', 'wh003']
+  },
+  {
+    id: 'ba002',
+    name: '二号平衡区',
+    position: { x: 6, y: 0, z: 0 },
+    color: 0x27ae60,
+    warehouseIds: []
+  },
+  {
+    id: 'ba003',
+    name: '三号平衡区',
+    position: { x: 0, y: 0, z: 7 },
+    color: 0xe67e22,
+    warehouseIds: []
+  }
+];
+
 // ==================== 基础配置 ====================
 export const baseConfig = {
   balanceArea: '一号平衡区',  // 平衡区名称
-  defaultWarehouseId: 'wh001' // 默认选中的库房ID
+  defaultWarehouseId: 'wh001', // 默认选中的库房ID
+  defaultBalanceAreaId: 'ba001'
 };
 
 // ==================== 库房数据 ====================
@@ -16,21 +42,27 @@ export const warehouseData = [
     name: '一号库房',
     width: 20,
     height: 15,
-    description: '存放低放射性废物'
+    description: '存放低放射性废物',
+    position: { x: -3.5, y: 0, z: -2 },  // 3D场景中的位置
+    shelfLayout: { rows: 2, cols: 3 }     // 货架布局：2行3列
   },
   {
     id: 'wh002',
     name: '二号库房',
     width: 18,
     height: 12,
-    description: '存放中放射性废物'
+    description: '存放中放射性废物',
+    position: { x: 0, y: 0, z: -2 },
+    shelfLayout: { rows: 2, cols: 2 }
   },
   {
     id: 'wh003',
     name: '三号库房',
     width: 25,
     height: 18,
-    description: '存放高放射性废物'
+    description: '存放高放射性废物',
+    position: { x: 3.5, y: 0, z: -2 },
+    shelfLayout: { rows: 3, cols: 3 }
   }
 ];
 
@@ -306,6 +338,72 @@ export const shelfData = {
           ]
         }
       ]
+    },
+    {
+      id: 'wh002_shelf_3',
+      name: 'B-03',
+      position: { x: 2, y: 6 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'b3_1_1', code: 'B311', materialCode: 'MAT-113', materialName: '低放废物', storageDate: '2026-01-12' },
+            { id: 'b3_1_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'b3_1_3', code: 'B313', materialCode: 'MAT-114', materialName: '中放废物', storageDate: '2026-01-16' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'b3_2_1', code: 'B321', materialCode: 'MAT-115', materialName: '核废料A类', storageDate: '2026-01-20' },
+            { id: 'b3_2_2', code: 'B322', materialCode: 'MAT-116', materialName: '核废料B类', storageDate: '2026-01-24' },
+            { id: 'b3_2_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'b3_3_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'b3_3_2', code: 'B332', materialCode: 'MAT-117', materialName: '放射性废渣', storageDate: '2026-01-27' },
+            { id: 'b3_3_3', code: 'B333', materialCode: 'MAT-118', materialName: '低放废物', storageDate: '2026-01-12' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'wh002_shelf_4',
+      name: 'B-04',
+      position: { x: 7, y: 6 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'b4_1_1', code: 'B411', materialCode: 'MAT-119', materialName: '中放废物', storageDate: '2026-01-16' },
+            { id: 'b4_1_2', code: 'B412', materialCode: 'MAT-120', materialName: '核废料A类', storageDate: '2026-01-20' },
+            { id: 'b4_1_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'b4_2_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'b4_2_2', code: 'B422', materialCode: 'MAT-121', materialName: '核废料B类', storageDate: '2026-01-24' },
+            { id: 'b4_2_3', code: 'B423', materialCode: 'MAT-122', materialName: '放射性废渣', storageDate: '2026-01-27' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'b4_3_1', code: 'B431', materialCode: 'MAT-123', materialName: '低放废物', storageDate: '2026-01-12' },
+            { id: 'b4_3_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'b4_3_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        }
+      ]
     }
   ],
   
@@ -343,11 +441,282 @@ export const shelfData = {
           ]
         }
       ]
+    },
+    {
+      id: 'wh003_shelf_2',
+      name: 'C-02',
+      position: { x: 7, y: 2 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'd2_1_1', code: 'D211', materialCode: 'MAT-208', materialName: '放射性废渣', storageDate: '2026-01-11' },
+            { id: 'd2_1_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd2_1_3', code: 'D213', materialCode: 'MAT-209', materialName: '低放废物', storageDate: '2026-01-14' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'd2_2_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd2_2_2', code: 'D222', materialCode: 'MAT-210', materialName: '中放废物', storageDate: '2026-01-17' },
+            { id: 'd2_2_3', code: 'D223', materialCode: 'MAT-211', materialName: '核废料A类', storageDate: '2026-01-21' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'd2_3_1', code: 'D231', materialCode: 'MAT-212', materialName: '核废料B类', storageDate: '2026-01-23' },
+            { id: 'd2_3_2', code: 'D232', materialCode: 'MAT-213', materialName: '放射性废渣', storageDate: '2026-01-26' },
+            { id: 'd2_3_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'wh003_shelf_3',
+      name: 'C-03',
+      position: { x: 12, y: 2 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'd3_1_1', code: 'D311', materialCode: 'MAT-214', materialName: '低放废物', storageDate: '2026-01-11' },
+            { id: 'd3_1_2', code: 'D312', materialCode: 'MAT-215', materialName: '中放废物', storageDate: '2026-01-14' },
+            { id: 'd3_1_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'd3_2_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd3_2_2', code: 'D322', materialCode: 'MAT-216', materialName: '核废料A类', storageDate: '2026-01-17' },
+            { id: 'd3_2_3', code: 'D323', materialCode: 'MAT-217', materialName: '核废料B类', storageDate: '2026-01-21' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'd3_3_1', code: 'D331', materialCode: 'MAT-218', materialName: '放射性废渣', storageDate: '2026-01-23' },
+            { id: 'd3_3_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd3_3_3', code: 'D333', materialCode: 'MAT-219', materialName: '低放废物', storageDate: '2026-01-26' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'wh003_shelf_4',
+      name: 'C-04',
+      position: { x: 2, y: 6 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'd4_1_1', code: 'D411', materialCode: 'MAT-220', materialName: '中放废物', storageDate: '2026-01-14' },
+            { id: 'd4_1_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd4_1_3', code: 'D413', materialCode: 'MAT-221', materialName: '核废料A类', storageDate: '2026-01-17' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'd4_2_1', code: 'D421', materialCode: 'MAT-222', materialName: '核废料B类', storageDate: '2026-01-21' },
+            { id: 'd4_2_2', code: 'D422', materialCode: 'MAT-223', materialName: '放射性废渣', storageDate: '2026-01-23' },
+            { id: 'd4_2_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'd4_3_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd4_3_2', code: 'D432', materialCode: 'MAT-224', materialName: '低放废物', storageDate: '2026-01-26' },
+            { id: 'd4_3_3', code: 'D433', materialCode: 'MAT-225', materialName: '中放废物', storageDate: '2026-01-29' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'wh003_shelf_5',
+      name: 'C-05',
+      position: { x: 7, y: 6 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'd5_1_1', code: 'D511', materialCode: 'MAT-226', materialName: '核废料A类', storageDate: '2026-01-11' },
+            { id: 'd5_1_2', code: 'D512', materialCode: 'MAT-227', materialName: '核废料B类', storageDate: '2026-01-14' },
+            { id: 'd5_1_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'd5_2_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd5_2_2', code: 'D522', materialCode: 'MAT-228', materialName: '放射性废渣', storageDate: '2026-01-17' },
+            { id: 'd5_2_3', code: 'D523', materialCode: 'MAT-229', materialName: '低放废物', storageDate: '2026-01-21' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'd5_3_1', code: 'D531', materialCode: 'MAT-230', materialName: '中放废物', storageDate: '2026-01-23' },
+            { id: 'd5_3_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd5_3_3', code: 'D533', materialCode: 'MAT-231', materialName: '核废料A类', storageDate: '2026-01-26' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'wh003_shelf_6',
+      name: 'C-06',
+      position: { x: 12, y: 6 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'd6_1_1', code: 'D611', materialCode: 'MAT-232', materialName: '核废料B类', storageDate: '2026-01-14' },
+            { id: 'd6_1_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd6_1_3', code: 'D613', materialCode: 'MAT-233', materialName: '放射性废渣', storageDate: '2026-01-17' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'd6_2_1', code: 'D621', materialCode: 'MAT-234', materialName: '低放废物', storageDate: '2026-01-21' },
+            { id: 'd6_2_2', code: 'D622', materialCode: 'MAT-235', materialName: '中放废物', storageDate: '2026-01-23' },
+            { id: 'd6_2_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'd6_3_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd6_3_2', code: 'D632', materialCode: 'MAT-236', materialName: '核废料A类', storageDate: '2026-01-26' },
+            { id: 'd6_3_3', code: 'D633', materialCode: 'MAT-237', materialName: '核废料B类', storageDate: '2026-01-29' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'wh003_shelf_7',
+      name: 'C-07',
+      position: { x: 2, y: 10 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'd7_1_1', code: 'D711', materialCode: 'MAT-238', materialName: '放射性废渣', storageDate: '2026-01-11' },
+            { id: 'd7_1_2', code: 'D712', materialCode: 'MAT-239', materialName: '低放废物', storageDate: '2026-01-14' },
+            { id: 'd7_1_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'd7_2_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd7_2_2', code: 'D722', materialCode: 'MAT-240', materialName: '中放废物', storageDate: '2026-01-17' },
+            { id: 'd7_2_3', code: 'D723', materialCode: 'MAT-241', materialName: '核废料A类', storageDate: '2026-01-21' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'd7_3_1', code: 'D731', materialCode: 'MAT-242', materialName: '核废料B类', storageDate: '2026-01-23' },
+            { id: 'd7_3_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd7_3_3', code: 'D733', materialCode: 'MAT-243', materialName: '放射性废渣', storageDate: '2026-01-26' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'wh003_shelf_8',
+      name: 'C-08',
+      position: { x: 7, y: 10 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'd8_1_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd8_1_2', code: 'D812', materialCode: 'MAT-244', materialName: '低放废物', storageDate: '2026-01-14' },
+            { id: 'd8_1_3', code: 'D813', materialCode: 'MAT-245', materialName: '中放废物', storageDate: '2026-01-17' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'd8_2_1', code: 'D821', materialCode: 'MAT-246', materialName: '核废料A类', storageDate: '2026-01-21' },
+            { id: 'd8_2_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd8_2_3', code: 'D823', materialCode: 'MAT-247', materialName: '核废料B类', storageDate: '2026-01-23' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'd8_3_1', code: 'D831', materialCode: 'MAT-248', materialName: '放射性废渣', storageDate: '2026-01-26' },
+            { id: 'd8_3_2', code: 'D832', materialCode: 'MAT-249', materialName: '低放废物', storageDate: '2026-01-29' },
+            { id: 'd8_3_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'wh003_shelf_9',
+      name: 'C-09',
+      position: { x: 12, y: 10 },
+      width: 4,
+      height: 3,
+      layers: [
+        {
+          level: 1,
+          containers: [
+            { id: 'd9_1_1', code: 'D911', materialCode: 'MAT-250', materialName: '中放废物', storageDate: '2026-01-11' },
+            { id: 'd9_1_2', code: 'D912', materialCode: 'MAT-251', materialName: '核废料A类', storageDate: '2026-01-14' },
+            { id: 'd9_1_3', code: '', materialCode: '', materialName: '', storageDate: '' }
+          ]
+        },
+        {
+          level: 2,
+          containers: [
+            { id: 'd9_2_1', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd9_2_2', code: 'D922', materialCode: 'MAT-252', materialName: '核废料B类', storageDate: '2026-01-17' },
+            { id: 'd9_2_3', code: 'D923', materialCode: 'MAT-253', materialName: '放射性废渣', storageDate: '2026-01-21' }
+          ]
+        },
+        {
+          level: 3,
+          containers: [
+            { id: 'd9_3_1', code: 'D931', materialCode: 'MAT-254', materialName: '低放废物', storageDate: '2026-01-23' },
+            { id: 'd9_3_2', code: '', materialCode: '', materialName: '', storageDate: '' },
+            { id: 'd9_3_3', code: 'D933', materialCode: 'MAT-255', materialName: '中放废物', storageDate: '2026-01-26' }
+          ]
+        }
+      ]
     }
   ]
 };
 
 // ==================== 数据获取方法 ====================
+
+/**
+ * 获取平衡区列表
+ */
+export function getBalanceAreaList() {
+  return balanceAreaConfig;
+}
 
 /**
  * 获取平衡区名称
@@ -357,15 +726,23 @@ export function getBalanceAreaName() {
 }
 
 /**
- * 获取库房列表
+ * 获取库房列表（可按平衡区过滤）
  */
-export function getWarehouseList() {
+export function getWarehouseList(balanceAreaId) {
+  if (balanceAreaId) {
+    const area = balanceAreaConfig.find(a => a.id === balanceAreaId);
+    if (area && area.warehouseIds.length > 0) {
+      return warehouseData.filter(w => area.warehouseIds.includes(w.id));
+    }
+  }
   return warehouseData.map(w => ({
     id: w.id,
     name: w.name,
     width: w.width,
     height: w.height,
-    description: w.description
+    description: w.description,
+    position: w.position,
+    shelfLayout: w.shelfLayout
   }));
 }
 
@@ -393,8 +770,10 @@ export function getDefaultWarehouseId() {
 
 export default {
   baseConfig,
+  balanceAreaConfig,
   warehouseData,
   shelfData,
+  getBalanceAreaList,
   getBalanceAreaName,
   getWarehouseList,
   getWarehouseById,

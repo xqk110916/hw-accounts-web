@@ -7,10 +7,24 @@
           <i class="el-icon-location-outline"></i>
           库房位置图
         </h2>
+        <!-- 多层级面包屑 -->
         <el-breadcrumb separator="/">
-          <el-breadcrumb-item>{{ currentBalanceArea }}</el-breadcrumb-item>
-          <el-breadcrumb-item v-if="currentWarehouse">{{ currentWarehouse.name }}</el-breadcrumb-item>
-          <el-breadcrumb-item v-if="selectedShelf">{{ selectedShelf.name }}</el-breadcrumb-item>
+          <el-breadcrumb-item>
+            <span class="breadcrumb-link" @click="goToLevel('balance')">
+              {{ currentArea ? currentArea.name : balanceAreaName }}
+            </span>
+          </el-breadcrumb-item>
+          <el-breadcrumb-item v-if="currentLevel !== 'balance'">
+            <span class="breadcrumb-link" @click="goToLevel('warehouse')">
+              {{ currentWarehouse ? currentWarehouse.name : '' }}
+            </span>
+          </el-breadcrumb-item>
+          <el-breadcrumb-item v-if="currentLevel === 'interior' || currentLevel === 'shelf'">
+            <span class="breadcrumb-link" @click="goToLevel('interior')">库房内部</span>
+          </el-breadcrumb-item>
+          <el-breadcrumb-item v-if="currentLevel === 'shelf'">
+            <span>{{ selectedShelf ? selectedShelf.name : '' }}</span>
+          </el-breadcrumb-item>
         </el-breadcrumb>
       </div>
       <div class="header-right">
@@ -38,43 +52,96 @@
       </div>
     </div>
 
-    <!-- 主内容区 - 三栏布局 -->
+    <!-- 主内容区：根据层级动态切换 -->
     <div class="page-content">
-      <!-- 左侧：库房平面图 -->
-      <div class="content-warehouse">
-        <WarehouseMap
+
+      <!-- 层级1：平衡区三维场景 -->
+      <div v-if="currentLevel === 'balance'" class="level-view">
+        <div class="level-tip">
+          <i class="el-icon-info"></i> 点击平衡区进入库房层级
+        </div>
+        <!-- 右上角快捷进入按钮 -->
+        <div class="balance-quick-enter">
+          <el-button
+            size="small"
+            type="primary"
+            icon="el-icon-s-grid"
+            @click="quickEnterShelf"
+          >2D平面图</el-button>
+        </div>
+        <BalanceArea3D
+          :areas="balanceAreaList"
+          @select-area="handleAreaSelect"
+        />
+      </div>
+
+
+      <!-- 层级2：库房三维场景 -->
+      <div v-else-if="currentLevel === 'warehouse'" class="level-view">
+        <div class="level-tip">
+          <i class="el-icon-info"></i> 点击库房建筑进入库房内部
+        </div>
+        <WarehouseScene3D
           :warehouses="warehouseList"
-          :selected-id="selectedWarehouseId"
-          @select="handleWarehouseSelect"
+          :area-name="currentArea ? currentArea.name : ''"
+          @select-warehouse="handleWarehouseEnter"
         />
       </div>
-      
-      <!-- 中间：货架2D平面图 -->
-      <div class="content-shelves">
-        <LocationMap2D
+
+      <!-- 层级3：库房内部（2D/3D切换） -->
+      <div v-else-if="currentLevel === 'interior'" class="level-view">
+        <WarehouseInterior3D
           :warehouse-name="currentWarehouse ? currentWarehouse.name : '库房'"
-          :warehouse-width="currentWarehouse ? currentWarehouse.width : 20"
-          :warehouse-height="currentWarehouse ? currentWarehouse.height : 15"
-          :shelves="displayShelves"
-          :date-color-map="dateColorMap"
-          @shelf-select="handleShelfSelect"
-          @container-click="handleContainerClick"
+          :shelf-layout="currentWarehouse ? (currentWarehouse.shelfLayout || { rows: 2, cols: 3 }) : { rows: 2, cols: 3 }"
+          :shelves="shelves"
+          @select-shelf="handleShelfEnter"
         />
       </div>
-      
-      <!-- 右侧：三维货架视图 -->
-      <div class="content-3d">
-        <ShelfView3D
-          :shelf-name="selectedShelf ? selectedShelf.name : ''"
-          :layers="selectedShelfLayers"
-          :date-color-map="dateColorMap"
-          @container-click="handleContainerClick"
-        />
+
+      <!-- 层级4：货架详情（原有布局保持不变） -->
+      <div v-else-if="currentLevel === 'shelf'" class="page-content-shelf">
+        <!-- 左侧：平面图 -->
+        <div class="content-warehouse">
+          <WarehouseMap
+            :warehouses="warehouseList"
+            :selected-id="selectedWarehouseId"
+            :balance-areas="balanceAreaList"
+            :selected-area-id="currentArea ? currentArea.id : ''"
+            @select="handleWarehouseSelect"
+            @select-area="handleAreaSwitchInShelf"
+          />
+        </div>
+        
+        <!-- 中间：货架2D平面图 -->
+        <div class="content-shelves">
+          <LocationMap2D
+            :warehouse-name="currentWarehouse ? currentWarehouse.name : '库房'"
+            :warehouse-width="currentWarehouse ? currentWarehouse.width : 20"
+            :warehouse-height="currentWarehouse ? currentWarehouse.height : 15"
+            :shelves="displayShelves"
+            :date-color-map="dateColorMap"
+            :selected-shelf="selectedShelf"
+            @shelf-select="handleShelfSelect"
+            @container-click="handleContainerClick"
+          />
+        </div>
+        
+        <!-- 右侧：三维货架视图 -->
+        <div class="content-3d">
+          <ShelfView3D
+            :shelf-name="selectedShelf ? selectedShelf.name : ''"
+            :layers="selectedShelfLayers"
+            :date-color-map="dateColorMap"
+            @container-click="handleContainerClick"
+          />
+        </div>
       </div>
+
     </div>
 
-    <!-- 右上角悬浮统计面板 -->
+    <!-- 右上角悬浮统计面板（仅在货架层级显示） -->
     <StatisticsPanel
+      v-if="currentLevel === 'shelf'"
       :date-color-map="dateColorMap"
       :container-stats="containerStats"
       @filter-date="handleFilterDate"
@@ -95,17 +162,29 @@
 </template>
 
 <script>
+import BalanceArea3D from './components/BalanceArea3D.vue';
+import WarehouseScene3D from './components/WarehouseScene3D.vue';
+import WarehouseInterior3D from './components/WarehouseInterior3D.vue';
 import WarehouseMap from './components/WarehouseMap.vue';
 import LocationMap2D from './components/LocationMap2D.vue';
 import ShelfView3D from './components/ShelfView3D.vue';
 import StatisticsPanel from './components/StatisticsPanel.vue';
 import ContainerDetailDialog from './components/ContainerDetailDialog.vue';
 import { generateDateColorMap } from './utils/colorHelper';
-import { getWarehouseList, getWarehouseById, getBalanceAreaName, shelfData } from './config/warehouseConfig';
+import {
+  getWarehouseList,
+  getWarehouseById,
+  getBalanceAreaName,
+  getBalanceAreaList,
+  shelfData
+} from './config/warehouseConfig';
 
 export default {
   name: 'LocationIndex',
   components: {
+    BalanceArea3D,
+    WarehouseScene3D,
+    WarehouseInterior3D,
     WarehouseMap,
     LocationMap2D,
     ShelfView3D,
@@ -114,25 +193,32 @@ export default {
   },
   data() {
     return {
-      // 基础数据
-      currentBalanceArea: '',
+      // 层级状态: 'balance' | 'warehouse' | 'interior' | 'shelf'
+      currentLevel: 'balance',
+
+      // 平衡区数据
+      balanceAreaName: '',
+      balanceAreaList: [],
+      currentArea: null,
+
+      // 库房数据
       warehouseList: [],
       selectedWarehouseId: '',
       currentWarehouse: null,
-      
+
       // 筛选条件
       dateRange: [],
       filterDate: null,
-      
+
       // 货架和容器数据
       shelves: [],
       selectedShelf: null,
       selectedContainer: null,
       containerDialogVisible: false,
-      
+
       // 颜色映射
       dateColorMap: {},
-      
+
       // 统计数据
       statistics: {
         totalShelves: 0,
@@ -144,9 +230,7 @@ export default {
   },
   computed: {
     displayShelves() {
-      if (!this.filterDate) {
-        return this.shelves;
-      }
+      if (!this.filterDate) return this.shelves;
       return this.shelves.map(shelf => ({
         ...shelf,
         layers: shelf.layers ? shelf.layers.map(layer => ({
@@ -162,7 +246,7 @@ export default {
           value: wh.id,
           label: wh.name,
           children: shelves.map(s => ({
-            value: s.name, // 使用名称作为值,因为原逻辑是用名称
+            value: s.name,
             label: s.name
           }))
         };
@@ -195,32 +279,148 @@ export default {
   },
   methods: {
     initData() {
-      this.currentBalanceArea = getBalanceAreaName();
+      this.balanceAreaName = getBalanceAreaName();
+      this.balanceAreaList = getBalanceAreaList();
       this.warehouseList = getWarehouseList();
-      
+
       if (this.warehouseList.length > 0) {
         this.selectedWarehouseId = this.warehouseList[0].id;
-        this.loadWarehouseData(this.selectedWarehouseId);
       }
     },
-    
+
+    // ==================== 层级导航 ====================
+
+    /**
+     * 进入平衡区层级（选定平衡区后进入库房层级）
+     */
+    handleAreaSelect(area) {
+      this.currentArea = area;
+      // 根据平衡区过滤库房（若平衡区有warehouseIds则过滤，否则显示全部）
+      const all = getWarehouseList();
+      if (area.warehouseIds && area.warehouseIds.length > 0) {
+        this.warehouseList = all.filter(w => area.warehouseIds.includes(w.id));
+      } else {
+        this.warehouseList = all;
+      }
+      this.currentLevel = 'warehouse';
+    },
+
+    /**
+     * 左侧面板切换平衡区 → 不跳三维，直接在货架层级切换
+     * 自动选中该平衡区的第一个库房和第一个货架
+     */
+    handleAreaSwitchInShelf(area) {
+      this.currentArea = area;
+      const all = getWarehouseList();
+      let filtered;
+      if (area.warehouseIds && area.warehouseIds.length > 0) {
+        filtered = all.filter(w => area.warehouseIds.includes(w.id));
+      } else {
+        filtered = all;
+      }
+      this.warehouseList = filtered;
+      // 自动选第一个库房和第一个货架，保持在货架层级
+      if (filtered.length > 0) {
+        const firstWh = filtered[0];
+        this.selectedWarehouseId = firstWh.id;
+        this.loadWarehouseData(firstWh.id);
+        // loadWarehouseData 会自动设置 shelves 和 selectedShelf
+      }
+      // 保持 shelf 层级不变（不切换到 warehouse 三维）
+      this.currentLevel = 'shelf';
+    },
+
+    /**
+     * 平衡区视图右上角快捷按钮 → 直接以默认第一个平衡区/库房/货架进入货架层级
+     */
+    quickEnterShelf() {
+      const all = getWarehouseList();
+      // 取第一个平衡区
+      const firstArea = this.balanceAreaList[0];
+      if (firstArea) {
+        this.currentArea = firstArea;
+        let filtered;
+        if (firstArea.warehouseIds && firstArea.warehouseIds.length > 0) {
+          filtered = all.filter(w => firstArea.warehouseIds.includes(w.id));
+        } else {
+          filtered = all;
+        }
+        this.warehouseList = filtered;
+        if (filtered.length > 0) {
+          const firstWh = filtered[0];
+          this.selectedWarehouseId = firstWh.id;
+          this.loadWarehouseData(firstWh.id);
+          // loadWarehouseData 会自动 selectedShelf = shelves[0]
+        }
+      } else {
+        // 无平衡区配置，直接取全部库房
+        this.warehouseList = all;
+        if (all.length > 0) {
+          this.selectedWarehouseId = all[0].id;
+          this.loadWarehouseData(all[0].id);
+        }
+      }
+      this.currentLevel = 'shelf';
+    },
+
+    /**
+     * 点击库房建筑 → 进入库房内部层级
+     */
+    handleWarehouseEnter(warehouse) {
+      this.selectedWarehouseId = warehouse.id;
+      this.loadWarehouseData(warehouse.id);
+      this.currentLevel = 'interior';
+    },
+
+    /**
+     * 点击货架（内部层级）→ 进入货架层级
+     */
+    handleShelfEnter(shelf) {
+      this.selectedShelf = shelf;
+      this.currentLevel = 'shelf';
+    },
+
+    /**
+     * 面包屑跳转到指定层级
+     */
+    goToLevel(level) {
+      if (level === 'balance') {
+        this.currentLevel = 'balance';
+        this.currentArea = null;
+        this.currentWarehouse = null;
+        this.selectedShelf = null;
+      } else if (level === 'warehouse') {
+        if (this.currentArea) {
+          this.currentLevel = 'warehouse';
+          this.selectedShelf = null;
+        }
+      } else if (level === 'interior') {
+        if (this.currentWarehouse) {
+          this.currentLevel = 'interior';
+          this.selectedShelf = null;
+        }
+      }
+    },
+
+    // ==================== 货架层级内的交互（保持原有逻辑）====================
+
     loadWarehouseData(warehouseId) {
       const warehouseData = getWarehouseById(warehouseId);
       if (warehouseData) {
         this.currentWarehouse = warehouseData;
         this.shelves = warehouseData.shelves;
-        
+
         if (this.shelves.length > 0) {
           this.selectedShelf = this.shelves[0];
         } else {
           this.selectedShelf = null;
         }
-        
+
         this.generateColorMap();
         this.calculateStatistics();
       }
     },
-    
+
     generateColorMap() {
       const allDates = [];
       this.shelves.forEach(shelf => {
@@ -234,11 +434,11 @@ export default {
       });
       this.dateColorMap = generateDateColorMap(allDates);
     },
-    
+
     calculateStatistics() {
       let totalContainers = 0;
       let usedContainers = 0;
-      
+
       this.shelves.forEach(shelf => {
         if (shelf.layers) {
           shelf.layers.forEach(layer => {
@@ -249,7 +449,7 @@ export default {
           });
         }
       });
-      
+
       this.statistics = {
         totalShelves: this.shelves.length,
         totalContainers,
@@ -257,69 +457,67 @@ export default {
         usageRate: totalContainers > 0 ? Math.round(usedContainers / totalContainers * 100) : 0
       };
     },
-    
+
     handleWarehouseSelect(warehouse) {
       this.selectedWarehouseId = warehouse.id;
       this.selectedShelf = null;
       this.loadWarehouseData(warehouse.id);
     },
-    
+
     handleDateFilter(dateRange) {
       console.log('日期筛选:', dateRange);
     },
-    
+
     handleFilterDate(date) {
       this.filterDate = date;
     },
-    
+
     handleFilterClear() {
       this.filterDate = null;
     },
-    
+
     handleShelfSelect(shelf) {
       this.selectedShelf = shelf;
     },
-    
+
     handleContainerClick(container) {
       if (container && container.code) {
         this.selectedContainer = container;
         this.containerDialogVisible = true;
       }
     },
-    
+
     getContainerLocation() {
       if (!this.selectedShelf || !this.selectedContainer) return '-';
       return `${this.currentWarehouse?.name || '库房'} - ${this.selectedShelf.name}`;
     },
-    
-    
+
     viewContainerHistory() {
       this.$message.info('跳转到入库信息页面...');
     },
-    
+
     handleMoveContainer(targetLocation) {
       if (!targetLocation || targetLocation.length < 2) {
         this.$message.warning('请选择目标位置');
         return;
       }
-      
+
       const warehouseId = targetLocation[0];
       const shelfName = targetLocation[1];
       const warehouseName = this.warehouseList.find(w => w.id === warehouseId)?.name || warehouseId;
-      
+
       this.$confirm(`确定要将容器 ${this.selectedContainer.code} 移动到 ${warehouseName} - ${shelfName} 吗?`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        // 这里实现移动逻辑
         this.$message.success('容器移动成功');
         this.containerDialogVisible = false;
       }).catch(() => {
         this.$message.info('已取消移动');
       });
     },
-    
+
     handleExport() {
       this.$message.info('正在生成导出文件...');
     }
@@ -336,69 +534,118 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  
+
   .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding: 16px 20px;
+    margin-bottom: 16px;
+    padding: 12px 20px;
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    
+    flex-shrink: 0;
+
     .header-left {
       .page-title {
-        margin: 0 0 8px 0;
+        margin: 0 0 6px 0;
         font-size: 18px;
         font-weight: 600;
         color: #303133;
         display: flex;
         align-items: center;
         gap: 8px;
-        
-        i {
-          color: #409EFF;
-        }
+        i { color: #409EFF; }
       }
-      
+
       .el-breadcrumb {
         font-size: 13px;
+
+        .breadcrumb-link {
+          cursor: pointer;
+          color: #409EFF;
+          &:hover {
+            text-decoration: underline;
+          }
+        }
       }
     }
-    
+
     .header-right {
       display: flex;
       gap: 12px;
       align-items: center;
     }
   }
-  
+
   .page-content {
-    display: flex;
-    gap: 20px;
     flex: 1;
     min-height: 0;
-    
-    .content-warehouse {
-      width: 200px;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .content-shelves {
+    display: flex;
+    flex-direction: column;
+
+    .level-view {
       flex: 1;
-      min-width: 0;
       display: flex;
       flex-direction: column;
+      min-height: 0;
+      position: relative;
+
+      .level-tip {
+        position: absolute;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        background: rgba(64, 158, 255, 0.12);
+        border: 1px solid rgba(64, 158, 255, 0.3);
+        color: #409EFF;
+        font-size: 13px;
+        padding: 6px 16px;
+        border-radius: 20px;
+        pointer-events: none;
+        i { margin-right: 4px; }
+      }
+
+      .balance-quick-enter {
+        position: absolute;
+        top: 12px;
+        right: 20px;
+        z-index: 20;
+      }
+
+      // 使3D组件填满剩余空间
+      > * { flex: 1; }
+      > .level-tip, > .balance-quick-enter { flex: none; }
     }
-    
-    .content-3d {
-      width: 35%;
-      flex-shrink: 0;
+
+    // 货架层级布局（原有三栏布局）
+    .page-content-shelf {
       display: flex;
-      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+
+      .content-warehouse {
+        width: 200px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .content-shelves {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .content-3d {
+        width: 35%;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+      }
     }
   }
 }

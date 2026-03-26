@@ -73,11 +73,14 @@ export default {
     dateColorMap: {
       type: Object,
       default: () => ({})
+    },
+    selectedShelf: {
+      type: Object,
+      default: null
     }
   },
   data() {
     return {
-      selectedShelf: null,
       scale: 30,
       containerWidth: 100,
       containerHeight: 100
@@ -144,7 +147,6 @@ export default {
       return count;
     },
     handleShelfClick(shelf) {
-      this.selectedShelf = shelf;
       this.$emit('shelf-select', shelf);
     },
     handleContainerClick(container) {
