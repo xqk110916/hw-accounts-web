@@ -13,7 +13,7 @@ import 'nprogress/nprogress.css';
 import { getTokenValue } from '@/utils/auth';
 
 NProgress.configure({ showSpinner: false });
-const whiteList = ['/login', '/register', '/test', '/test/test'];
+const whiteList = ['/login', '/register'];
 
 router.beforeEach((to, from, next) => {
   NProgress.start();
@@ -31,7 +31,6 @@ router.beforeEach((to, from, next) => {
     } else {
       const hasMenu = store.getters?.menuList?.length > 0;
       const hasUserID = store.getters?.userInfo?.id;
-      return next()
       if (hasMenu) {
         next();
       } else if (hasUserID && !hasMenu) {
