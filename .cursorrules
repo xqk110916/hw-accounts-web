@@ -1,0 +1,26 @@
+# Vue CRUD Layout Generation Rule
+
+When generating a standard List/CRUD interface, you MUST follow the reference implementation located at `src/views/demo/crud`.
+
+## Architecture
+
+Do not write monolithic files. Always split into the following structure based on `src/views/demo/crud`:
+1. `index.vue` - The main layout table interface.
+2. `components/search.vue` - Search bar component.
+3. `components/detail.vue` - Form dialog component (Add/Edit).
+4. `components/index.js` - The centralized configuration driving the table, search, and form.
+5. `components/api.js` - The API endpoints mapped for data fetching.
+
+## Execution Steps for AI
+
+When asked to generate a new CRUD page:
+1. Duplicate `src/views/demo/crud/index.vue`, `src/views/demo/crud/components/search.vue`, and `src/views/demo/crud/components/detail.vue` to the new target directory.
+2. **Do not modify** the `.vue` template contents heavily. They are configured via `index.js`.
+3. Create a new `components/index.js` to configure:
+   - `btns` (Adding/Editing/Etc buttons).
+   - `config.table` (columns definition).
+   - `config.search` (search bar fields).
+   - `config.detail` (form dialog fields, e.g., `text`, `select`, `cascader`, `switch`, `textarea`).
+4. Write out the required API mappings in `components/api.js` (or inline inside `index.js` `requestFun` if using mock data).
+
+Adhere perfectly to this configuration-driven style to ensure UI layout consistency across the web application.

@@ -62,7 +62,7 @@ export const constantRoutes = [
   },
   {
     path: '/testInfo',
-    component: resolve => require(['@/views/info/location/index.vue'], resolve),
+    component: resolve => require(['@/views/warehouse/warehouse/index.vue'], resolve),
   },
   // 内置首页，
   {
@@ -91,7 +91,7 @@ export const constantRoutes = [
       {
         path: 'index',
         name: 'index',
-        component: resolve => require(['@/views/info/location/index.vue'], resolve),
+        component: resolve => require(['@/views/warehouse/district/index.vue'], resolve),
         meta: {
           title: '测试',
           icon: 'dashboard',
