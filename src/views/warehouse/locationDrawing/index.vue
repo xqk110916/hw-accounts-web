@@ -63,6 +63,7 @@
 
 <script>
 import LocationAddDialog from './components/LocationAddDialog.vue';
+import { getHierarchyTree, addHierarchyNode, deleteHierarchyNode } from '@/api/warehouse/locationMap';
 
 export default {
   name: 'LocationDrawing',
@@ -77,80 +78,50 @@ export default {
   data() {
     return {
       filterText: '',
-      treeData: [
-        {
-          id: 1,
-          label: '平衡区-西南区',
-          level: 0,
-          children: [
-            {
-              id: 4,
-              label: '原材料库房 (001)',
-              level: 1,
-              children: [
-                {
-                  id: 9,
-                  label: '第1列',
-                  level: 2,
-                  children: [
-                    {
-                      id: 11,
-                      label: '第1排',
-                      level: 3,
-                      children: [
-                        { id: 12, label: '第1层', level: 4 }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          id: 2,
-          label: '平衡区-东北区',
-          level: 0,
-          children: [
-            {
-              id: 5,
-              label: '成品库房 (002)',
-              level: 1,
-              children: [
-                { id: 6, label: 'A区', level: 2 }
-              ]
-            }
-          ]
-        }
-      ],
+      treeData: [],
       defaultProps: {
         children: 'children',
-        label: 'label'
+        label: (data) => data.name || data.label || data.warehouseName || data.balanceAreaName || `节点(${data.id})`
       }
     };
   },
+  created() {
+    this.fetchTreeData();
+  },
   methods: {
+    async fetchTreeData() {
+      try {
+        const res = await getHierarchyTree();
+        if (res && res.data) {
+          this.treeData = Array.isArray(res.data) ? res.data : [res.data];
+        }
+      } catch (e) {
+        console.error('Failed to fetch tree data', e);
+      }
+    },
     filterNode(value, data) {
       if (!value) return true;
-      return data.label.indexOf(value) !== -1;
+      const label = this.defaultProps.label(data);
+      return label.indexOf(value) !== -1;
     },
     getNodeIcon(data) {
+      const type = data.nodeType !== undefined ? data.nodeType : data.level;
       const icons = [
-        'el-icon-office-building', // 平衡区
-        'el-icon-house',           // 库房
-        'el-icon-s-grid',          // 列/区
-        'el-icon-menu',            // 排
-        'el-icon-collection-tag'   // 层
+        'el-icon-office-building', // 平衡区 / level 0
+        'el-icon-house',           // 库房 / level 1
+        'el-icon-s-grid',          // 列/区 / level 2
+        'el-icon-menu',            // 排 / level 3
+        'el-icon-collection-tag'   // 层 / level 4
       ];
-      return icons[data.level] || 'el-icon-document';
+      return icons[type] || icons[data.level] || 'el-icon-document';
     },
     handleExpandAll() {
       const nodes = this.$refs.tree.store._getAllNodes();
-      nodes.forEach(node => node.expanded = true);
+      nodes.forEach(node => { node.expanded = true; });
     },
     handleCollapseAll() {
       const nodes = this.$refs.tree.store._getAllNodes();
-      nodes.forEach(node => node.expanded = false);
+      nodes.forEach(node => { node.expanded = false; });
     },
     handleAdd() {
       this.$refs.addDialog.open();
@@ -158,24 +129,74 @@ export default {
     handleExport() {
       this.$message.success('正在导出库位图纸...');
     },
-    handleDialogSubmit(formData) {
-      console.log('提交的数据：', formData);
-      this.$message.success('保存成功');
-      // 这里应该是调用接口并刷新数据
+    async handleDialogSubmit(formData) {
+      // 组装对接接口的参数
+      let balanceAreaName = '';
+      if (this.$refs.addDialog && this.$refs.addDialog.balanceAreaOptions) {
+        const found = this.$refs.addDialog.balanceAreaOptions.find(o => o.value === formData.balanceArea);
+        if (found) balanceAreaName = found.label;
+      }
+      
+      const apiData = {
+        balanceId: formData.balanceArea,
+        balanceAreaName: balanceAreaName,
+        warehouseCode: formData.warehouseCode,
+        warehouseName: formData.warehouseName,
+        warehouseType: formData.warehouseType === 'new' ? '0' : '1',
+        materialTypes: formData.materialType,
+        remark: formData.remark,
+        sortOrder: 1,
+        shelvesList: []
+      };
+
+      if (formData.warehouseType === 'new') {
+        apiData.shelvesList = formData.columns.map((col, index) => ({
+          shelfCode: `S${index + 1}`,
+          shelfRowNum: parseInt(col.rows) || 1,
+          shelfColNum: parseInt(col.levels) || 1,
+          shelfType: col.type,
+          sortOrder: index + 1
+        }));
+      } else {
+        // 老库
+        apiData.shelvesList = [
+          {
+            shelfCode: 'S1',
+            shelfRowNum: parseInt(formData.rowCount) || 1,
+            shelfColNum: parseInt(formData.columnCount) || 1,
+            shelfType: 'old',
+            sortOrder: 1
+          }
+        ];
+      }
+
+      try {
+        await addHierarchyNode(apiData);
+        this.$message.success('添加库位图纸成功');
+        this.fetchTreeData();
+      } catch (err) {
+        console.error(err);
+        this.$message.error('添加失败');
+      }
     },
     append(data) {
-      this.$message.info(`添加子节点到: ${data.label}`);
-      // 实际开发中可能需要弹出不同层级的添加弹窗
+      this.$message.info(`添加子节点功能占位: ${this.defaultProps.label(data)}`);
     },
     remove(node, data) {
-      this.$confirm(`确定要删除 ${data.label} 吗？`, '提示', {
-        type: 'warning'
-      }).then(() => {
-        const parent = node.parent;
-        const children = parent.data.children || parent.data;
-        const index = children.findIndex(d => d.id === data.id);
-        children.splice(index, 1);
-        this.$message.success('删除成功');
+      const label = this.defaultProps.label(data);
+      this.$confirm(`确定要删除 [${label}] 以及它的所有子节点吗？`, '危险操作提示', {
+        type: 'warning',
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消'
+      }).then(async () => {
+        try {
+          await deleteHierarchyNode(data.id);
+          this.$message.success('删除成功');
+          this.fetchTreeData();
+        } catch (e) {
+          console.error(e);
+          this.$message.error('删除失败');
+        }
       }).catch(() => {});
     }
   }

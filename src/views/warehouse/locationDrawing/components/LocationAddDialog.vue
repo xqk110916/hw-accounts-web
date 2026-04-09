@@ -152,6 +152,8 @@
 </template>
 
 <script>
+import { getBalanceAreaPageList } from '@/api/warehouse/balanceArea';
+
 export default {
   name: 'LocationAddDialog',
   data() {
@@ -178,11 +180,7 @@ export default {
         warehouseType: [{ required: true, message: '请选择库房类型', trigger: 'change' }],
         materialType: [{ required: true, message: '请选择物料类型', trigger: 'change' }]
       },
-      balanceAreaOptions: [
-        { label: '平衡区A', value: 'A' },
-        { label: '平衡区B', value: 'B' },
-        { label: '平衡区C', value: 'C' }
-      ],
+      balanceAreaOptions: [],
       materialTypeOptions: [
         { label: '原材料', value: 'raw' },
         { label: '成品', value: 'product' },
@@ -196,7 +194,24 @@ export default {
       ]
     };
   },
+  created() {
+    this.fetchBalanceAreas();
+  },
   methods: {
+    async fetchBalanceAreas() {
+      try {
+        const res = await getBalanceAreaPageList({ currentPage: 1, pageSize: 100 });
+        if (res && res.data) {
+          const list = Array.isArray(res.data) ? res.data : (res.data.list || []);
+          this.balanceAreaOptions = list.map(item => ({
+            label: item.name,
+            value: item.id || item.code || item.name
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to fetch balance areas', e);
+      }
+    },
     open(data = null) {
       this.isEdit = !!data;
       if (data) {

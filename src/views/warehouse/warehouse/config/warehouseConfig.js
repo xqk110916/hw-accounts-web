@@ -1,9 +1,14 @@
 /**
  * 库位地图统一数据源
- * 所有数据集中在此文件管理,方便后续替换为真实数据
+ * 现已对接后端接口
  */
 
-// ==================== 平衡区配置 ====================
+import { getAllBalanceAreas } from '@/api/warehouse/balanceArea';
+import { getWarehouseListByBalanceArea } from '@/api/warehouse/warehouse';
+import { getHierarchyTree } from '@/api/warehouse/locationMap';
+
+// ==================== 默认本地布局/样式配置 ====================
+
 export const balanceAreaConfig = [
   {
     id: 'ba001',
@@ -714,7 +719,24 @@ export const shelfData = {
 /**
  * 获取平衡区列表
  */
-export function getBalanceAreaList() {
+export async function getBalanceAreaList() {
+  try {
+    const res = await getAllBalanceAreas();
+    const colors = [0x4a90d9, 0x27ae60, 0xe67e22, 0x9b59b6, 0x1abc9c];
+    if (res && res.data) {
+      const list = Array.isArray(res.data) ? res.data : (res.data.list || []);
+      return list.map((item, index) => ({
+        ...item,
+        id: item.id || item.code,
+        name: item.name,
+        position: balanceAreaConfig[index]?.position || { x: (index - 1) * 6, y: 0, z: 0 },
+        color: balanceAreaConfig[index]?.color || colors[index % colors.length],
+        warehouseIds: typeof item.warehouseIds !== 'undefined' ? item.warehouseIds : balanceAreaConfig[index]?.warehouseIds || []
+      }));
+    }
+  } catch (err) {
+    console.error('获取平衡区列表失败', err);
+  }
   return balanceAreaConfig;
 }
 
@@ -728,7 +750,27 @@ export function getBalanceAreaName() {
 /**
  * 获取库房列表（可按平衡区过滤）
  */
-export function getWarehouseList(balanceAreaId) {
+export async function getWarehouseList(balanceAreaId) {
+  try {
+    const params = balanceAreaId ? { balanceAreaId } : {};
+    const res = await getWarehouseListByBalanceArea(params);
+    if (res && res.data) {
+      const list = Array.isArray(res.data) ? res.data : (res.data.list || []);
+      return list.map((w, index) => ({
+        ...w,
+        id: w.id || w.warehouseCode,
+        name: w.name || w.warehouseName,
+        width: w.width || warehouseData[index % warehouseData.length]?.width || 20,
+        height: w.height || warehouseData[index % warehouseData.length]?.height || 15,
+        description: w.remark || w.description,
+        position: warehouseData[index % warehouseData.length]?.position || { x: (index - 1) * 3.5, y: 0, z: -2 },
+        shelfLayout: warehouseData[index % warehouseData.length]?.shelfLayout || { rows: 2, cols: 3 }
+      }));
+    }
+  } catch (err) {
+    console.error('获取库房列表失败', err);
+  }
+  
   if (balanceAreaId) {
     const area = balanceAreaConfig.find(a => a.id === balanceAreaId);
     if (area && area.warehouseIds.length > 0) {
@@ -749,15 +791,39 @@ export function getWarehouseList(balanceAreaId) {
 /**
  * 根据ID获取库房详情(含货架数据)
  */
-export function getWarehouseById(warehouseId) {
+export async function getWarehouseById(warehouseId) {
+  // Try remote first
+  let targetWarehouse = null;
+  try {
+    const res = await getHierarchyTree();
+    if (res && res.data) {
+      // Searching tree
+      let foundWh = null;
+      const walk = (nodes) => {
+        for (let n of nodes) {
+          if ((n.id == warehouseId || n.warehouseCode == warehouseId || n.code == warehouseId) && n.nodeType == 2) {
+             foundWh = n;
+             break;
+          }
+          if (n.children) walk(n.children);
+        }
+      };
+      walk(Array.isArray(res.data) ? res.data : [res.data]);
+      if (foundWh) targetWarehouse = foundWh;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  // Fallback to local
   const warehouse = warehouseData.find(w => w.id === warehouseId);
-  if (!warehouse) return null;
+  if (!warehouse && !targetWarehouse) return null;
   
   const shelves = shelfData[warehouseId] || [];
   
   return {
-    ...warehouse,
-    shelves: shelves
+    ...(targetWarehouse || warehouse),
+    shelves: (targetWarehouse && targetWarehouse.children) ? targetWarehouse.children : shelves
   };
 }
 

@@ -278,14 +278,9 @@ export default {
     this.initData();
   },
   methods: {
-    initData() {
+    async initData() {
       this.balanceAreaName = getBalanceAreaName();
-      this.balanceAreaList = getBalanceAreaList();
-      this.warehouseList = getWarehouseList();
-
-      if (this.warehouseList.length > 0) {
-        this.selectedWarehouseId = this.warehouseList[0].id;
-      }
+      this.balanceAreaList = await getBalanceAreaList();
     },
 
     // ==================== 层级导航 ====================
@@ -293,15 +288,10 @@ export default {
     /**
      * 进入平衡区层级（选定平衡区后进入库房层级）
      */
-    handleAreaSelect(area) {
+    async handleAreaSelect(area) {
       this.currentArea = area;
-      // 根据平衡区过滤库房（若平衡区有warehouseIds则过滤，否则显示全部）
-      const all = getWarehouseList();
-      if (area.warehouseIds && area.warehouseIds.length > 0) {
-        this.warehouseList = all.filter(w => area.warehouseIds.includes(w.id));
-      } else {
-        this.warehouseList = all;
-      }
+      // 根据平衡区查找库房
+      this.warehouseList = await getWarehouseList(area.id);
       this.currentLevel = 'warehouse';
     },
 
@@ -309,22 +299,21 @@ export default {
      * 左侧面板切换平衡区 → 不跳三维，直接在货架层级切换
      * 自动选中该平衡区的第一个库房和第一个货架
      */
-    handleAreaSwitchInShelf(area) {
+    async handleAreaSwitchInShelf(area) {
       this.currentArea = area;
-      const all = getWarehouseList();
-      let filtered;
-      if (area.warehouseIds && area.warehouseIds.length > 0) {
-        filtered = all.filter(w => area.warehouseIds.includes(w.id));
-      } else {
-        filtered = all;
-      }
+      const filtered = await getWarehouseList(area.id);
       this.warehouseList = filtered;
       // 自动选第一个库房和第一个货架，保持在货架层级
-      if (filtered.length > 0) {
+      if (filtered && filtered.length > 0) {
         const firstWh = filtered[0];
         this.selectedWarehouseId = firstWh.id;
-        this.loadWarehouseData(firstWh.id);
+        await this.loadWarehouseData(firstWh.id);
         // loadWarehouseData 会自动设置 shelves 和 selectedShelf
+      } else {
+        this.selectedWarehouseId = null;
+        this.currentWarehouse = null;
+        this.shelves = [];
+        this.selectedShelf = null;
       }
       // 保持 shelf 层级不变（不切换到 warehouse 三维）
       this.currentLevel = 'shelf';
@@ -333,32 +322,21 @@ export default {
     /**
      * 平衡区视图右上角快捷按钮 → 直接以默认第一个平衡区/库房/货架进入货架层级
      */
-    quickEnterShelf() {
-      const all = getWarehouseList();
+    async quickEnterShelf() {
       // 取第一个平衡区
       const firstArea = this.balanceAreaList[0];
       if (firstArea) {
         this.currentArea = firstArea;
-        let filtered;
-        if (firstArea.warehouseIds && firstArea.warehouseIds.length > 0) {
-          filtered = all.filter(w => firstArea.warehouseIds.includes(w.id));
-        } else {
-          filtered = all;
-        }
+        const filtered = await getWarehouseList(firstArea.id);
         this.warehouseList = filtered;
-        if (filtered.length > 0) {
+        if (filtered && filtered.length > 0) {
           const firstWh = filtered[0];
           this.selectedWarehouseId = firstWh.id;
-          this.loadWarehouseData(firstWh.id);
+          await this.loadWarehouseData(firstWh.id);
           // loadWarehouseData 会自动 selectedShelf = shelves[0]
         }
       } else {
-        // 无平衡区配置，直接取全部库房
-        this.warehouseList = all;
-        if (all.length > 0) {
-          this.selectedWarehouseId = all[0].id;
-          this.loadWarehouseData(all[0].id);
-        }
+        this.warehouseList = [];
       }
       this.currentLevel = 'shelf';
     },
@@ -366,9 +344,9 @@ export default {
     /**
      * 点击库房建筑 → 进入库房内部层级
      */
-    handleWarehouseEnter(warehouse) {
+    async handleWarehouseEnter(warehouse) {
       this.selectedWarehouseId = warehouse.id;
-      this.loadWarehouseData(warehouse.id);
+      await this.loadWarehouseData(warehouse.id);
       this.currentLevel = 'interior';
     },
 
@@ -404,8 +382,8 @@ export default {
 
     // ==================== 货架层级内的交互（保持原有逻辑）====================
 
-    loadWarehouseData(warehouseId) {
-      const warehouseData = getWarehouseById(warehouseId);
+    async loadWarehouseData(warehouseId) {
+      const warehouseData = await getWarehouseById(warehouseId);
       if (warehouseData) {
         this.currentWarehouse = warehouseData;
         this.shelves = warehouseData.shelves;
@@ -458,10 +436,10 @@ export default {
       };
     },
 
-    handleWarehouseSelect(warehouse) {
+    async handleWarehouseSelect(warehouse) {
       this.selectedWarehouseId = warehouse.id;
       this.selectedShelf = null;
-      this.loadWarehouseData(warehouse.id);
+      await this.loadWarehouseData(warehouse.id);
     },
 
     handleDateFilter(dateRange) {

@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import * as balanceAreaApi from '@/api/warehouse/balanceArea';
 
 let btns = {
   operation: [
@@ -49,41 +49,85 @@ let config = {
 
 let cacheList = [];
 
-// 模拟接口
 let requestFun = {
   list: async (params) => {
-    let filteredList = cacheList.filter(item => {
-      let match = true;
-      if (params.code && !item.code?.includes(params.code)) match = false;
-      if (params.name && !item.name?.includes(params.name)) match = false;
-      if (params.type && item.type !== params.type) match = false;
-      return match;
-    });
-    return {
-      code: 1,
-      data: {
-        list: filteredList,
-        pagination: { total: filteredList.length }
-      }
+    const apiParams = {
+      currentPage: params.currentPage || 1,
+      pageSize: params.pageSize || 10,
+      code: params.code,
+      name: params.name,
+      type: params.type === 'proxy' ? '代存' : (params.type === 'local' ? '本地' : params.type)
     };
+    try {
+      const res = await balanceAreaApi.getBalanceAreaPageList(apiParams);
+      if (res && res.data) {
+        // Map backend fields to frontend fields
+        const list = (res.data.list || []).map(item => ({
+          ...item,
+          inLicense: item.importLicense,
+          outLicense: item.exportLicense,
+          type: item.type === '代存' ? 'proxy' : 'local'
+        }));
+        return {
+          code: 1,
+          data: {
+            list: list,
+            pagination: res.data.pagination
+          }
+        };
+      }
+    } catch (error) {
+      console.error(error);
+    }
+    return { code: 1, data: { list: [], pagination: { total: 0 } } };
   },
   detail: async ({ id }) => {
-    let item = cacheList.find(i => i.id === id);
-    return { code: 1, data: item || {} };
+    try {
+      const res = await balanceAreaApi.getBalanceAreaDetail(id);
+      if (res && res.data) {
+        const item = res.data;
+        return {
+          code: 1,
+          data: {
+            ...item,
+            inLicense: item.importLicense,
+            outLicense: item.exportLicense,
+            type: item.type === '代存' ? 'proxy' : 'local'
+          }
+        };
+      }
+    } catch (error) {
+      console.error(error);
+    }
+    return { code: 1, data: {} };
   },
   edit: async (data) => {
-    if (data.id) {
-      let index = cacheList.findIndex(i => i.id === data.id);
-      if (index > -1) cacheList.splice(index, 1, data);
-    } else {
-      data.id = String(Date.now());
-      cacheList.push(data);
+    const apiData = {
+      ...data,
+      importLicense: data.inLicense,
+      exportLicense: data.outLicense,
+      type: data.type === 'proxy' ? '代存' : '本地'
+    };
+    try {
+      if (data.id) {
+        await balanceAreaApi.updateBalanceArea(apiData);
+      } else {
+        await balanceAreaApi.addBalanceArea(apiData);
+      }
+      return { code: 1, message: '操作成功' };
+    } catch (error) {
+      console.error(error);
+      return { code: 0, message: '操作失败' };
     }
-    return { code: 1, message: '操作成功' };
   },
   delete: async ({ ids }) => {
-    cacheList = cacheList.filter(i => i.id !== ids);
-    return { code: 1, message: '删除成功' };
+    try {
+      await balanceAreaApi.deleteBalanceArea(ids);
+      return { code: 1, message: '删除成功' };
+    } catch (error) {
+      console.error(error);
+      return { code: 0, message: '删除失败' };
+    }
   }
 };
 
