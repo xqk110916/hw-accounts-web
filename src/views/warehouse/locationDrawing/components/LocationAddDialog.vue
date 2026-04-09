@@ -10,7 +10,12 @@
       <el-row :gutter="20">
         <el-col :span="24">
           <el-form-item label="平衡区" prop="balanceArea">
-            <el-select v-model="form.balanceArea" placeholder="请选择平衡区" style="width: 100%">
+            <el-select
+              v-model="form.balanceArea"
+              placeholder="请选择平衡区"
+              style="width: 100%"
+              :disabled="isParentFixed"
+            >
               <el-option
                 v-for="item in balanceAreaOptions"
                 :key="item.value"
@@ -160,6 +165,7 @@ export default {
     return {
       visible: false,
       isEdit: false,
+      isParentFixed: false,
       form: {
         balanceArea: '',
         warehouseName: '',
@@ -212,10 +218,15 @@ export default {
         console.error('Failed to fetch balance areas', e);
       }
     },
-    open(data = null) {
+    open(data = null, options = {}) {
       this.isEdit = !!data;
+      this.isParentFixed = !!options.isParentFixed;
+      
       if (data) {
         this.form = { ...this.form, ...data };
+      } else if (options.prefill) {
+        this.resetForm();
+        this.form = { ...this.form, ...options.prefill };
       } else {
         this.resetForm();
       }

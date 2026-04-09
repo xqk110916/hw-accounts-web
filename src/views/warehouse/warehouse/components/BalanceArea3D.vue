@@ -36,6 +36,11 @@ export default {
       hoveredMesh: null
     };
   },
+  watch: {
+    areas() {
+      this.rebuildScene();
+    }
+  },
   mounted() {
     this.initThree();
     this.buildScene();
@@ -96,7 +101,52 @@ export default {
 
     buildScene() {
       this.createGround();
-      this.areas.forEach((area, idx) => this.createAreaCircle(area, idx));
+      this.areaMeshes = [];
+      
+      const total = this.areas.length;
+      if (total === 0) return;
+
+      // 动态布局算法
+      // 1-2个: 左右对称
+      // 3-4个: 菱形或正方形
+      // 5个以上: 圆环
+      const getPosition = (idx, count) => {
+        if (count === 1) return { x: 0, z: 0 };
+        if (count === 2) return { x: idx === 0 ? -12 : 12, z: 0 };
+        
+        // 统一使用圆环布局，半径随数量动态微调
+        const radius = Math.max(15, count * 3.5);
+        const angle = (idx / count) * Math.PI * 2;
+        return {
+          x: Math.cos(angle) * radius,
+          z: Math.sin(angle) * radius
+        };
+      };
+
+      this.areas.forEach((area, idx) => {
+        const pos = getPosition(idx, total);
+        this.createAreaCircle(area, idx, pos);
+      });
+    },
+
+    rebuildScene() {
+      if (!this.scene) return;
+      const toRemove = [];
+      this.scene.traverse(obj => {
+        if (obj.isMesh || obj.isSprite || obj.isGroup && obj.userData.type === 'area') {
+          toRemove.push(obj);
+        }
+      });
+      toRemove.forEach(obj => {
+        this.scene.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+          else obj.material.dispose();
+        }
+      });
+      this.areaMeshes = [];
+      this.buildScene();
     },
 
     createGround() {
@@ -116,16 +166,9 @@ export default {
     /**
      * 为每个平衡区创建一个圆圈区域，内部有示例厂房
      */
-    createAreaCircle(area, idx) {
+    createAreaCircle(area, idx, pos) {
       const circleRadius = 7;
-      // 平衡区位置排布：若3个，则排成一排中间偏移
-      const positions = [
-        { x: -14, z: 0 },
-        { x: 0,   z: 0 },
-        { x: 14,  z: 0 }
-      ];
-      const pos = positions[idx] || { x: (idx - 1) * 14, z: 0 };
-      const color = area.color || [0x4a90d9, 0x27ae60, 0xe67e22][idx % 3];
+      const color = area.color || [0x4a90d9, 0x27ae60, 0xe67e22, 0x9b59b6, 0xe74c3c][idx % 5];
 
       const group = new THREE.Group();
       group.position.set(pos.x, 0, pos.z);

@@ -180,7 +180,18 @@ export default {
       }
     },
     append(data) {
-      this.$message.info(`添加子节点功能占位: ${this.defaultProps.label(data)}`);
+      const label = this.defaultProps.label(data);
+      // Level 0 为平衡区，添加子节点即添加库房
+      if (data.level === 0 || data.nodeType === 0) {
+        this.$refs.addDialog.open(null, {
+          isParentFixed: true,
+          prefill: {
+            balanceArea: data.id || data.balanceId
+          }
+        });
+      } else {
+        this.$message.info(`当前仅支持在[平衡区]级别快捷添加子节点(库房): ${label}`);
+      }
     },
     remove(node, data) {
       const label = this.defaultProps.label(data);
