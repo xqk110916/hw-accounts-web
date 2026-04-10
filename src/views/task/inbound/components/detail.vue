@@ -1,112 +1,141 @@
 <template>
   <div>
-    <theme-edit :show="show" showFooterSlot :title="titleMap[type]" :column="1" @cancle="close">
-    <el-form ref="form" class="form" :model="form" :rules="rules" label-width="130px">
-      <el-form-item
-        v-for="item in formKeys"
-        :label="item.label"
-        :prop="item.prop"
-        v-if="judgeRowShow(item)"
-      >
-        <el-input
-          v-if="judgeInput(item) && item.type !== 'textarea'"
-          v-model="form[item.prop]"
-          :type="item.type || 'text'"
-          size="small"
-          :placeholder="`请输入${item.label}`"
-          @blur="value => changeFormValue(value, item)"
-          clearable
-        ></el-input>
-        <el-input
-          v-if="item.type === 'textarea'"
-          v-model="form[item.prop]"
-          type="textarea"
-          :rows="3"
-          size="small"
-          :placeholder="`请输入${item.label}`"
-          @blur="value => changeFormValue(value, item)"
-          clearable
-        ></el-input>
-        <el-select
-          v-if="item.type === 'select'"
-          v-model="form[item.prop]"
-          size="small"
-          :placeholder="`请选择${item.label}`"
-          @change="value => changeFormValue(value, item)"
-          clearable
-        >
-          <el-option
-            v-for="opt in options[item.prop]"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
+    <theme-edit :show="show" showFooterSlot :title="titleMap[type]" :column="2" @cancle="close">
+      <el-form ref="form" class="form" :model="form" :rules="rules" label-width="120px">
+        <el-row>
+          <el-col
+            v-for="item in formKeys"
+            :key="item.prop"
+            :span="item.full ? 24 : 12"
+            v-if="judgeRowShow(item)"
           >
-          </el-option>
-        </el-select>
-        <el-date-picker
-          v-if="item.type === 'date'"
-          v-model="form[item.prop]"
-          type="date"
-          size="small"
-          value-format="yyyy-MM-dd HH:mm:ss"
-          :placeholder="`请选择${item.label}`"
-          @change="value => changeFormValue(value, item)"
-          clearable
-        >
-        </el-date-picker>
-      </el-form-item>
-    </el-form>
+            <el-form-item :label="item.label" :prop="item.prop">
+              <div class="form-item-content">
+                <el-input
+                  v-if="judgeInput(item) && item.type !== 'textarea'"
+                  v-model="form[item.prop]"
+                  :type="item.type || 'text'"
+                  size="small"
+                  :placeholder="`请输入${item.label}`"
+                  @blur="value => changeFormValue(value, item)"
+                  clearable
+                ></el-input>
+                <el-input
+                  v-if="item.type === 'textarea'"
+                  v-model="form[item.prop]"
+                  type="textarea"
+                  :rows="3"
+                  size="small"
+                  :placeholder="`请输入${item.label}`"
+                  @blur="value => changeFormValue(value, item)"
+                  clearable
+                ></el-input>
+                <el-select
+                  v-if="item.type === 'select'"
+                  v-model="form[item.prop]"
+                  size="small"
+                  :placeholder="`请选择${item.label}`"
+                  @change="value => changeFormValue(value, item)"
+                  clearable
+                >
+                  <el-option
+                    v-for="opt in options[item.prop]"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="opt.value"
+                  >
+                  </el-option>
+                </el-select>
+                <el-cascader
+                  v-if="item.type === 'cascader'"
+                  v-model="form[item.prop]"
+                  :options="options[item.prop]"
+                  size="small"
+                  :placeholder="`请选择${item.label}`"
+                  @change="value => changeFormValue(value, item)"
+                  clearable
+                  filterable
+                ></el-cascader>
+                <el-date-picker
+                  v-if="item.type === 'date'"
+                  v-model="form[item.prop]"
+                  type="date"
+                  size="small"
+                  value-format="yyyy-MM-dd HH:mm:ss"
+                  :placeholder="`请选择${item.label}`"
+                  @change="value => changeFormValue(value, item)"
+                  clearable
+                >
+                </el-date-picker>
 
-    <!-- 明细表格 -->
-    <div class="detail-section">
-      <div class="detail-header">
-        <span class="detail-title">明细信息</span>
-        <div class="detail-actions">
-          <el-button size="small" @click="openImportDialog">导入</el-button>
-          <el-button size="small" type="primary" @click="addDetailRow">添加</el-button>
+                <el-button
+                  v-if="item.showMaintenance"
+                  type="primary"
+                  icon="el-icon-setting"
+                  size="mini"
+                  circle
+                  class="maintenance-btn"
+                  title="维护"
+                  @click="openMaintenance(item)"
+                ></el-button>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+
+      <!-- 明细表格 -->
+      <div class="detail-section">
+        <div class="detail-header">
+          <span class="detail-title">明细信息</span>
+          <div class="detail-actions">
+            <el-button size="small" @click="openImportDialog">导入</el-button>
+            <el-button size="small" type="primary" @click="addDetailRow">添加</el-button>
+          </div>
+        </div>
+        <el-table :data="detailList" border size="small" max-height="300">
+          <el-table-column type="index" label="序号" width="60" />
+          <el-table-column prop="materialCode" label="材料编码" width="120" show-overflow-tooltip />
+          <el-table-column prop="containerNo" label="容器号" width="120" show-overflow-tooltip />
+          <el-table-column prop="productionUnit" label="生产单位" width="120" show-overflow-tooltip />
+          <el-table-column prop="warehouse" label="库房" width="100" show-overflow-tooltip />
+          <el-table-column prop="position" label="位置" width="120" show-overflow-tooltip />
+          <el-table-column prop="cargoBoxNo" label="货箱号" width="100" show-overflow-tooltip />
+          <el-table-column prop="sealCode1" label="封记编码1" width="120" show-overflow-tooltip />
+          <el-table-column prop="sealCode2" label="封记编码2" width="120" show-overflow-tooltip />
+          <el-table-column prop="materialWeight" label="材料重量" width="100" show-overflow-tooltip />
+          <el-table-column label="重量(毛,皮,净)" width="180" show-overflow-tooltip>
+            <template slot-scope="scope">
+              {{ scope.row.weightGross || 0 }}/{{ scope.row.weightTare || 0 }}/{{
+                scope.row.weightNet || 0
+              }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="metalContent" label="金属量%" width="100" show-overflow-tooltip />
+          <el-table-column label="操作" width="120" fixed="right">
+            <template slot-scope="scope">
+              <span class="table_operation">
+                <span class="btn text" @click="editDetailRow(scope.row, scope.$index)">编辑</span>
+                <span class="btn text" @click="removeDetailRow(scope.$index)">删除</span>
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+        <!-- 合计行 -->
+        <div class="summary-row">
+          合计：{{ detailList.length }}件 总重：{{ totalWeightGross }}/{{ totalWeightTare }}/{{
+            totalWeightNet
+          }}KG
         </div>
       </div>
-      <el-table :data="detailList" border size="small" max-height="300">
-        <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="materialCode" label="材料编码" width="120" show-overflow-tooltip />
-        <el-table-column prop="containerNo" label="容器号" width="120" show-overflow-tooltip />
-        <el-table-column prop="productionUnit" label="生产单位" width="120" show-overflow-tooltip />
-        <el-table-column prop="warehouse" label="库房" width="100" show-overflow-tooltip />
-        <el-table-column prop="position" label="位置" width="120" show-overflow-tooltip />
-        <el-table-column prop="cargoBoxNo" label="货箱号" width="100" show-overflow-tooltip />
-        <el-table-column prop="sealCode1" label="封记编码1" width="120" show-overflow-tooltip />
-        <el-table-column prop="sealCode2" label="封记编码2" width="120" show-overflow-tooltip />
-        <el-table-column prop="materialWeight" label="材料重量" width="100" show-overflow-tooltip />
-        <el-table-column label="重量(毛,皮,净)" width="180" show-overflow-tooltip>
-          <template slot-scope="scope">
-            {{ scope.row.weightGross || 0 }}/{{ scope.row.weightTare || 0 }}/{{
-              scope.row.weightNet || 0
-            }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="metalContent" label="金属量%" width="100" show-overflow-tooltip />
-        <el-table-column label="操作" width="120" fixed="right">
-          <template slot-scope="scope">
-            <span class="table_operation">
-              <span class="btn text" @click="editDetailRow(scope.row, scope.$index)">编辑</span>
-              <span class="btn text" @click="removeDetailRow(scope.$index)">删除</span>
-            </span>
-          </template>
-        </el-table-column>
-      </el-table>
-      <!-- 合计行 -->
-      <div class="summary-row">
-        合计：{{ detailList.length }}件 总重：{{ totalWeightGross }}/{{ totalWeightTare }}/{{
-          totalWeightNet
-        }}KG
-      </div>
-    </div>
 
-    <div class="footer">
-      <el-button size="small" @click="close">取消</el-button>
-      <el-button type="primary" size="small" @click="submitForm">确定</el-button>
-    </div>
-  </theme-edit>
+      <div class="footer">
+        <el-button size="small" @click="close">取消</el-button>
+        <el-button type="primary" size="small" @click="submitForm">确定</el-button>
+      </div>
+    </theme-edit>
+
+    <allocation-basis-dialog ref="basisDialog" @success="handleBasisSuccess" />
 
   <!-- 导入弹窗 -->
   <el-dialog title="导入" :visible.sync="importDialogVisible" width="500px" append-to-body>
@@ -203,8 +232,10 @@
 <script>
 import { deepClone } from '@/utils'
 import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
+import AllocationBasisDialog from './AllocationBasisDialog.vue'
 
 export default {
+  components: { AllocationBasisDialog },
   data() {
     return {
       row: {},
@@ -373,11 +404,23 @@ export default {
     handleParams() {
       config.detail.forEach(item => {
         this.formKeys.push(item)
-        let defaultValue = this.form[item.prop] || item.defaultValue || ''
-        this.$set(this.form, item.prop, defaultValue)
+        if (item.defaultValue !== undefined) {
+          let defaultValue = item.defaultValue
+          if (defaultValue instanceof Date) {
+            // 格式化日期为字符串
+            const y = defaultValue.getFullYear()
+            const m = String(defaultValue.getMonth() + 1).padStart(2, '0')
+            const d = String(defaultValue.getDate()).padStart(2, '0')
+            defaultValue = `${y}-${m}-${d} 00:00:00`
+          }
+          this.$set(this.form, item.prop, defaultValue)
+        } else {
+          this.$set(this.form, item.prop, '')
+        }
+
         if (item.option) this.getOptions(item)
 
-        if (item.required || item.required !== false) {
+        if (item.required) {
           let isInput = this.judgeInput(item)
           let rule = {
             required: true,
@@ -387,6 +430,14 @@ export default {
           this.$set(this.rules, item.prop, [rule])
         }
       })
+    },
+    openMaintenance(item) {
+      this.$refs.basisDialog.open()
+    },
+    handleBasisSuccess() {
+      // 维护成功后刷新调拨依据列表
+      const item = this.formKeys.find(i => i.prop === 'allocationBasisId')
+      if (item) this.getOptions(item)
     },
     getOptions(item) {
       if (!Array.isArray(item.option)) {
@@ -476,6 +527,15 @@ export default {
 <style lang="scss" scoped>
 .form {
   padding: 20px;
+
+  .form-item-content {
+    display: flex;
+    align-items: center;
+    .maintenance-btn {
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+  }
 
   ::v-deep .el-cascader,
   ::v-deep .el-select,

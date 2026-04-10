@@ -18,13 +18,25 @@ export const config = {
   table: [
     { label: '任务编号', prop: 'taskNo', isTitle: true },
     { label: '调拨依据', prop: 'allocationBasis' },
-    { label: '状态', prop: 'status', type: 'slot' },
-    { label: '入方单位', prop: 'inboundUnit' },
     { label: '出库时间', prop: 'outboundTime' },
     { label: '库房', prop: 'warehouseName' },
+    { label: '收方单位', prop: 'inboundUnit' },
+    { label: '状态', prop: 'status', type: 'slot' },
   ],
   search: [
     { label: '任务编号', prop: 'taskNo', type: 'text', col: 4 },
+    { label: '生产单位', prop: 'inboundUnit', type: 'text', col: 4 },
+    {
+      label: '库房',
+      prop: 'warehouseName',
+      type: 'select',
+      col: 4,
+      option: statusOptions,
+    },
+    { label: '出库时间', prop: 'outboundTime', type: 'daterange', col: 8 },
+    { label: '调拨依据', prop: 'allocationBasis', type: 'text', col: 4 },
+    { label: '容器号', prop: 'xxx', type: 'text', col: 4 },
+    { label: '收方单位', prop: 'qqq', type: 'text', col: 4 },
     {
       label: '状态',
       prop: 'status',
@@ -32,38 +44,26 @@ export const config = {
       col: 4,
       option: statusOptions,
     },
-    { label: '入方单位', prop: 'inboundUnit', type: 'text', col: 4 },
-    { label: '调拨依据', prop: 'allocationBasis', type: 'text', col: 4 },
-    { label: '出库时间', prop: 'outboundTime', type: 'daterange', col: 8 },
-    { label: '容器号', prop: 'xxx', type: 'text', col: 4 },
-    { label: '收方单位', prop: 'qqq', type: 'text', col: 4 },
   ],
   detail: [
     {
       label: '任务编号',
       prop: 'taskNo',
       type: 'text',
-      isAdd: false,
-      isUpdate: false,
       required: true,
+      defaultValue: '',
     },
     {
       label: '调拨依据',
       prop: 'allocationBasisId',
-      type: 'select',
+      type: 'cascader',
+      showMaintenance: true,
       option: getAllocationList().then(res => {
         return (res.data.list || []).map(item => ({
           label: item.name,
           value: item.id,
         }))
       }),
-      required: true,
-    },
-    {
-      label: '密级',
-      prop: 'secretLevel',
-      type: 'select',
-      option: secretLevelOptions,
       required: true,
     },
     {
@@ -76,12 +76,20 @@ export const config = {
       label: '出库时间',
       prop: 'outboundTime',
       type: 'date',
-      required: true,
+      required: false,
+      defaultValue: new Date(),
     },
     {
-      label: '入方单位',
+      label: '收方单位',
       prop: 'inboundUnit',
       type: 'text',
+      required: false,
+    },
+    {
+      label: '密级',
+      prop: 'secretLevel',
+      type: 'select',
+      option: secretLevelOptions,
       required: true,
     },
     {
@@ -89,6 +97,7 @@ export const config = {
       prop: 'remark',
       type: 'textarea',
       required: false,
+      full: true,
     },
   ],
 }

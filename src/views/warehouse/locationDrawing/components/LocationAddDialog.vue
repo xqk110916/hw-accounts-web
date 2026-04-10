@@ -15,6 +15,7 @@
               placeholder="请选择平衡区"
               style="width: 100%"
               :disabled="isParentFixed"
+              @change="handleChange"
             >
               <el-option
                 v-for="item in balanceAreaOptions"
@@ -211,7 +212,7 @@ export default {
           const list = Array.isArray(res.data) ? res.data : (res.data.list || []);
           this.balanceAreaOptions = list.map(item => ({
             label: item.name,
-            value: item.id || item.code || item.name
+            value: item.id
           }));
         }
       } catch (e) {
@@ -289,7 +290,10 @@ export default {
       if (key === 'row') return parts[0] ? `${parts[0]}排` : '-';
       if (key === 'level') return parts[1] ? `${parts[1]}层` : '-';
       return '-';
-    }
+    },
+    handleChange(value) {
+      console.log(value, this.balanceAreaOptions)
+    },
   }
 };
 </script>

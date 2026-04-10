@@ -1,61 +1,88 @@
 <template>
   <div>
-    <theme-edit :show="show" showFooterSlot :title="titleMap[type]" :column="1" @cancle="close">
-    <el-form ref="form" class="form" :model="form" :rules="rules" label-width="130px">
-      <el-form-item
-        v-for="item in formKeys"
-        :label="item.label"
-        :prop="item.prop"
-        v-if="judgeRowShow(item)"
-      >
-        <el-input
-          v-if="judgeInput(item) && item.type !== 'textarea'"
-          v-model="form[item.prop]"
-          :type="item.type || 'text'"
-          size="small"
-          :placeholder="`请输入${item.label}`"
-          @blur="value => changeFormValue(value, item)"
-          clearable
-        ></el-input>
-        <el-input
-          v-if="item.type === 'textarea'"
-          v-model="form[item.prop]"
-          type="textarea"
-          :rows="3"
-          size="small"
-          :placeholder="`请输入${item.label}`"
-          @blur="value => changeFormValue(value, item)"
-          clearable
-        ></el-input>
-        <el-select
-          v-if="item.type === 'select'"
-          v-model="form[item.prop]"
-          size="small"
-          :placeholder="`请选择${item.label}`"
-          @change="value => changeFormValue(value, item)"
-          clearable
-        >
-          <el-option
-            v-for="opt in options[item.prop]"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
+    <theme-edit :show="show" showFooterSlot :title="titleMap[type]" :column="2" @cancle="close">
+      <el-form ref="form" class="form" :model="form" :rules="rules" label-width="120px">
+        <el-row>
+          <el-col
+            v-for="item in formKeys"
+            :key="item.prop"
+            :span="item.full ? 24 : 12"
+            v-if="judgeRowShow(item)"
           >
-          </el-option>
-        </el-select>
-        <el-date-picker
-          v-if="item.type === 'date'"
-          v-model="form[item.prop]"
-          type="date"
-          size="small"
-          value-format="yyyy-MM-dd HH:mm:ss"
-          :placeholder="`请选择${item.label}`"
-          @change="value => changeFormValue(value, item)"
-          clearable
-        >
-        </el-date-picker>
-      </el-form-item>
-    </el-form>
+            <el-form-item :label="item.label" :prop="item.prop">
+              <div class="form-item-content">
+                <el-input
+                  v-if="judgeInput(item) && item.type !== 'textarea'"
+                  v-model="form[item.prop]"
+                  :type="item.type || 'text'"
+                  size="small"
+                  :placeholder="`请输入${item.label}`"
+                  @blur="value => changeFormValue(value, item)"
+                  clearable
+                ></el-input>
+                <el-input
+                  v-if="item.type === 'textarea'"
+                  v-model="form[item.prop]"
+                  type="textarea"
+                  :rows="3"
+                  size="small"
+                  :placeholder="`请输入${item.label}`"
+                  @blur="value => changeFormValue(value, item)"
+                  clearable
+                ></el-input>
+                <el-select
+                  v-if="item.type === 'select'"
+                  v-model="form[item.prop]"
+                  size="small"
+                  :placeholder="`请选择${item.label}`"
+                  @change="value => changeFormValue(value, item)"
+                  clearable
+                >
+                  <el-option
+                    v-for="opt in options[item.prop]"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="opt.value"
+                  >
+                  </el-option>
+                </el-select>
+                <el-cascader
+                  v-if="item.type === 'cascader'"
+                  v-model="form[item.prop]"
+                  :options="options[item.prop]"
+                  size="small"
+                  :placeholder="`请选择${item.label}`"
+                  @change="value => changeFormValue(value, item)"
+                  clearable
+                  filterable
+                ></el-cascader>
+                <el-date-picker
+                  v-if="item.type === 'date'"
+                  v-model="form[item.prop]"
+                  type="date"
+                  size="small"
+                  value-format="yyyy-MM-dd HH:mm:ss"
+                  :placeholder="`请选择${item.label}`"
+                  @change="value => changeFormValue(value, item)"
+                  clearable
+                >
+                </el-date-picker>
+
+                <el-button
+                  v-if="item.showMaintenance"
+                  type="primary"
+                  icon="el-icon-setting"
+                  size="mini"
+                  circle
+                  class="maintenance-btn"
+                  title="维护"
+                  @click="openMaintenance(item)"
+                ></el-button>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
 
     <!-- 明细表格 -->
     <div class="detail-section">
@@ -163,14 +190,18 @@
       <el-button type="primary" size="small" @click="submitDetailForm">确定</el-button>
     </div>
   </el-dialog>
+
+  <allocation-basis-dialog ref="basisDialog" @success="handleBasisSuccess" />
   </div>
 </template>
 
 <script>
 import { deepClone } from '@/utils'
 import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
+import AllocationBasisDialog from '@/views/task/inbound/components/AllocationBasisDialog.vue'
 
 export default {
+  components: { AllocationBasisDialog },
   data() {
     return {
       row: {},
@@ -323,10 +354,21 @@ export default {
     handleParams() {
       config.detail.forEach(item => {
         this.formKeys.push(item)
-        let defaultValue = this.form[item.prop] || item.defaultValue || ''
-        this.$set(this.form, item.prop, defaultValue)
+        if (item.defaultValue !== undefined) {
+          let defaultValue = item.defaultValue
+          if (defaultValue instanceof Date) {
+            const y = defaultValue.getFullYear()
+            const m = String(defaultValue.getMonth() + 1).padStart(2, '0')
+            const d = String(defaultValue.getDate()).padStart(2, '0')
+            defaultValue = `${y}-${m}-${d} 00:00:00`
+          }
+          this.$set(this.form, item.prop, defaultValue)
+        } else {
+          this.$set(this.form, item.prop, '')
+        }
+        
         if (item.option) this.getOptions(item)
-        if (item.required || item.required !== false) {
+        if (item.required) {
           let isInput = this.judgeInput(item)
           let rule = {
             required: true,
@@ -336,6 +378,13 @@ export default {
           this.$set(this.rules, item.prop, [rule])
         }
       })
+    },
+    openMaintenance(item) {
+      this.$refs.basisDialog.open()
+    },
+    handleBasisSuccess() {
+      const item = this.formKeys.find(i => i.prop === 'allocationBasisId')
+      if (item) this.getOptions(item)
     },
     getOptions(item) {
       if (!Array.isArray(item.option)) {
@@ -398,6 +447,16 @@ export default {
 <style lang="scss" scoped>
 .form {
   padding: 20px;
+  
+  .form-item-content {
+    display: flex;
+    align-items: center;
+    .maintenance-btn {
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+  }
+
   ::v-deep .el-cascader,
   ::v-deep .el-select,
   ::v-deep .el-input__inner {
