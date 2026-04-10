@@ -10,6 +10,7 @@ import Verify from './Verify/Verify.vue';
 import ImageUpload from '@/components/ImageUpload';
 import FileUpload from '@/components/FileUpload';
 import Echarts from '@/components/Echarts';
+import SearchFilter from '@/components/SearchFilter';
 import countersign from '@/components/countersign/index';
 import countersignSetting from '@/components/countersign/setting';
 
@@ -19,6 +20,7 @@ export default {
     Vue.component('ImageUpload', ImageUpload);
     Vue.component('FileUpload', FileUpload);
     Vue.component('Echarts', Echarts);
+    Vue.component('SearchFilter', SearchFilter);
     // 低代码组件注册
     Vue.component('zcFromEditComponent', () => import('zcLowCodeUI/zcFromEdit'));
     // // 详情页面

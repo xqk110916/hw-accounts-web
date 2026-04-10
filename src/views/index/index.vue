@@ -89,7 +89,7 @@
           </div>
           <div class="warehouse-capacity-list">
             <div 
-              v-for="wh in computedWarehouseStats" 
+              v-for="wh in warehouseStats" 
               :key="wh.id" 
               class="warehouse-capacity-item"
             >
@@ -166,71 +166,11 @@ export default {
       loadingPieChart: false,
       
       // Warehouse state
-      warehouseList: []
+      warehouseList: [],
+      warehouseStats: []
     };
   },
   computed: {
-    computedWarehouseStats() {
-      // Replace generic names with A, B, C etc to match image
-      const nameMap = {
-        'wh001': '库房A',
-        'wh002': '库房B',
-        'wh003': '库房C',
-        'wh004': '库房D',
-        'wh005': '库房E',
-        'wh006': '库房F',
-      };
-      
-      let stats = this.warehouseList.map(whConfig => {
-        const warehouse = getWarehouseById(whConfig.id);
-        if (!warehouse) return null;
-        
-        let capacity = 0;
-        let stock = 0;
-        const shelves = warehouse.shelves || [];
-        
-        shelves.forEach(shelf => {
-          if (shelf.layers) {
-            shelf.layers.forEach(layer => {
-              if (layer.containers) {
-                layer.containers.forEach(container => {
-                  capacity++;
-                  if (container.materialCode) {
-                    stock++;
-                  }
-                });
-              }
-            });
-          }
-        });
-        
-        return {
-          id: warehouse.id,
-          name: nameMap[warehouse.id] || warehouse.name,
-          capacity,
-          stock,
-          usageRate: capacity > 0 ? Math.round((stock / capacity) * 100) : 0
-        };
-      }).filter(Boolean);
-
-      // Pad to have 6 warehouses to match image exactly, if not enough
-      const required = ['库房A', '库房B', '库房C', '库房D', '库房E', '库房F'];
-      if (stats.length < 6) {
-        let i = stats.length;
-        while (stats.length < 6) {
-          stats.push({
-            id: 'mock_wh_' + i,
-            name: required[i],
-            capacity: 253,
-            stock: 120,
-            usageRate: 60
-          });
-          i++;
-        }
-      }
-      return stats;
-    },
-    
     productPieData() {
       // Return dynamically based on pieChartType toggle
       if (this.pieChartType === 'quantity') {
@@ -256,7 +196,8 @@ export default {
     this.resizeCharts();
   },
   async created() {
-    this.warehouseList = getWarehouseList();
+    this.warehouseList = await getWarehouseList();
+    this.calculateWarehouseStats();
     this.fetchTodoData();
   },
   mounted() {
@@ -290,6 +231,89 @@ export default {
   methods: {
     handleAction(type) {
       this.$message.info(`Clicked ${type}`);
+    },
+
+    async calculateWarehouseStats() {
+      if (!this.warehouseList || this.warehouseList.length === 0) {
+        this.warehouseStats = this.getDefaultStats();
+        return;
+      }
+
+      const nameMap = {
+        'wh001': '库房A',
+        'wh002': '库房B',
+        'wh003': '库房C',
+        'wh004': '库房D',
+        'wh005': '库房E',
+        'wh006': '库房F',
+      };
+      
+      try {
+        const statsPromises = this.warehouseList.map(async whConfig => {
+          const warehouse = await getWarehouseById(whConfig.id);
+          if (!warehouse) return null;
+          
+          let capacity = 0;
+          let stock = 0;
+          const shelves = warehouse.shelves || [];
+          
+          shelves.forEach(shelf => {
+            if (shelf.layers) {
+              shelf.layers.forEach(layer => {
+                if (layer.containers) {
+                  layer.containers.forEach(container => {
+                    capacity++;
+                    if (container.materialCode) {
+                      stock++;
+                    }
+                  });
+                }
+              });
+            }
+          });
+          
+          return {
+            id: warehouse.id,
+            name: nameMap[warehouse.id] || warehouse.name,
+            capacity,
+            stock,
+            usageRate: capacity > 0 ? Math.round((stock / capacity) * 100) : 0
+          };
+        });
+
+        let stats = (await Promise.all(statsPromises)).filter(Boolean);
+
+        // Pad to 6
+        const required = ['库房A', '库房B', '库房C', '库房D', '库房E', '库房F'];
+        if (stats.length < 6) {
+          let i = stats.length;
+          while (stats.length < 6) {
+            stats.push({
+              id: 'mock_wh_' + i,
+              name: required[i],
+              capacity: 253,
+              stock: 120,
+              usageRate: 60
+            });
+            i++;
+          }
+        }
+        this.warehouseStats = stats;
+      } catch (e) {
+        console.error('Failed to calculate stats', e);
+        this.warehouseStats = this.getDefaultStats();
+      }
+    },
+
+    getDefaultStats() {
+      const required = ['库房A', '库房B', '库房C', '库房D', '库房E', '库房F'];
+      return required.map((name, i) => ({
+        id: 'mock_wh_' + i,
+        name: name,
+        capacity: 253,
+        stock: 120,
+        usageRate: 60
+      }));
     },
 
     changeTodoTab(tab) {

@@ -21,13 +21,13 @@
         </div>
       </div>
       <div class="right">
-        <search-bar class="search" :options="search.options" :form="search.params">
+        <search-filter class="search" :options="search.options" :form="search.params">
           <div slot="footer" class="footer">
             <div :class="['btn', 'text']" @click="getTableList">查询</div>
             <div class="partition"></div>
             <div :class="['btn', 'text']" @click="resetSearchParams">重置</div>
           </div>
-        </search-bar>
+        </search-filter>
         <div class="operation" v-if="btns.operation && btns.operation.length">
           <div v-for="item in btns.operation" :key="item.label" :class="['btn', 'primary']" @click="handleBtnClick(item)">{{ item.label }}</div>
         </div>
@@ -75,11 +75,10 @@
 </template>
 
 <script>
-import searchBar from './components/search';
 import detail from './components/detail.vue';
 import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
 export default {
-  components: { searchBar, detail },
+  components: { detail },
   data() {
     return {
       showLeft: false,
@@ -140,16 +139,13 @@ export default {
       return data.label.indexOf(value) !== -1;
     },
     async handleData() {
-      let colNumber = 0
       this.tableKeys = config.table
       config.search.forEach(item => {
-        colNumber = colNumber + (item.col || 5)
-        if(colNumber > 20) this.addSearchBtn()
         this.search.options.push(item)
         this.$set(this.search.params, item.prop, '')
         if(item.option) this.getOptions(item)
       });
-      if(colNumber <= 20) this.addSearchBtn()
+      this.addSearchBtn()
 
       if(config.tree && config.tree.data) {
         this.showLeft = true;
@@ -315,9 +311,6 @@ export default {
       .table {
         margin-top: 10px;
         flex: 1;
-        .table_operation {
-
-        }
         .round_text {
           margin-left: 3px;
           &.normal {
