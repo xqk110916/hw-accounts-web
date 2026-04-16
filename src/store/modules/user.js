@@ -11,6 +11,8 @@ import { getInfo } from '@/views/userCenter/api.js';
 import { login, logout } from '@/views/login/api.js';
 import { setTokenName, setTokenValue, removeToken } from '@/utils/auth';
 import { isJsonString } from '@/utils/json.js';
+import { deepClone } from '@/utils/index';
+import { localUserInfo } from './localUserInfo';
 
 const isUserLogin = (isJsonString(localStorage.getItem('isUserLogin')) && JSON.parse(localStorage.getItem('isUserLogin'))) || false;
 
@@ -83,8 +85,21 @@ const user = {
             resolve(res);
           })
           .catch(error => {
-            reject(error);
-            Message.error(error);
+            console.warn('后端服务异常，切换至本地菜单模式。', error);
+            const res = deepClone(localUserInfo);
+            const userInfo = res.data.userBo;
+            userInfo.orgId = 1;
+            userInfo.orgName = '中州国际饭店';
+            userInfo.mainDept = res.data.mainDept;
+            const menuList = res.data.menuTreeBoList;
+            const headIcon =
+              userInfo.headIcon == '' || userInfo.headIcon == null
+                ? require('@/assets/images/header-photo.png')
+                : process.env.VUE_APP_FILE_ACCESS_PATH + userInfo.headIcon;
+            userInfo.headIcon = headIcon;
+            commit('SET_USERINFO', userInfo);
+            commit('SET_MENULIST', menuList);
+            resolve(res);
           });
       });
     },
