@@ -22,5 +22,6 @@ When asked to generate a new CRUD page:
    - `config.search` (search bar fields).
    - `config.detail` (form dialog fields, e.g., `text`, `select`, `cascader`, `switch`, `textarea`).
 4. Write out the required API mappings in `components/api.js` (or inline inside `index.js` `requestFun` if using mock data).
+5. **IMPORTANT: Menu Registration**: After creating the interface files, you MUST use the `Menu Management Skill` (located in `.agents/skills/menu_management/SKILL.md`) to call the backend APIs and register the new menu entries (Directory/Page) so they appear in the system navigation.
 
 Adhere perfectly to this configuration-driven style to ensure UI layout consistency across the web application.

@@ -86,6 +86,7 @@ const user = {
           })
           .catch(error => {
             console.warn('后端服务异常，切换至本地菜单模式。', error);
+            // git revert 要放弃的提交哈希值
             const res = deepClone(localUserInfo);
             const userInfo = res.data.userBo;
             userInfo.orgId = 1;

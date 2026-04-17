@@ -1,3 +1,4 @@
+// git revert 要放弃的提交哈希值
 export const localUserInfo = {
     "code": 1,
     "data": {
