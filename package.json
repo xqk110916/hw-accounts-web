@@ -8,20 +8,8 @@
     "dev": "vue-cli-service serve",
     "build:prod": "vue-cli-service build --mode production",
     "build": "vue-cli-service build --mode test",
-    "lint": "eslint --ext .js,.vue src",
     "release-tag": "standard-version --release-as v0.1.0-alpha && git push --follow-tags",
     "release": "standard-version --release-as v0.1.0-alpha --infile=changelog.md --skip.tag=true && git push"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "src/**/*.{js,vue}": [
-      "eslint --fix",
-      "git add"
-    ]
   },
   "keywords": [
     "vue",
@@ -70,21 +58,16 @@
     "vue3-dnd": "^2.0.4",
     "vuedraggable": "^2.24.3",
     "vuex": "^3.6.0",
-    "wl-gantt": "^1.0.6",
-    "zc-framework-ui": "^3.1.39"
+    "wl-gantt": "^1.0.6"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^5.0.8",
-    "@vue/cli-plugin-eslint": "^5.0.8",
     "@vue/cli-service": "^5.0.8",
     "@vuepress/plugin-back-to-top": "^1.9.7",
     "babel-core": "^6.26.3",
-    "babel-eslint": "10.1.0",
     "bundle-loader": "^0.5.6",
     "chalk": "^5.0.1",
     "compression-webpack-plugin": "^10.0.0",
-    "eslint": "7.15.0",
-    "eslint-plugin-vue": "7.2.0",
     "node-polyfill-webpack-plugin": "^2.0.1",
     "sass": "1.32.13",
     "sass-loader": "10.0.2",

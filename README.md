@@ -103,8 +103,6 @@ npm run build:prod
 ├── .env.development                // 环境变量——开发环境
 ├── .env.producation                // 环境变量——生产环境
 ├── .env.test                       // 环境变量——测试环境
-├── .eslintignore                   // eslint 忽略配置
-├── .eslintrc.js                    // eslint 格式化规则
 ├── .gitignore                      // git 忽略配置
 ├── .prettierrc                      // prettier 格式化配置
 ├── babel.config.js                 // babel 转译规则
