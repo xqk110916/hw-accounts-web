@@ -30,22 +30,18 @@
             >
               <template slot-scope="scope">
                 <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'status'">
-                    <el-tag :type="scope.row.status === 'enable' ? 'success' : 'info'" size="small">
-                      {{ scope.row.status === 'enable' ? '启用' : '禁用' }}
-                    </el-tag>
-                  </span>
+                  <span v-if="item.prop === 'type'">{{ scope.row.type === 'label' ? '标签' : '其它' }}</span>
                 </div>
                 <div v-else>{{ scope.row[item.prop] }}</div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
+            <el-table-column label="操作" width="200" fixed="right">
               <template slot-scope="scope">
                 <div class="table_operation">
                   <div
                     v-for="item in btns.table"
                     :key="item.label"
-                    :class="['btn', 'text']"
+                    :class="['btn', 'text', item.execute === 'editTemplate' ? 'highlight' : '']"
                     @click="e => handleBtnClick(item, scope.row)"
                   >
                     {{ item.label }}
@@ -70,17 +66,14 @@
         </div>
       </div>
     </div>
-    <detail ref="detail" @query="getTableList"></detail>
   </div>
 </template>
 
 <script>
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
-import detail from './components/detail.vue'
+import { config, requestFun, btns, getDefaultOptions } from './components/index.js'
 
 export default {
-  name: 'MaterialManagement',
-  components: { detail },
+  name: 'LabelTemplate',
   data() {
     return {
       search: { params: { currentPage: 1, pageSize: 20, totoal: 0 }, options: [] },
@@ -103,8 +96,9 @@ export default {
       this.search.options.push({ type: 'slot', slotName: 'footer', col: 6 })
     },
     handleBtnClick(item, payload) {
-      if (item.execute === 'add') this.$refs.detail.open()
-      if (item.execute === 'update') this.$refs.detail.open(payload)
+      if (item.execute === 'add') this.$message.info('打开新增弹窗')
+      if (item.execute === 'rename') this.$prompt('请输入新的模板名称', '重命名').then(({value}) => this.$message.success('已修改为：' + value))
+      if (item.execute === 'editTemplate') this.$message.success('进入外部编辑器: ' + payload.name)
       if (item.execute === 'delete') {
         this.$confirm('确定要删除吗?', '提示').then(() => {
           requestFun.delete().then(() => { this.$message.success('删除成功'); this.getTableList() })
@@ -134,12 +128,14 @@ export default {
       }
       .operation-bar { height: 32px; margin-top: 4px; margin-bottom: 6px; }
       .table { margin-top: 10px; flex: 1;
-        .pagination { display: flex; justify-content: flex-end; margin-top: 10px; color: #626c78; }
+        .pagination { display: flex; justify-content: flex-end; margin-top: 10px; }
       }
     }
   }
+  .table_operation { display: flex; flex-wrap: wrap; }
   .btn { display: inline-block; font-size: 14px; line-height: 22px; cursor: pointer;
     &.text { color: #246fe5; margin-left: 10px; }
+    &.highlight { font-weight: bold; color: #ff9800; }
     &.primary { padding: 5px 16px; border-radius: 3px; background: #246fe5; color: #fff; }
     &.default-btn { padding: 5px 16px; border-radius: 3px; background: #fff; border: 1px solid #c4c9cf; color: #333; margin-left: 10px; }
   }

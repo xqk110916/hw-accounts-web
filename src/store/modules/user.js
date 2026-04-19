@@ -18,8 +18,8 @@ const isUserLogin = (isJsonString(localStorage.getItem('isUserLogin')) && JSON.p
 
 const user = {
   state: {
-    tokenName: '',
-    tokenValue: '',
+    tokenName: 'Authorization',
+    tokenValue: process.env.NODE_ENV === 'development' ? 'admin-token' : '',
     theme: {},
     userInfo: {},
     menuList: [],

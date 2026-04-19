@@ -1,9 +1,12 @@
 <template>
   <div class="search_content">
     <el-row :gutter="10" class="search-row">
-      <el-col :span="item.col || 5" v-for="item in options" :key="item.prop" class="search-col">
+      <el-col :span="item.col || 5" v-for="item in renderOptions" :key="item.prop" class="search-col">
         <div class="btn-slot" v-if="item.type === 'slot'">
           <slot :name="item.slotName"></slot>
+          <el-button v-if="showToggle && item.slotName === 'footer'" type="text" class="toggle-btn" @click="isExpanded = !isExpanded">
+            {{ isExpanded ? '收起' : '展开' }}<i :class="isExpanded ? 'el-icon-arrow-up' : 'el-icon-arrow-down'"></i>
+          </el-button>
         </div>
         <div class="filter-item" v-else>
           <span class="label" :style="{ width: item.labelWidth || '70px' }">{{ item.label }}:</span>
@@ -21,13 +24,15 @@
               style="width: 100%"
             >
             </el-date-picker>
-            <el-input
-              v-else-if="!item.type || item.type === 'text'"
+            <el-date-picker
+              v-else-if="item.type === 'year'"
               v-model="form[item.prop]"
-              :placeholder="`请输入${item.label}`"
+              type="year"
+              :placeholder="`默认全${item.label}`"
+              value-format="yyyy"
               size="small"
-              clearable
-            ></el-input>
+              style="width: 100%"
+            ></el-date-picker>
             <el-select
               v-else-if="item.type === 'select'"
               v-model="form[item.prop]"
@@ -35,6 +40,7 @@
               size="small"
               clearable
               filterable
+              :multiple="item.multiple"
               style="width: 100%"
             >
               <el-option
@@ -45,6 +51,20 @@
               >
               </el-option>
             </el-select>
+            <el-radio-group v-else-if="item.type === 'radioGroup'" v-model="form[item.prop]" size="small">
+              <el-radio-button v-for="opt in item.option" :key="opt.value" :label="opt.value">{{ opt.label }}</el-radio-button>
+            </el-radio-group>
+            <el-checkbox-group v-else-if="item.type === 'checkboxGroup'" v-model="form[item.prop]" size="small">
+              <el-checkbox v-for="opt in item.option" :key="opt.value" :label="opt.value">{{ opt.label }}</el-checkbox>
+            </el-checkbox-group>
+            <slot v-else-if="item.type === 'custom'" :name="item.prop"></slot>
+            <el-input
+              v-else-if="!item.type || item.type === 'text'"
+              v-model="form[item.prop]"
+              :placeholder="`请输入${item.label}`"
+              size="small"
+              clearable
+            ></el-input>
           </div>
         </div>
       </el-col>
@@ -69,6 +89,44 @@ export default {
       },
     },
   },
+  data() {
+    return {
+      isExpanded: false
+    }
+  },
+  computed: {
+    showToggle() {
+      let sum = 0;
+      this.options.forEach(item => {
+        sum += (item.col || 5);
+      });
+      return sum > 24;
+    },
+    renderOptions() {
+      if (this.isExpanded || !this.showToggle) {
+        return this.options;
+      }
+      
+      const footerOption = this.options.find(item => item.type === 'slot' && item.slotName === 'footer');
+      const footerCol = footerOption ? (footerOption.col || 5) : 0;
+      
+      let sum = 0;
+      const result = [];
+      for (let item of this.options) {
+        if (item === footerOption) continue;
+        if (sum + (item.col || 5) + footerCol <= 24) {
+          result.push(item);
+          sum += (item.col || 5);
+        } else {
+          break;
+        }
+      }
+      if (footerOption) {
+        result.push(footerOption);
+      }
+      return result;
+    }
+  }
 }
 </script>
 
@@ -89,6 +147,9 @@ export default {
   .btn-slot {
     display: flex;
     align-items: center;
+    .toggle-btn {
+      margin-left: 10px;
+    }
   }
 
   .filter-item {

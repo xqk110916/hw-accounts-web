@@ -20,7 +20,7 @@ router.beforeEach((to, from, next) => {
 
   const hasToken = getTokenValue() || store.getters.tokenValue;
 
-  if (hasToken) {
+  if (hasToken || process.env.NODE_ENV === 'development') {
     // 设置网页title
     if (to.meta.title) {
       store.dispatch('settings/setTitle', to.meta.title);
