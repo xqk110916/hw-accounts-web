@@ -24,7 +24,7 @@
             <div class="btn default-btn" @click="$message.success('已导出')">导出</div>
           </div>
           
-          <el-table ref="table" border :data="tableData" highlight-current-row :height="height" style="width: 100%">
+          <el-table ref="table" :data="tableData" highlight-current-row :height="height" style="width: 100%">
             <el-table-column
               v-for="item in tableKeys"
               :prop="item.prop"
@@ -151,7 +151,30 @@ export default {
 
         .account-title { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #303133; }
         .operation-bar { text-align: right; margin-bottom: 10px; }
-        .pagination { display: flex; justify-content: flex-end; margin-top: 10px; }
+        .pagination {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 10px;
+          color: #626c78;
+          ::v-deep .el-pager .number {
+            background: #fff;
+            border: 1px solid #c4c9cf;
+            border-radius: 4px;
+            font-size: 14px;
+          }
+          ::v-deep .el-pager .active {
+            background: #cce6ff;
+            color: #246fe5;
+            border: 1px solid #246fe5;
+          }
+        }
+        ::v-deep .el-table th.el-table__cell {
+          background: #f1f4f6;
+          color: #626c78;
+        }
+        ::v-deep .el-table td.el-table__cell {
+          color: #1b2129;
+        }
       }
     }
   }

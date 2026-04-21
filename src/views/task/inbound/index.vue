@@ -72,6 +72,7 @@
       </div>
     </div>
     <detail ref="detail" @query="resetSearchParams"></detail>
+    <allocation-basis-dialog ref="basisDialog" />
 
     <!-- 审核弹窗 -->
     <el-dialog title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
@@ -101,10 +102,11 @@
 import detail from './components/detail.vue'
 import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
 import { auditInbound, submitChangeAudit } from './components/api.js'
+import AllocationBasisDialog from './components/AllocationBasisDialog.vue'
 
 export default {
   name: 'InboundManage',
-  components: { detail },
+  components: { detail, AllocationBasisDialog },
   data() {
     return {
       showLeft: false,
@@ -211,6 +213,9 @@ export default {
             break
           case 'audit':
             this.openAudit(payload)
+            break
+          case 'manageAllocationBasis':
+            this.$refs.basisDialog.open()
             break
         }
       }
