@@ -159,6 +159,7 @@
 
 <script>
 import { getBalanceAreaPageList } from '@/api/warehouse/balanceArea';
+import { getDictionaryList } from '@/api/common/dictionary';
 
 export default {
   name: 'LocationAddDialog',
@@ -188,21 +189,14 @@ export default {
         materialType: [{ required: true, message: '请选择物料类型', trigger: 'change' }]
       },
       balanceAreaOptions: [],
-      materialTypeOptions: [
-        { label: '原材料', value: 'raw' },
-        { label: '成品', value: 'product' },
-        { label: '半成品', value: 'semi-product' }
-      ],
-      shelfTypeOptions: [
-        { label: '5排3层2m*10m', value: '5-3-2-10' },
-        { label: '5排4层2m*10m', value: '5-4-2-10' },
-        { label: '5排5层2m*10m', value: '5-5-2-10' },
-        { label: '5排6层2m*10m', value: '5-6-2-10' }
-      ]
+      materialTypeOptions: [],
+      shelfTypeOptions: []
     };
   },
   created() {
     this.fetchBalanceAreas();
+    this.fetchDictOptions('物料类型', 'materialTypeOptions');
+    this.fetchDictOptions('货架类型', 'shelfTypeOptions');
   },
   methods: {
     async fetchBalanceAreas() {
@@ -217,6 +211,18 @@ export default {
         }
       } catch (e) {
         console.error('Failed to fetch balance areas', e);
+      }
+    },
+    async fetchDictOptions(keyword, optionsKey) {
+      try {
+        const res = await getDictionaryList({ keyword });
+        const parent = (res.data?.list || []).find(d => d.fullName === keyword && d.parentId === '0');
+        if (!parent) return;
+        const childRes = await getDictionaryList({ parentId: parent.id });
+        const children = childRes.data?.list || [];
+        this[optionsKey] = children.map(d => ({ label: d.fullName, value: d.dictValue }));
+      } catch (e) {
+        console.error('Failed to fetch dict: ' + keyword, e);
       }
     },
     open(data = null, options = {}) {

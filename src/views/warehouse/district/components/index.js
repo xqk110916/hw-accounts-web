@@ -1,4 +1,16 @@
 import * as balanceAreaApi from '@/api/warehouse/balanceArea';
+import { getDictionaryList } from '@/api/common/dictionary';
+
+function fetchDictByCategory(keyword, withAll = false) {
+  return getDictionaryList({ keyword }).then(res => {
+    const parent = (res.data?.list || []).find(d => d.fullName === keyword && d.parentId === '0');
+    if (!parent) return { data: withAll ? [{ label: '全部', value: '' }] : [] };
+    return getDictionaryList({ parentId: parent.id }).then(childRes => {
+      const list = (childRes.data?.list || []).map(d => ({ label: d.fullName, value: d.dictValue }));
+      return { data: withAll ? [{ label: '全部', value: '' }, ...list] : list };
+    });
+  });
+}
 
 let btns = {
   operation: [
@@ -22,7 +34,7 @@ let config = {
   search: [
     { label: '编号', prop: 'code' },
     { label: '名称', prop: 'name' },
-    { label: '类型', prop: 'type', type: 'select', option: [{label: '全部', value: ''}, {label: '本地', value: 'local'}, {label: '代存', value: 'proxy'}] },
+    { label: '类型', prop: 'type', type: 'select', option: fetchDictByCategory('平衡区类型', true) },
   ],
   detail: [
     { label: '编号', prop: 'code', isAdd: true, isUpdate: true },

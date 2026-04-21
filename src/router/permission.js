@@ -18,9 +18,9 @@ const whiteList = ['/login', '/register'];
 router.beforeEach((to, from, next) => {
   NProgress.start();
 
-  const hasToken = getTokenValue() || store.getters.tokenValue;
-
-  if (hasToken || process.env.NODE_ENV === 'development') {
+  const hasToken = getTokenValue();
+  console.log("hasToken", hasToken)
+  if (hasToken) {
     // 设置网页title
     if (to.meta.title) {
       store.dispatch('settings/setTitle', to.meta.title);
@@ -41,7 +41,6 @@ router.beforeEach((to, from, next) => {
           next('/401');
         }
       } else {
-        //
         // 首次访问（判断依据：个人信息并且菜单权限数据为空）
         store.dispatch('GetInfo').then(res => {
           store.dispatch('setRoutes', res.data).then(accessRoutes => {
@@ -53,7 +52,6 @@ router.beforeEach((to, from, next) => {
       }
     }
   } else {
-    return next();
     if (whiteList.indexOf(to.path) !== -1) {
       next();
     } else {

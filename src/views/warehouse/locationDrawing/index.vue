@@ -41,7 +41,7 @@
               size="mini"
               icon="el-icon-plus"
               @click.stop="() => append(data)"
-              v-if="data.level < 4"
+              v-if="data.nodeType === 1"
             >
             </el-button>
             <el-button
@@ -105,15 +105,14 @@ export default {
       return label.indexOf(value) !== -1;
     },
     getNodeIcon(data) {
-      const type = data.nodeType !== undefined ? data.nodeType : data.level;
-      const icons = [
-        'el-icon-office-building', // 平衡区 / level 0
-        'el-icon-house',           // 库房 / level 1
-        'el-icon-s-grid',          // 列/区 / level 2
-        'el-icon-menu',            // 排 / level 3
-        'el-icon-collection-tag'   // 层 / level 4
-      ];
-      return icons[type] || icons[data.level] || 'el-icon-document';
+      const icons = {
+        1: 'el-icon-office-building', // 平衡区
+        2: 'el-icon-house',           // 库房
+        3: 'el-icon-s-grid',          // 列
+        4: 'el-icon-menu',            // 排
+        5: 'el-icon-collection-tag'   // 层
+      };
+      return icons[data.nodeType] || 'el-icon-document';
     },
     handleExpandAll() {
       const nodes = this.$refs.tree.store._getAllNodes();
@@ -182,7 +181,7 @@ export default {
     append(data) {
       const label = this.defaultProps.label(data);
       // Level 0 为平衡区，添加子节点即添加库房
-      if (data.level === 0 || data.nodeType === 0) {
+      if (data.nodeType === 1) {
         this.$refs.addDialog.open(null, {
           isParentFixed: true,
           prefill: {

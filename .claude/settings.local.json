@@ -3,7 +3,10 @@
     "allow": [
       "mcp__modao-proto-mcp__gen_description",
       "mcp__modao-proto-mcp__gen_html",
-      "mcp__zai-mcp-server__analyze_image"
+      "mcp__zai-mcp-server__analyze_image",
+      "Bash(node scripts/dict-seed.js satoken 3f22ff25a1e7488793446ba53d2d096a)",
+      "Bash(node scripts/dict-seed.js token 3f22ff25a1e7488793446ba53d2d096a)",
+      "Bash(node -e ' *)"
     ]
   }
 }
