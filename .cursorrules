@@ -1,3 +1,11 @@
+# 0. Global AI Instructions
+
+Before starting any feature development, analysis, or UI generation task, you MUST first read the following background documents to understand the system architecture, business logic, and routing mapping:
+1. `docs/PROJECT_ARCHITECTURE.md`
+2. `docs/SYSTEM_MODULES_MAP.md`
+
+Always refer back to these documents and update them if you introduce new architectural changes or add new routes/menus.
+
 # Vue CRUD Layout Generation Rule
 
 When generating a standard List/CRUD interface, you MUST follow the reference implementation located at `src/views/demo/crud`.

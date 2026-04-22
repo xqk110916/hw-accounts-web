@@ -18,6 +18,7 @@ selenium-debug.log
 *.njsproj
 *.sln
 *.local
+.playwright-mcp
 .history
 
 package-lock.json

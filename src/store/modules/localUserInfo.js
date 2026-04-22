@@ -687,7 +687,7 @@ export const localUserInfo = {
                 "linkUrl": ""
             },
             {
-                "id": "3000000000000000000",
+                "id": "2044962403135619073",
                 "pid": "0",
                 "sortNum": 100,
                 "label": "数据管理",
@@ -706,12 +706,12 @@ export const localUserInfo = {
                 "hasChildren": false,
                 "children": [
                     {
-                        "id": "3000000000000000001",
-                        "pid": "3000000000000000000",
+                        "id": "2046043043167830017",
+                        "pid": "2044962403135619073",
                         "sortNum": 1,
                         "label": "初始录入",
                         "fullName": "初始录入",
-                        "parentId": "3000000000000000000",
+                        "parentId": "2044962403135619073",
                         "enCode": "initialEntry",
                         "path": "initialEntry",
                         "frameFlag": null,
@@ -728,12 +728,12 @@ export const localUserInfo = {
                         "linkUrl": ""
                     },
                     {
-                        "id": "3000000000000000002",
-                        "pid": "3000000000000000000",
+                        "id": "2046788450588098562",
+                        "pid": "2044962403135619073",
                         "sortNum": 2,
                         "label": "变化量报表",
                         "fullName": "变化量报表",
-                        "parentId": "3000000000000000000",
+                        "parentId": "2044962403135619073",
                         "enCode": "changeReport",
                         "path": "changeReport",
                         "frameFlag": null,
@@ -750,12 +750,12 @@ export const localUserInfo = {
                         "linkUrl": ""
                     },
                     {
-                        "id": "3000000000000000003",
-                        "pid": "3000000000000000000",
+                        "id": "2046789052806266882",
+                        "pid": "2044962403135619073",
                         "sortNum": 3,
                         "label": "存量报表",
                         "fullName": "存量报表",
-                        "parentId": "3000000000000000000",
+                        "parentId": "2044962403135619073",
                         "enCode": "inventoryReport",
                         "path": "inventoryReport",
                         "frameFlag": null,
@@ -772,12 +772,12 @@ export const localUserInfo = {
                         "linkUrl": ""
                     },
                     {
-                        "id": "3000000000000000004",
-                        "pid": "3000000000000000000",
+                        "id": "2046789065783443457",
+                        "pid": "2044962403135619073",
                         "sortNum": 4,
                         "label": "封记台账",
                         "fullName": "封记台账",
-                        "parentId": "3000000000000000000",
+                        "parentId": "2044962403135619073",
                         "enCode": "sealLedger",
                         "path": "sealLedger",
                         "frameFlag": null,
@@ -794,12 +794,12 @@ export const localUserInfo = {
                         "linkUrl": ""
                     },
                     {
-                        "id": "3000000000000000005",
-                        "pid": "3000000000000000000",
+                        "id": "2046789078676733954",
+                        "pid": "2044962403135619073",
                         "sortNum": 5,
                         "label": "材料管理",
                         "fullName": "材料管理",
-                        "parentId": "3000000000000000000",
+                        "parentId": "2044962403135619073",
                         "enCode": "materialManagement",
                         "path": "materialManagement",
                         "frameFlag": null,
@@ -816,12 +816,12 @@ export const localUserInfo = {
                         "linkUrl": ""
                     },
                     {
-                        "id": "3000000000000000006",
-                        "pid": "3000000000000000000",
+                        "id": "2046789091440001026",
+                        "pid": "2044962403135619073",
                         "sortNum": 6,
                         "label": "标签模板管理",
                         "fullName": "标签模板管理",
-                        "parentId": "3000000000000000000",
+                        "parentId": "2044962403135619073",
                         "enCode": "labelTemplate",
                         "path": "labelTemplate",
                         "frameFlag": null,
@@ -838,12 +838,12 @@ export const localUserInfo = {
                         "linkUrl": ""
                     },
                     {
-                        "id": "3000000000000000007",
-                        "pid": "3000000000000000000",
+                        "id": "2046789104329097217",
+                        "pid": "2044962403135619073",
                         "sortNum": 7,
                         "label": "综合查询",
                         "fullName": "综合查询",
-                        "parentId": "3000000000000000000",
+                        "parentId": "2044962403135619073",
                         "enCode": "comprehensiveQuery",
                         "path": "comprehensiveQuery",
                         "frameFlag": null,
@@ -860,12 +860,12 @@ export const localUserInfo = {
                         "linkUrl": ""
                     },
                     {
-                        "id": "3000000000000000008",
-                        "pid": "3000000000000000000",
+                        "id": "2046789117251747842",
+                        "pid": "2044962403135619073",
                         "sortNum": 8,
                         "label": "账目管理",
                         "fullName": "账目管理",
-                        "parentId": "3000000000000000000",
+                        "parentId": "2044962403135619073",
                         "enCode": "accountManagement",
                         "path": "accountManagement",
                         "frameFlag": null,
