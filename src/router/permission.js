@@ -19,8 +19,7 @@ router.beforeEach((to, from, next) => {
   NProgress.start();
 
   const hasToken = getTokenValue();
-  console.log("hasToken", hasToken)
-  if (!hasToken) {
+  if (hasToken) {
     // 设置网页title
     if (to.meta.title) {
       store.dispatch('settings/setTitle', to.meta.title);
