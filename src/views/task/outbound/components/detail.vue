@@ -135,7 +135,7 @@
   </theme-edit>
 
   <!-- 明细编辑弹窗 -->
-  <el-dialog title="明细编辑" :visible.sync="detailEditVisible" width="600px" append-to-body>
+  <el-dialog title="明细编辑" custom-class="show-footer-dialog" :visible.sync="detailEditVisible" width="600px" append-to-body>
     <el-form ref="detailForm" :model="detailEditForm" label-width="120px" :rules="detailRules">
       <el-form-item label="材料编码" prop="materialCode">
         <el-input v-model="detailEditForm.materialCode" size="small" placeholder="请输入材料编码" />
@@ -505,11 +505,11 @@ export default {
   }
 }
 
-::v-deep .el-dialog__body {
+::v-deep .el-dialog:not(.show-footer-dialog) .el-dialog__body {
   padding: 0 !important;
 }
 
-::v-deep .el-dialog__footer {
+::v-deep .el-dialog:not(.show-footer-dialog) .el-dialog__footer {
   display: none;
 }
 </style>

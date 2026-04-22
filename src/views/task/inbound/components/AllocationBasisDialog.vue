@@ -3,10 +3,11 @@
     :title="form.id ? '编辑调拨依据' : '新增调拨依据'"
     :visible.sync="visible"
     width="600px"
+    custom-class="show-footer-dialog"
     append-to-body
     @close="handleClose"
   >
-    <el-form ref="form" :model="form" :rules="rules" label-width="100px" size="small">
+    <el-form ref="form" :model="form" :rules="rules" label-width="60px" size="small">
       <el-form-item label="文号" prop="name">
         <div class="flex-row">
           <el-select
