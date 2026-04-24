@@ -55,11 +55,11 @@ export const downloadTemplate = params => {
 }
 
 // 7. 审核通过执行更新
-export const executeAuditedUpdate = data => {
+export const executeAuditedUpdate = params => {
   return request({
     url: '/busin/inbound/executeAuditedUpdate',
     method: 'post',
-    data,
+    params,
   })
 }
 

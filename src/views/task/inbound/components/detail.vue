@@ -11,104 +11,123 @@
           >
             <el-form-item :label="item.label" :prop="item.prop" :class="{'modified-field': type === 'audit' && isFieldModified(item.prop)}">
               <div class="form-item-content">
-                <el-input
-                  v-if="judgeInput(item) && item.type !== 'textarea'"
-                  v-model="form[item.prop]"
-                  :type="item.type || 'text'"
-                  size="small"
-                  :placeholder="`请输入${item.label}`"
-                  @blur="value => changeFormValue(value, item)"
-                  clearable
-                  :disabled="type === 'view' || type === 'audit' || item.disabled"
-                ></el-input>
-                <el-input
-                  v-if="item.type === 'textarea'"
-                  v-model="form[item.prop]"
-                  type="textarea"
-                  :rows="3"
-                  size="small"
-                  :placeholder="`请输入${item.label}`"
-                  @blur="value => changeFormValue(value, item)"
-                  clearable
-                  :disabled="type === 'view' || type === 'audit'"
-                ></el-input>
-                <el-select
-                  v-if="item.type === 'select'"
-                  v-model="form[item.prop]"
-                  size="small"
-                  :placeholder="`请选择${item.label}`"
-                  @change="value => changeFormValue(value, item)"
-                  clearable
-                  :disabled="type === 'view' || type === 'audit' || item.disabled"
-                >
-                  <el-option
-                    v-for="opt in options[item.prop]"
-                    :key="opt.value"
-                    :label="opt.label"
-                    :value="opt.value"
+                <template v-if="type !== 'audit' || item.type === 'cascader'">
+                  <el-input
+                    v-if="judgeInput(item) && item.type !== 'textarea'"
+                    v-model="form[item.prop]"
+                    :type="item.type || 'text'"
+                    size="small"
+                    :placeholder="`请输入${item.label}`"
+                    @blur="value => changeFormValue(value, item)"
+                    clearable
+                    :disabled="type === 'view' || item.disabled"
+                  ></el-input>
+                  <el-input
+                    v-if="item.type === 'textarea'"
+                    v-model="form[item.prop]"
+                    type="textarea"
+                    :rows="3"
+                    size="small"
+                    :placeholder="`请输入${item.label}`"
+                    @blur="value => changeFormValue(value, item)"
+                    clearable
+                    :disabled="type === 'view'"
+                  ></el-input>
+                  <el-select
+                    v-if="item.type === 'select'"
+                    v-model="form[item.prop]"
+                    size="small"
+                    :placeholder="`请选择${item.label}`"
+                    @change="value => changeFormValue(value, item)"
+                    clearable
+                    :disabled="type === 'view' || item.disabled"
                   >
-                  </el-option>
-                </el-select>
-                <el-cascader
-                  v-if="item.type === 'cascader'"
-                  v-model="form[item.prop]"
-                  :options="options[item.prop]"
-                  size="small"
-                  :placeholder="`请选择${item.label}`"
-                  :props="item.props || { emitPath: false }"
-                  @change="value => changeFormValue(value, item)"
-                  clearable
-                  filterable
-                  :disabled="type === 'view' || type === 'audit' || item.disabled"
-                ></el-cascader>
-                <el-date-picker
-                  v-if="item.type === 'date'"
-                  v-model="form[item.prop]"
-                  type="date"
-                  size="small"
-                  value-format="yyyy-MM-dd HH:mm:ss"
-                  :placeholder="`请选择${item.label}`"
-                  @change="value => changeFormValue(value, item)"
-                  clearable
-                  :disabled="type === 'view' || type === 'audit'"
-                >
-                </el-date-picker>
-                <el-date-picker
-                  v-if="item.type === 'datetime'"
-                  v-model="form[item.prop]"
-                  type="datetime"
-                  size="small"
-                  value-format="yyyy-MM-dd HH:mm:ss"
-                  :placeholder="`请选择${item.label}`"
-                  @change="value => changeFormValue(value, item)"
-                  clearable
-                  :disabled="type === 'view' || type === 'audit'"
-                >
-                </el-date-picker>
+                    <el-option
+                      v-for="opt in options[item.prop]"
+                      :key="opt.value"
+                      :label="opt.label"
+                      :value="opt.value"
+                    >
+                    </el-option>
+                  </el-select>
+                  <el-cascader
+                    v-if="item.type === 'cascader'"
+                    v-model="form[item.prop]"
+                    :options="options[item.prop]"
+                    size="small"
+                    :placeholder="`请选择${item.label}`"
+                    :props="item.props || { emitPath: false }"
+                    @change="value => changeFormValue(value, item)"
+                    clearable
+                    filterable
+                    :disabled="type === 'view' || type === 'audit' || item.disabled"
+                  ></el-cascader>
+                  <el-date-picker
+                    v-if="item.type === 'date'"
+                    v-model="form[item.prop]"
+                    type="date"
+                    size="small"
+                    value-format="yyyy-MM-dd HH:mm:ss"
+                    :placeholder="`请选择${item.label}`"
+                    @change="value => changeFormValue(value, item)"
+                    clearable
+                    :disabled="type === 'view'"
+                  >
+                  </el-date-picker>
+                  <el-date-picker
+                    v-if="item.type === 'datetime'"
+                    v-model="form[item.prop]"
+                    type="datetime"
+                    size="small"
+                    value-format="yyyy-MM-dd HH:mm:ss"
+                    :placeholder="`请选择${item.label}`"
+                    @change="value => changeFormValue(value, item)"
+                    clearable
+                    :disabled="type === 'view'"
+                  >
+                  </el-date-picker>
 
-                <el-button
-                  v-if="item.showMaintenance && type !== 'view' && type !== 'audit'"
-                  type="primary"
-                  icon="el-icon-setting"
-                  size="mini"
-                  circle
-                  class="maintenance-btn"
-                  title="维护"
-                  @click="openMaintenance(item)"
-                ></el-button>
-                <el-tooltip
-                  v-if="type === 'audit' && isFieldModified(item.prop)"
-                  :content="`修改前：${getModifiedBeforeValue(item.prop)}`"
-                  placement="top"
-                  effect="light"
-                >
-                  <span class="modify-badge"><i class="el-icon-edit"></i> 改：{{ getModifiedDisplayValue(item.prop) }}</span>
-                </el-tooltip>
+                  <el-button
+                    v-if="item.showMaintenance && type !== 'view'"
+                    type="primary"
+                    icon="el-icon-setting"
+                    size="mini"
+                    circle
+                    class="maintenance-btn"
+                    title="维护"
+                    @click="openMaintenance(item)"
+                  ></el-button>
+                </template>
+                
+                <template v-else-if="item.type !== 'cascader'">
+                  <div class="audit-text-display" :class="{'is-textarea': item.type === 'textarea'}">
+                    <span class="original-text" :class="{'is-deleted': isFieldModified(item.prop)}">{{ getDisplayValue(item) }}</span>
+                    
+                    <template v-if="isFieldModified(item.prop)">
+                      <div v-if="item.type === 'textarea'" class="modify-text-block">
+                        <span class="modify-badge"><i class="el-icon-edit"></i> 修改为：{{ getModifiedDisplayValue(item.prop) }}</span>
+                      </div>
+                      <span v-else class="modify-badge"><i class="el-icon-edit"></i> 改：{{ getModifiedDisplayValue(item.prop) }}</span>
+                    </template>
+                  </div>
+                </template>
               </div>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
+
+      <!-- 修改记录说明 -->
+      <div class="detail-section" v-if="type === 'audit' && modifyRecords && modifyRecords.length > 0 && modifyRecords[0].modifyDescList && modifyRecords[0].modifyDescList.filter(d => d).length > 0">
+        <div class="detail-header">
+          <span class="detail-title">修改内容</span>
+        </div>
+        <div class="modify-desc-list">
+          <div v-for="(desc, index) in modifyRecords[0].modifyDescList.filter(d => d)" :key="index" class="modify-desc-item">
+            {{ index + 1 }}. {{ desc }}
+          </div>
+        </div>
+      </div>
 
       <!-- 明细表格 -->
       <div class="detail-section">
@@ -414,7 +433,13 @@ export default {
         let data = res.data?.operation || res.data || {}
         config.detail.forEach(item => {
           if (data[item.prop] !== undefined && data[item.prop] !== null) {
-            this.$set(this.form, item.prop, data[item.prop])
+            let val = data[item.prop]
+            // 若为日期/时间类型且为字符串，需补齐格式以防 date-picker 报错
+            if ((item.type === 'datetime' || item.type === 'date') && typeof val === 'string') {
+              if (val.length === 16) val += ':00'
+              else if (val.length === 10) val += ' 00:00:00'
+            }
+            this.$set(this.form, item.prop, val)
           }
         })
         // 手动映射接口字段名与配置 prop 不一致的字段
@@ -525,7 +550,14 @@ export default {
             const y = defaultValue.getFullYear()
             const m = String(defaultValue.getMonth() + 1).padStart(2, '0')
             const d = String(defaultValue.getDate()).padStart(2, '0')
-            defaultValue = `${y}-${m}-${d} 00:00:00`
+            if (item.type === 'datetime') {
+              const H = String(defaultValue.getHours()).padStart(2, '0')
+              const M = String(defaultValue.getMinutes()).padStart(2, '0')
+              const S = String(defaultValue.getSeconds()).padStart(2, '0')
+              defaultValue = `${y}-${m}-${d} ${H}:${M}:${S}`
+            } else {
+              defaultValue = `${y}-${m}-${d} 00:00:00`
+            }
           }
           this.$set(this.form, item.prop, defaultValue)
         } else {
@@ -748,6 +780,17 @@ export default {
         this.$message.success('已提交变更审核')
       })
     },
+    // 获取显示值(用于纯文本展示)
+    getDisplayValue(item) {
+      const val = this.form[item.prop]
+      if (val === undefined || val === null || val === '') return '-'
+      if (item.type === 'select' || item.type === 'cascader') {
+        const opts = this.options[item.prop] || []
+        const opt = opts.find(o => o.value === val)
+        return opt ? opt.label : (Array.isArray(val) ? val.join(', ') : val)
+      }
+      return val
+    },
     // 判断字段是否被修改
     isFieldModified(prop) {
       return !!this.modifiedFieldMap[prop]
@@ -786,9 +829,8 @@ export default {
       this.$confirm('确定同意该变更申请？', '审核确认', { type: 'info' }).then(() => {
         const record = this.modifyRecords[0]
         executeAuditedUpdate({
-          id: record.id,
           operationId: record.operationId,
-          status: 8,
+          approved: true,
         }).then(res => {
           if (res.code === 1) {
             this.$message.success('审核通过')
@@ -816,9 +858,8 @@ export default {
       }).then(({ value }) => {
         const record = this.modifyRecords[0]
         executeAuditedUpdate({
-          id: record.id,
           operationId: record.operationId,
-          status: 9,
+          approved: false,
           auditRemark: value,
         }).then(res => {
           if (res.code === 1) {
@@ -919,6 +960,54 @@ export default {
   .el-form-item__label {
     color: #e6a23c;
     font-weight: bold;
+  }
+}
+
+// 审核模式下的纯文本展示
+.audit-text-display {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 5px 0;
+  
+  &.is-textarea {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .original-text {
+    color: #1b2129;
+    line-height: 22px;
+    
+    &.is-deleted {
+      text-decoration: line-through;
+      color: #999;
+    }
+  }
+
+  .modify-text-block {
+    margin-top: 6px;
+    width: 100%;
+  }
+}
+
+// 修改内容说明列表
+.modify-desc-list {
+  padding: 10px 16px;
+  background: #fdf6ec;
+  border-radius: 4px;
+  border-left: 4px solid #e6a23c;
+  
+  .modify-desc-item {
+    font-size: 13px;
+    color: #e6a23c;
+    line-height: 1.6;
+    margin-bottom: 4px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 }
 
