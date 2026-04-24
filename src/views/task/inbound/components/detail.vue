@@ -9,7 +9,7 @@
             :span="item.full ? 24 : 12"
             v-if="judgeRowShow(item)"
           >
-            <el-form-item :label="item.label" :prop="item.prop">
+            <el-form-item :label="item.label" :prop="item.prop" :class="{'modified-field': type === 'audit' && isFieldModified(item.prop)}">
               <div class="form-item-content">
                 <el-input
                   v-if="judgeInput(item) && item.type !== 'textarea'"
@@ -19,7 +19,7 @@
                   :placeholder="`请输入${item.label}`"
                   @blur="value => changeFormValue(value, item)"
                   clearable
-                  :disabled="type === 'view' || item.disabled"
+                  :disabled="type === 'view' || type === 'audit' || item.disabled"
                 ></el-input>
                 <el-input
                   v-if="item.type === 'textarea'"
@@ -30,7 +30,7 @@
                   :placeholder="`请输入${item.label}`"
                   @blur="value => changeFormValue(value, item)"
                   clearable
-                  :disabled="type === 'view'"
+                  :disabled="type === 'view' || type === 'audit'"
                 ></el-input>
                 <el-select
                   v-if="item.type === 'select'"
@@ -39,7 +39,7 @@
                   :placeholder="`请选择${item.label}`"
                   @change="value => changeFormValue(value, item)"
                   clearable
-                  :disabled="type === 'view' || item.disabled"
+                  :disabled="type === 'view' || type === 'audit' || item.disabled"
                 >
                   <el-option
                     v-for="opt in options[item.prop]"
@@ -59,7 +59,7 @@
                   @change="value => changeFormValue(value, item)"
                   clearable
                   filterable
-                  :disabled="type === 'view' || item.disabled"
+                  :disabled="type === 'view' || type === 'audit' || item.disabled"
                 ></el-cascader>
                 <el-date-picker
                   v-if="item.type === 'date'"
@@ -70,7 +70,7 @@
                   :placeholder="`请选择${item.label}`"
                   @change="value => changeFormValue(value, item)"
                   clearable
-                  :disabled="type === 'view'"
+                  :disabled="type === 'view' || type === 'audit'"
                 >
                 </el-date-picker>
                 <el-date-picker
@@ -82,12 +82,12 @@
                   :placeholder="`请选择${item.label}`"
                   @change="value => changeFormValue(value, item)"
                   clearable
-                  :disabled="type === 'view'"
+                  :disabled="type === 'view' || type === 'audit'"
                 >
                 </el-date-picker>
 
                 <el-button
-                  v-if="item.showMaintenance && type !== 'view'"
+                  v-if="item.showMaintenance && type !== 'view' && type !== 'audit'"
                   type="primary"
                   icon="el-icon-setting"
                   size="mini"
@@ -96,6 +96,14 @@
                   title="维护"
                   @click="openMaintenance(item)"
                 ></el-button>
+                <el-tooltip
+                  v-if="type === 'audit' && isFieldModified(item.prop)"
+                  :content="`修改前：${getModifiedBeforeValue(item.prop)}`"
+                  placement="top"
+                  effect="light"
+                >
+                  <span class="modify-badge"><i class="el-icon-edit"></i> 改：{{ getModifiedDisplayValue(item.prop) }}</span>
+                </el-tooltip>
               </div>
             </el-form-item>
           </el-col>
@@ -106,7 +114,7 @@
       <div class="detail-section">
         <div class="detail-header">
           <span class="detail-title">明细信息</span>
-          <div class="detail-actions" v-if="type !== 'view'">
+          <div class="detail-actions" v-if="type !== 'view' && type !== 'audit'">
             <el-button v-if="type === 'add'" size="small" @click="openImportDialog">导入</el-button>
             <el-button size="small" type="primary" @click="addDetailRow">添加</el-button>
           </div>
@@ -132,7 +140,7 @@
               }}
             </template>
           </el-table-column>
-          <el-table-column v-if="type !== 'view'" label="操作" width="120" fixed="right">
+          <el-table-column v-if="type !== 'view' && type !== 'audit'" label="操作" width="120" fixed="right">
             <template slot-scope="scope">
               <span class="table_operation">
                 <span class="btn text" @click="editDetailRow(scope.row, scope.$index)">编辑</span>
@@ -149,7 +157,12 @@
         </div>
       </div>
 
-      <div class="footer" v-if="type !== 'view'">
+      <div class="footer" v-if="type === 'audit'">
+        <el-button size="small" @click="close">取消</el-button>
+        <el-button type="danger" size="small" @click="handleAuditReject">不同意</el-button>
+        <el-button type="primary" size="small" @click="handleAuditApprove">同意</el-button>
+      </div>
+      <div class="footer" v-else-if="type !== 'view'">
         <el-button size="small" @click="close">取消</el-button>
         <el-button type="primary" size="small" @click="submitForm">
           {{ type === 'modify' ? '提交变更审核' : '确定' }}
@@ -258,7 +271,7 @@ import AllocationBasisListDialog from './AllocationBasisListDialog.vue'
 import ImportDialog from './ImportDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
-import { getLocationHierarchy, getPositionMap } from './api.js'
+import { getLocationHierarchy, getPositionMap, executeAuditedUpdate } from './api.js'
 
 export default {
   components: { AllocationBasisListDialog, ImportDialog },
@@ -266,13 +279,14 @@ export default {
     return {
       row: {},
       show: false,
-      type: 'add', // add 添加 edit 编辑 view 查看 modify 修改
+      type: 'add', // add 添加 edit 编辑 view 查看 modify 修改 audit 审核
       updateType: 0,
       deletedGoodIds: [],
       formKeys: [],
       form: {},
       rules: {},
       options: {},
+      modifyRecords: [], // 修改记录
       defaultProps: {
         label: 'label',
         value: 'id',
@@ -298,7 +312,37 @@ export default {
   },
   computed: {
     titleMap() {
-      return { add: '添加入库任务', edit: '编辑入库任务', view: '入库任务详情', modify: '修改入库任务' }
+      return { add: '添加入库任务', edit: '编辑入库任务', view: '入库任务详情', modify: '修改入库任务', audit: '审核入库任务' }
+    },
+    // 解析修改记录，生成字段级别的修改前后对比映射
+    modifiedFieldMap() {
+      if (!this.modifyRecords || this.modifyRecords.length === 0) return {}
+      try {
+        const record = this.modifyRecords[0]
+        const before = JSON.parse(record.beforeData || '{}')
+        const after = JSON.parse(record.afterData || '{}')
+        const map = {}
+        // API字段名 → 表单prop映射
+        const apiToFormProp = {
+          'inboundMan': 'inboundMan',
+          'outUnit': 'outUnit',
+          'securityLevel': 'classify',
+          'remark': 'remark',
+          'taskNum': 'taskNum',
+          'warehouseName': 'warehouseName',
+        }
+        for (const [apiField, formProp] of Object.entries(apiToFormProp)) {
+          const beforeVal = before[apiField] !== undefined ? String(before[apiField]) : ''
+          const afterVal = after[apiField] !== undefined ? String(after[apiField]) : ''
+          if (beforeVal !== afterVal) {
+            map[formProp] = { before: before[apiField], after: after[apiField] }
+          }
+        }
+        return map
+      } catch (e) {
+        console.error('解析修改记录失败', e)
+        return {}
+      }
     },
     totalWeightGross() {
       return this.detailList
@@ -379,6 +423,8 @@ export default {
         if (data.securityLevel) this.$set(this.form, 'classify', data.securityLevel)
         // 加载明细
         this.detailList = res.data?.goodsList || data.details || []
+        // 加载修改记录（审核时用于高亮显示修改内容）
+        this.modifyRecords = res.data?.modifyRecords || []
         return data
       })
     },
@@ -424,6 +470,7 @@ export default {
       this.row = {}
       this.form = this.$options.data().form
       this.detailList = []
+      this.modifyRecords = []
       this.$refs.form && this.$refs.form.resetFields()
     },
     changeFormValue(value, item) {
@@ -701,6 +748,87 @@ export default {
         this.$message.success('已提交变更审核')
       })
     },
+    // 判断字段是否被修改
+    isFieldModified(prop) {
+      return !!this.modifiedFieldMap[prop]
+    },
+    // 获取修改后的显示值
+    getModifiedDisplayValue(prop) {
+      const info = this.modifiedFieldMap[prop]
+      if (!info) return ''
+      const value = info.after
+      // 密级字段需要显示label而非value
+      if (prop === 'classify') {
+        const opts = this.options['classify'] || []
+        const opt = opts.find(o => o.value === value)
+        return opt ? opt.label : value
+      }
+      return value !== undefined && value !== null ? String(value) : ''
+    },
+    // 获取修改前的显示值（用于 tooltip）
+    getModifiedBeforeValue(prop) {
+      const info = this.modifiedFieldMap[prop]
+      if (!info) return ''
+      const value = info.before
+      if (prop === 'classify') {
+        const opts = this.options['classify'] || []
+        const opt = opts.find(o => o.value === value)
+        return opt ? opt.label : value
+      }
+      return value !== undefined && value !== null ? String(value) : ''
+    },
+    // 审核 - 同意
+    handleAuditApprove() {
+      if (!this.modifyRecords || this.modifyRecords.length === 0) {
+        this.$message.warning('未找到修改记录')
+        return
+      }
+      this.$confirm('确定同意该变更申请？', '审核确认', { type: 'info' }).then(() => {
+        const record = this.modifyRecords[0]
+        executeAuditedUpdate({
+          id: record.id,
+          operationId: record.operationId,
+          status: 8,
+        }).then(res => {
+          if (res.code === 1) {
+            this.$message.success('审核通过')
+            this.$emit('query')
+            this.close()
+          }
+        })
+      }).catch(() => {})
+    },
+    // 审核 - 不同意
+    handleAuditReject() {
+      if (!this.modifyRecords || this.modifyRecords.length === 0) {
+        this.$message.warning('未找到修改记录')
+        return
+      }
+      this.$prompt('请输入驳回原因', '审核驳回', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputType: 'textarea',
+        inputPlaceholder: '请输入驳回原因',
+        inputValidator: val => {
+          if (!val || !val.trim()) return '请输入驳回原因'
+          return true
+        },
+      }).then(({ value }) => {
+        const record = this.modifyRecords[0]
+        executeAuditedUpdate({
+          id: record.id,
+          operationId: record.operationId,
+          status: 9,
+          auditRemark: value,
+        }).then(res => {
+          if (res.code === 1) {
+            this.$message.success('已驳回')
+            this.$emit('query')
+            this.close()
+          }
+        })
+      }).catch(() => {})
+    },
   },
 }
 </script>
@@ -779,5 +907,41 @@ export default {
 
 ::v-deep .el-dialog:not(.show-footer-dialog) .el-dialog__footer {
   display: none;
+}
+
+// 审核模式 - 修改字段高亮
+::v-deep .modified-field {
+  background: #fffbe6;
+  border-left: 3px solid #e6a23c;
+  border-radius: 4px;
+  padding-left: 8px;
+
+  .el-form-item__label {
+    color: #e6a23c;
+    font-weight: bold;
+  }
+}
+
+// 修改标记 badge（内联显示，不撑高行）
+.modify-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 0 6px;
+  height: 22px;
+  line-height: 22px;
+  background: #fdf6ec;
+  border: 1px solid #f5dab1;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #e6a23c;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: help;
+  flex-shrink: 0;
+  i {
+    margin-right: 2px;
+    font-size: 12px;
+  }
 }
 </style>

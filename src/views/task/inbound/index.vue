@@ -79,34 +79,14 @@
     <detail ref="detail" @query="resetSearchParams"></detail>
     <allocation-basis-list-dialog ref="basisDialog" />
 
-    <!-- 审核弹窗 -->
-    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
-      <el-form :model="auditForm" label-width="100px">
-        <el-form-item label="任务编号">
-          <span>{{ auditForm.taskNum }}</span>
-        </el-form-item>
-        <el-form-item label="审核结果" prop="result">
-          <el-radio-group v-model="auditForm.result">
-            <el-radio label="pass">审核通过</el-radio>
-            <el-radio label="reject">审核拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="auditForm.remark" type="textarea" :rows="3" size="small" />
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button size="small" @click="auditDialogVisible = false">取消</el-button>
-        <el-button type="primary" size="small" @click="submitAudit">确定</el-button>
-      </div>
-    </el-dialog>
+
   </div>
 </template>
 
 <script>
 import detail from './components/detail.vue'
 import { config, requestFun, btns, handleTbaleMap, getDefaultOptions, handleSearchParams } from './components/index.js'
-import { executeAuditedUpdate, confirmInbound } from './components/api.js'
+import { confirmInbound } from './components/api.js'
 import AllocationBasisListDialog from './components/AllocationBasisListDialog.vue'
 
 export default {
@@ -135,14 +115,7 @@ export default {
       searchKeys: [],
       detailKey: [],
       btns,
-      // 审核
-      auditDialogVisible: false,
-      auditForm: {
-        id: '',
-        taskNum: '',
-        result: 'pass',
-        remark: '',
-      },
+
     }
   },
   async created() {
@@ -320,29 +293,9 @@ export default {
       })
       this.getTableList()
     },
-    // 审核
+    // 审核 - 以审核模式打开详情弹窗
     openAudit(row) {
-      this.auditForm = {
-        id: row.id,
-        operationId: row.id,
-        taskNum: row.taskNum,
-        result: 'pass',
-        remark: '',
-      }
-      this.auditDialogVisible = true
-    },
-    submitAudit() {
-      const params = {
-        operationId: this.auditForm.operationId,
-        approved: this.auditForm.result === 'pass'
-      }
-      executeAuditedUpdate(params).then(res => {
-        if (res.code === 1) {
-          this.$message.success('审核成功')
-          this.auditDialogVisible = false
-          this.getTableList()
-        }
-      })
+      this.$refs.detail.open(row, 0, 'audit')
     },
     // dataStatus 显示文本
     getDataStatusText(status) {
@@ -374,8 +327,10 @@ export default {
         btns.push({ label: '确认', type: 'text', execute: 'confirm' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 1) {
-        // 已确认：显示 修改
-        btns.push({ label: '修改', type: 'text', execute: 'modify' })
+        // 已确认且非待审核：显示 修改（待审核时隐藏修改按钮）
+        if (auditStatus !== 7) {
+          btns.push({ label: '修改', type: 'text', execute: 'modify' })
+        }
       }
 
       // 待审核：显示 审核
