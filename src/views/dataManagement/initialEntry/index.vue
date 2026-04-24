@@ -34,8 +34,8 @@
             >
               <template slot-scope="scope">
                 <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'status'" :class="['status-tag', getStatusClass(scope.row.status)]">
-                    {{ getStatusText(scope.row.status) }}
+                  <span v-if="item.prop === 'dataStatus'" :class="['status-tag', getStatusClass(scope.row.dataStatus)]">
+                    {{ getStatusText(scope.row.dataStatus) }}
                   </span>
                 </div>
                 <div v-else>{{ scope.row[item.prop] }}</div>
@@ -65,7 +65,7 @@
               :page-size="search.params.pageSize"
               background
               layout="total, sizes, prev, pager, next"
-              :total="search.params.totoal"
+              :total="search.params.total"
             >
             </el-pagination>
           </div>
@@ -75,12 +75,12 @@
     <detail ref="detail" @query="getTableList"></detail>
     
     <!-- 审核弹窗 -->
-    <el-dialog title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
+    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
       <el-form :model="auditForm" label-width="100px">
-        <el-form-item label="审核结果" prop="result">
-          <el-radio-group v-model="auditForm.result">
-            <el-radio label="pass">审核通过</el-radio>
-            <el-radio label="reject">审核拒绝</el-radio>
+        <el-form-item label="审核结果" prop="approved">
+          <el-radio-group v-model="auditForm.approved">
+            <el-radio :label="true">审核通过</el-radio>
+            <el-radio :label="false">审核拒绝</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="备注">
@@ -109,8 +109,10 @@ export default {
         params: {
           currentPage: 1,
           pageSize: 20,
-          status: ['all'],
-          totoal: 0,
+          dataStatus: '',
+          total: 0,
+          startTime: '',
+          endTime: '',
         },
         options: [],
       },
@@ -152,7 +154,7 @@ export default {
       this.tableKeys = config.table
       config.search.forEach(item => {
         this.search.options.push(item)
-        if (item.prop !== 'status') {
+        if (item.prop !== 'dataStatus') {
           this.$set(this.search.params, item.prop, '')
         }
         if (item.option && Object.prototype.toString.call(item.option) !== '[object Array]') {
@@ -186,6 +188,9 @@ export default {
           case 'submit':
             this.submitAction(payload)
             break
+          case 're-import':
+            this.reImport(payload)
+            break
         }
       }
     },
@@ -193,11 +198,10 @@ export default {
       this.tableData = []
       return requestFun.list(this.search.params).then(res => {
         if (res.code === 1) {
-          let data = res.data.list || []
-          let page = res.data.pagination || {}
+          let data = res.data.records || []
           if (handleTbaleMap) data = handleTbaleMap(data)
           this.tableData = data
-          this.search.params.totoal = page.total
+          this.search.params.total = Number(res.data.total) || 0
           return data
         }
       })
@@ -245,8 +249,10 @@ export default {
     },
     resetSearchParams() {
       this.search.params = this.$options.data().search.params
-      this.search.params.status = ['all']
       this.getTableList()
+    },
+    reImport(row) {
+      this.$refs.detail.open(row, 're-import')
     },
     // 审核
     openAudit(row) {
@@ -258,7 +264,11 @@ export default {
       this.auditDialogVisible = true
     },
     submitAudit() {
-      auditInitialEntry(this.auditForm).then(res => {
+      const payload = {
+        id: this.auditForm.id,
+        approved: this.auditForm.approved
+      }
+      auditInitialEntry(payload).then(res => {
         if (res.code === 1) {
           this.$message.success('审核成功')
           this.auditDialogVisible = false
@@ -269,37 +279,41 @@ export default {
     // 状态显示
     getStatusText(status) {
       const map = {
-        unsubmitted: '待提交',
-        pending: '待审核',
-        approved: '审核通过',
-        rejected: '审核拒绝',
+        0: '待确认',
+        1: '已确认',
+        2: '待提交',
+        3: '审核中',
+        4: '审核通过',
+        5: '审核驳回',
       }
       return map[status] || status
     },
     getStatusClass(status) {
       const map = {
-        unsubmitted: 'status-default',
-        pending: 'status-pending',
-        approved: 'status-approved',
-        rejected: 'status-rejected',
+        0: 'status-pending',
+        1: 'status-approved',
+        2: 'status-default',
+        3: 'status-pending',
+        4: 'status-approved',
+        5: 'status-rejected',
       }
       return map[status] || ''
     },
     // 根据状态显示不同按钮
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
-      if (row.status === 'unsubmitted') {
+      if (row.dataStatus === 0) { // 待确认
+        btns.push({ label: '确认', type: 'text', execute: 'confirm' }) // 文档没写确认接口，先保留或映射为编辑
+        btns.push({ label: '编辑', type: 'text', execute: 'update' })
+        btns.push({ label: '删除', type: 'text', execute: 'delete' })
+      } else if (row.dataStatus === 2 || row.dataStatus === 5) { // 待提交 或 审核驳回
+        btns.push({ label: '重新导入', type: 'text', execute: 're-import' })
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '提交', type: 'text', execute: 'submit' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
-      } else if (row.status === 'pending') {
+      } else if (row.dataStatus === 3) { // 审核中
         btns.push({ label: '审核', type: 'text', execute: 'audit' })
-      } else if (row.status === 'approved') {
-        btns.push({ label: '编辑', type: 'text', execute: 'update' })
-        btns.push({ label: '删除', type: 'text', execute: 'delete' })
-      } else if (row.status === 'rejected') {
-        btns.push({ label: '编辑', type: 'text', execute: 'update' })
-        btns.push({ label: '提交', type: 'text', execute: 'submit' })
+      } else if (row.dataStatus === 4) { // 审核通过
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       }
       return btns

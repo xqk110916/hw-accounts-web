@@ -33,8 +33,7 @@ export const config = {
       label: '任务编号',
       prop: 'taskNo',
       type: 'text',
-      isAdd: false,
-      isUpdate: false,
+      disabled: true,
       required: true,
     },
     {

@@ -40,6 +40,24 @@ export const auditOutbound = data => {
   })
 }
 
+// 确认出库数据
+export const confirmOutbound = data => {
+  return request({
+    url: '/busin/outbound/confirm',
+    method: 'post',
+    data,
+  })
+}
+
+// 审核通过执行更新
+export const executeAuditedOutboundUpdate = data => {
+  return request({
+    url: '/busin/outbound/executeAuditedUpdate',
+    method: 'post',
+    data,
+  })
+}
+
 export const outbound = {
   list: getOutboundList,
   detail: getOutboundDetail,

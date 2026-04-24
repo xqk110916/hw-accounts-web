@@ -2,28 +2,28 @@ import { listInitialEntry, deleteInitialEntry } from './api.js'
 
 export const config = {
   table: [
-    { label: '数据类型', prop: 'dataType' },
-    { label: '导入时间', prop: 'importTime' },
-    { label: '导入人', prop: 'importUser' },
+    { label: '操作类型', prop: 'operationType' },
+    { label: '状态', prop: 'dataStatus', type: 'slot' },
+    { label: '录入时间', prop: 'createTime' },
+    { label: '录入人', prop: 'createUname' },
     { label: '审批时间', prop: 'auditTime' },
-    { label: '审批人', prop: 'auditUser' },
-    { label: '据条数', prop: 'count' },
-    { label: '状态', prop: 'status', type: 'slot' },
+    { label: '审批人', prop: 'auditUserName' },
   ],
   search: [
-    { label: '添加时间', prop: 'addTime', type: 'daterange', col: 5 },
+    { label: '开始时间', prop: 'startTime', type: 'date', col: 5 },
+    { label: '结束时间', prop: 'endTime', type: 'date', col: 5 },
     { 
       label: '状态', 
-      prop: 'status', 
+      prop: 'dataStatus', 
       type: 'select', 
-      multiple: true,
       col: 6,
       option: [
-        { label: '全部', value: 'all' },
-        { label: '待提交', value: 'unsubmitted' },
-        { label: '待审核', value: 'pending' },
-        { label: '审核通过', value: 'approved' },
-        { label: '审核拒绝', value: 'rejected' },
+        { label: '待确认', value: 0 },
+        { label: '已确认', value: 1 },
+        { label: '待提交', value: 2 },
+        { label: '审核中', value: 3 },
+        { label: '审核通过', value: 4 },
+        { label: '审核驳回', value: 5 },
       ]
     },
   ],
@@ -32,7 +32,7 @@ export const config = {
 
 export const btns = {
   operation: [
-    { label: '添加', type: 'primary', execute: 'add' },
+    { label: '导入', type: 'primary', execute: 'add' },
   ],
   table: []
 }
@@ -45,4 +45,11 @@ export const requestFun = {
 export const getDefaultOptions = async () => {}
 export const beforeSubmit = async (data) => { return data }
 export const beforeRecurrence = (data) => { return data }
-export const handleTbaleMap = (data) => { return data }
+export const handleTbaleMap = (data) => {
+  return (data || []).map(item => {
+    return {
+      ...item,
+      operationType: item.operationType === 'INITIAL_ENTRY' ? '初始录入' : item.operationType
+    }
+  })
+}

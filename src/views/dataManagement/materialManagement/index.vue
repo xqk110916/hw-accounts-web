@@ -107,7 +107,7 @@ export default {
       if (item.execute === 'update') this.$refs.detail.open(payload)
       if (item.execute === 'delete') {
         this.$confirm('确定要删除吗?', '提示').then(() => {
-          requestFun.delete().then(() => { this.$message.success('删除成功'); this.getTableList() })
+          requestFun.delete(payload.id).then(() => { this.$message.success('删除成功'); this.getTableList() })
         })
       }
     },

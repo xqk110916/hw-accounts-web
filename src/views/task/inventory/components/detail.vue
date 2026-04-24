@@ -15,6 +15,7 @@
           :placeholder="`请输入${item.label}`"
           @blur="value => changeFormValue(value, item)"
           clearable
+          :disabled="item.disabled"
         />
         <el-input
           v-if="item.type === 'textarea'"
@@ -91,7 +92,7 @@
   </theme-edit>
 
   <!-- 明细编辑弹窗 -->
-  <el-dialog title="明细编辑" :visible.sync="detailEditVisible" width="600px" append-to-body>
+  <el-dialog :close-on-click-modal="false" title="明细编辑" :visible.sync="detailEditVisible" width="600px" append-to-body>
     <el-form ref="detailForm" :model="detailEditForm" label-width="120px" :rules="detailRules">
       <el-form-item label="材料编码" prop="materialCode">
         <el-input v-model="detailEditForm.materialCode" size="small" placeholder="请输入材料编码" />
@@ -152,6 +153,7 @@
 <script>
 import { deepClone } from '@/utils'
 import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
+import { generateBatchNo } from '@/api/common/batchNo.js'
 
 export default {
   data() {
@@ -197,6 +199,11 @@ export default {
         this.type = 'add'
         this.detailList = []
         this.show = true
+        generateBatchNo({ batchType: 3 }).then(res => {
+          if (res.code === 1) {
+            this.$set(this.form, 'taskNo', res.data)
+          }
+        })
       }
     },
     close() {

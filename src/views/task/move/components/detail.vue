@@ -15,6 +15,7 @@
           :placeholder="`请输入${item.label}`"
           @blur="value => changeFormValue(value, item)"
           clearable
+          :disabled="item.disabled"
         ></el-input>
         <el-input
           v-if="item.type === 'textarea'"
@@ -75,7 +76,7 @@
   </theme-edit>
 
   <!-- 位置选择弹窗 -->
-  <el-dialog title="选择目标位置" :visible.sync="positionDialogVisible" width="500px" append-to-body>
+  <el-dialog :close-on-click-modal="false" title="选择目标位置" :visible.sync="positionDialogVisible" width="500px" append-to-body>
     <el-form :model="positionForm" label-width="100px">
       <el-form-item label="目标库房">
         <el-input v-model="positionForm.targetWarehouse" size="small" placeholder="请选择目标库房" />
@@ -95,6 +96,7 @@
 <script>
 import { deepClone } from '@/utils'
 import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
+import { generateBatchNo } from '@/api/common/batchNo.js'
 
 export default {
   data() {
@@ -134,6 +136,11 @@ export default {
         this.type = 'add'
         this.detailList = []
         this.show = true
+        generateBatchNo({ batchType: 2 }).then(res => {
+          if (res.code === 1) {
+            this.$set(this.form, 'taskNo', res.data)
+          }
+        })
       }
     },
     close() {

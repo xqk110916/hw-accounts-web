@@ -1,17 +1,53 @@
-export const listMaterial = params => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        code: 1,
-        data: {
-          list: [
-            { id: 1, materialCode: 'M1001', materialName: '材料A', unit: '本', specification: 'A4', price: '10.5', status: 'enable' },
-            { id: 2, materialCode: 'M1002', materialName: '材料B', unit: '个', specification: 'X1', price: '2.5', status: 'disable' },
-          ],
-          pagination: { total: 20 }
-        }
-      })
-    }, 500)
+import request from '@/utils/request'
+
+// 1. 新增材料代码
+export const addMaterialCode = data => {
+  return request({
+    url: '/busin/material-code/add',
+    method: 'post',
+    data,
   })
 }
-export const deleteMaterial = data => { return new Promise(resolve => setTimeout(() => resolve({code:1}), 300)) }
+
+// 2. 删除材料代码
+export const deleteMaterialCode = id => {
+  return request({
+    url: `/busin/material-code/delete/${id}`,
+    method: 'delete',
+  })
+}
+
+// 3. 获取材料代码详情
+export const getMaterialCodeDetail = id => {
+  return request({
+    url: `/busin/material-code/detail/${id}`,
+    method: 'get',
+  })
+}
+
+// 4. 分页查询材料代码
+export const listMaterialCode = params => {
+  return request({
+    url: '/busin/material-code/list',
+    method: 'get',
+    params,
+  })
+}
+
+// 5. 获取所有材料代码
+export const listAllMaterialCode = () => {
+  return request({
+    url: '/busin/material-code/listAll',
+    method: 'get',
+  })
+}
+
+// 6. 更新材料代码
+export const updateMaterialCode = data => {
+  return request({
+    url: '/busin/material-code/update',
+    method: 'put',
+    data,
+  })
+}
+

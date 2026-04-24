@@ -33,8 +33,13 @@
             >
               <template slot-scope="scope">
                 <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'status'" :class="['status-tag', getStatusClass(scope.row.status)]">
-                    {{ getStatusText(scope.row.status) }}
+                  <span v-if="item.prop === 'auditStatus'">
+                    <span :class="['status-tag', getDataStatusClass(scope.row.dataStatus)]">
+                      {{ getDataStatusText(scope.row.dataStatus) }}
+                    </span>
+                    <span v-if="scope.row.auditStatus" :class="['status-tag', 'audit-tag', getAuditStatusClass(scope.row.auditStatus)]" style="margin-left: 4px;">
+                      {{ getAuditStatusText(scope.row.auditStatus) }}
+                    </span>
                   </span>
                 </div>
                 <div v-else>{{ scope.row[item.prop] }}</div>
@@ -72,13 +77,13 @@
       </div>
     </div>
     <detail ref="detail" @query="resetSearchParams"></detail>
-    <allocation-basis-dialog ref="basisDialog" />
+    <allocation-basis-list-dialog ref="basisDialog" />
 
     <!-- 审核弹窗 -->
-    <el-dialog title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
+    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
       <el-form :model="auditForm" label-width="100px">
         <el-form-item label="任务编号">
-          <span>{{ auditForm.taskNo }}</span>
+          <span>{{ auditForm.taskNum }}</span>
         </el-form-item>
         <el-form-item label="审核结果" prop="result">
           <el-radio-group v-model="auditForm.result">
@@ -100,13 +105,13 @@
 
 <script>
 import detail from './components/detail.vue'
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
-import { auditInbound, submitChangeAudit } from './components/api.js'
-import AllocationBasisDialog from './components/AllocationBasisDialog.vue'
+import { config, requestFun, btns, handleTbaleMap, getDefaultOptions, handleSearchParams } from './components/index.js'
+import { executeAuditedUpdate, confirmInbound } from './components/api.js'
+import AllocationBasisListDialog from './components/AllocationBasisListDialog.vue'
 
 export default {
   name: 'InboundManage',
-  components: { detail, AllocationBasisDialog },
+  components: { detail, AllocationBasisListDialog },
   data() {
     return {
       showLeft: false,
@@ -134,7 +139,7 @@ export default {
       auditDialogVisible: false,
       auditForm: {
         id: '',
-        taskNo: '',
+        taskNum: '',
         result: 'pass',
         remark: '',
       },
@@ -177,7 +182,7 @@ export default {
       this.tableKeys = config.table
       config.search.forEach(item => {
         this.search.options.push(item)
-        this.$set(this.search.params, item.prop, '')
+        this.$set(this.search.params, item.prop, item.defaultValue !== undefined ? item.defaultValue : '')
         if (item.option) this.getOptions(item)
       })
       this.addSearchBtn()
@@ -208,6 +213,12 @@ export default {
           case 'update':
             this.edit(payload)
             break
+          case 'modify':
+            this.modify(payload)
+            break
+          case 'confirm':
+            this.confirmRow(payload)
+            break
           case 'delete':
             this.remove(payload)
             break
@@ -221,7 +232,14 @@ export default {
       }
     },
     getOptions(item) {
-      if (!Array.isArray(item.option)) {
+      if (typeof item.option === 'function') {
+        const result = item.option()
+        if (result && typeof result.then === 'function') {
+          result.then(data => {
+            item.option = Array.isArray(data) ? data : (data.data ? (Array.isArray(data.data) ? data.data : data.data.list) : [])
+          })
+        }
+      } else if (!Array.isArray(item.option) && item.option && typeof item.option.then === 'function') {
         item.option.then(res => {
           item.option = Array.isArray(res.data) ? res.data : res.data.list
         })
@@ -229,7 +247,8 @@ export default {
     },
     getTableList() {
       this.tableData = []
-      return requestFun.list(this.search.params).then(res => {
+      const params = handleSearchParams ? handleSearchParams(this.search.params) : this.search.params
+      return requestFun.list(params).then(res => {
         if (res.code === 1) {
           let data = res.data.list || []
           let page = res.data.pagination || {}
@@ -244,39 +263,41 @@ export default {
       this.$refs.detail.open()
     },
     view(row) {
-      this.$refs.detail.open(row)
+      this.$refs.detail.open(row, 0, 'view')
     },
     edit(row) {
-      // 已确认的数据修改需要走变更审核流程
-      if (row.status === 'confirmed') {
-        this.$confirm(
-          '已确认的数据修改需要提交变更审核，审核通过后数据才更新，是否继续？',
-          '提示',
-          { type: 'warning' }
-        ).then(() => {
-          this.submitChangeAuditAction(row)
-        })
-        return
-      }
-      this.$refs.detail.open(row)
+      // 未确认状态可编辑
+      this.$refs.detail.open(row, 0, 'edit')
     },
-    submitChangeAuditAction(row) {
-      submitChangeAudit({ id: row.id }).then(res => {
-        if (res.code === 1) {
-          this.$message.success('变更审核已提交')
-          this.getTableList()
-        }
-      })
+    modify(row) {
+      // 已确认状态 -> 修改 -> 提交变更审核
+      this.$refs.detail.open(row, 1, 'modify')
+    },
+    confirmRow(row) {
+      this.$confirm('确定要确认该入库任务?', '提示', { type: 'warning' })
+        .then(() => {
+          confirmInbound({ taskNum: row.taskNum }).then(res => {
+            if (res.code === 1) {
+              this.$message.success('确认成功')
+              this.getTableList()
+            }
+          })
+        })
+        .catch(() => {})
     },
     remove(row) {
       this.$confirm('确定要删除该任务?', '提示', { type: 'warning' })
         .then(() => {
-          requestFun.delete({ ids: row.id }).then(res => {
-            if (res.code === 1) {
-              this.$message({ message: '删除成功', type: 'success' })
-              this.getTableList()
-            }
-          })
+          if (requestFun.delete) {
+            requestFun.delete({ id: row.id }).then(res => {
+              if (res.code === 1) {
+                this.$message({ message: '删除成功', type: 'success' })
+                this.getTableList()
+              }
+            })
+          } else {
+            this.$message.warning('当前接口文档未提供删除接口')
+          }
         })
         .catch(() => {})
     },
@@ -294,20 +315,28 @@ export default {
     },
     resetSearchParams() {
       this.search.params = this.$options.data().search.params
+      config.search.forEach(item => {
+        this.$set(this.search.params, item.prop, item.defaultValue !== undefined ? item.defaultValue : '')
+      })
       this.getTableList()
     },
     // 审核
     openAudit(row) {
       this.auditForm = {
         id: row.id,
-        taskNo: row.taskNo,
+        operationId: row.id,
+        taskNum: row.taskNum,
         result: 'pass',
         remark: '',
       }
       this.auditDialogVisible = true
     },
     submitAudit() {
-      auditInbound(this.auditForm).then(res => {
+      const params = {
+        operationId: this.auditForm.operationId,
+        approved: this.auditForm.result === 'pass'
+      }
+      executeAuditedUpdate(params).then(res => {
         if (res.code === 1) {
           this.$message.success('审核成功')
           this.auditDialogVisible = false
@@ -315,38 +344,45 @@ export default {
         }
       })
     },
-    // 状态显示
-    getStatusText(status) {
-      const map = {
-        pending: '待确认',
-        confirmed: '已确认',
-        auditing: '变更审核中',
-        approved: '变更审核通过',
-        rejected: '变更审核拒绝',
-      }
-      return map[status] || status
+    // dataStatus 显示文本
+    getDataStatusText(status) {
+      const map = { 0: '待确认', 1: '已确认' }
+      return map[status] !== undefined ? map[status] : ('-')
     },
-    getStatusClass(status) {
-      const map = {
-        pending: 'status-pending',
-        confirmed: 'status-confirmed',
-        auditing: 'status-auditing',
-        approved: 'status-approved',
-        rejected: 'status-rejected',
-      }
+    getDataStatusClass(status) {
+      const map = { 0: 'status-pending', 1: 'status-confirmed' }
+      return map[status] || ''
+    },
+    // auditStatus 显示文本
+    getAuditStatusText(status) {
+      const map = { 7: '待审核', 8: '审核通过', 9: '审核驳回' }
+      return map[status] !== undefined ? map[status] : ''
+    },
+    getAuditStatusClass(status) {
+      const map = { 7: 'status-auditing', 8: 'status-approved', 9: 'status-rejected' }
       return map[status] || ''
     },
     // 根据状态显示不同按钮
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
-      if (row.status === 'pending') {
+      const dataStatus = row.dataStatus
+      const auditStatus = row.auditStatus
+
+      if (dataStatus === 0) {
+        // 未确认：显示 编辑、确认、删除
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
+        btns.push({ label: '确认', type: 'text', execute: 'confirm' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
-      } else if (row.status === 'confirmed') {
-        btns.push({ label: '编辑', type: 'text', execute: 'update' })
-      } else if (row.status === 'auditing') {
+      } else if (dataStatus === 1) {
+        // 已确认：显示 修改
+        btns.push({ label: '修改', type: 'text', execute: 'modify' })
+      }
+
+      // 待审核：显示 审核
+      if (auditStatus === 7) {
         btns.push({ label: '审核', type: 'text', execute: 'audit' })
       }
+
       return btns
     },
   },
@@ -470,6 +506,11 @@ export default {
   &.status-rejected {
     background: #ffebee;
     color: #c62828;
+  }
+  &.audit-tag {
+    font-size: 11px;
+    padding: 1px 6px;
+    opacity: 0.9;
   }
 }
 </style>

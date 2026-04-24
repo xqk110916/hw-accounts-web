@@ -1,11 +1,11 @@
 <template>
-  <el-drawer
+  <el-dialog
     :title="title"
     :visible.sync="visible"
-    direction="rtl"
-    size="500px"
+    :close-on-click-modal="false"
+    width="500px"
     :before-close="handleClose">
-    <div class="drawer-content">
+    <div class="dialog-content">
       <el-form ref="form" :model="form" label-width="100px" size="small">
         <el-form-item label="容器号" prop="containerId">
           <el-input v-model="form.containerId" :disabled="true"></el-input>
@@ -20,11 +20,11 @@
           <el-input type="textarea" :rows="3" v-model="form.outInfo" :disabled="true"></el-input>
         </el-form-item>
       </el-form>
-      <div class="drawer-footer">
+      <div class="dialog-footer">
         <el-button size="small" @click="handleClose">关 闭</el-button>
       </div>
     </div>
-  </el-drawer>
+  </el-dialog>
 </template>
 
 <script>
@@ -58,14 +58,10 @@ export default {
 </script>
 
 <style scoped>
-.drawer-content {
+.dialog-content {
   padding: 20px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
 }
-.drawer-footer {
-  margin-top: auto;
+.dialog-footer {
   text-align: right;
   padding-top: 20px;
 }

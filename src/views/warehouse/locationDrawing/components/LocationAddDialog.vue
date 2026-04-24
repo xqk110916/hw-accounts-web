@@ -1,5 +1,5 @@
 <template>
-  <el-dialog
+  <el-dialog :close-on-click-modal="false"
     :title="isEdit ? '编辑库位图纸' : '添加库位图纸'"
     :visible.sync="visible"
     width="650px"

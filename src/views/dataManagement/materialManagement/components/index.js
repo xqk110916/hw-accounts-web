@@ -1,18 +1,16 @@
-import { listMaterial, deleteMaterial } from './api.js'
+import { listMaterialCode, deleteMaterialCode, addMaterialCode, updateMaterialCode, getMaterialCodeDetail } from './api.js'
 
 export const config = {
   table: [
-    { label: '材料代码', prop: 'materialCode' },
-    { label: '材料名称', prop: 'materialName' },
-    { label: '单位', prop: 'unit' },
-    { label: '规格', prop: 'specification' },
-    { label: '单价', prop: 'price' },
-    { label: '状态', prop: 'status', type: 'slot' },
+    { label: '材料代码', prop: 'goodCode' },
+    { label: '材料名称', prop: 'goodName' },
+    { label: '通用名称', prop: 'commonName' },
+    { label: '常用单位', prop: 'commonUnit' },
   ],
   search: [
-    { label: '材料代码', prop: 'materialCode', type: 'text', col: 6 },
-    { label: '材料名称', prop: 'materialName', type: 'text', col: 6 },
-    { label: '状态', prop: 'status', type: 'select', col: 6, option: [{label: '启用', value: 'enable'}, {label: '禁用', value: 'disable'}] },
+    { label: '材料代码', prop: 'goodCode', type: 'text', col: 6 },
+    { label: '材料名称', prop: 'goodName', type: 'text', col: 6 },
+    { label: '通用名称', prop: 'commonName', type: 'text', col: 6 },
   ],
   detail: [],
 }
@@ -27,7 +25,13 @@ export const btns = {
   ]
 }
 
-export const requestFun = { list: listMaterial, delete: deleteMaterial }
+export const requestFun = { 
+  list: listMaterialCode, 
+  delete: deleteMaterialCode,
+  add: addMaterialCode,
+  update: updateMaterialCode,
+  detail: getMaterialCodeDetail
+}
 export const getDefaultOptions = async () => {}
 export const beforeSubmit = async (data) => { return data }
 export const handleTbaleMap = (data) => { return data }

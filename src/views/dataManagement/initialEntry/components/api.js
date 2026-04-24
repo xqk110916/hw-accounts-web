@@ -1,42 +1,77 @@
-export const listInitialEntry = params => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        code: 1,
-        data: {
-          list: [
-            { id: 1, dataType: '材料信息', importTime: '2025-10-10 09:00:00', importUser: '张三', auditTime: '', auditUser: '李四', count: '100100', status: 'pending' },
-            { id: 2, dataType: '材料信息', importTime: '2025-10-10 09:00:00', importUser: '张三', auditTime: '2025-10-11 09:00:00', auditUser: '李四', count: '100100', status: 'approved' },
-            { id: 3, dataType: '材料信息', importTime: '2025-10-10 09:00:00', importUser: '张三', auditTime: '2025-10-11 09:00:00', auditUser: '李四', count: '100100', status: 'rejected' },
-            { id: 4, dataType: '材料信息', importTime: '2025-10-10 09:00:00', importUser: '张三', auditTime: '', auditUser: '', count: '', status: 'unsubmitted' }
-          ],
-          pagination: { total: 400 }
-        }
-      })
-    }, 500)
+import request from '@/utils/request'
+
+// 1. 列表查询
+export const listInitialEntry = data => {
+  return request({
+    url: '/busin/initial/list',
+    method: 'post',
+    data,
   })
 }
 
+// 2. 详情查询
+export const detailInitialEntry = id => {
+  return request({
+    url: '/busin/initial/detail',
+    method: 'get',
+    params: { id },
+  })
+}
+
+// 3. 编辑初始录入
+export const editInitialEntry = data => {
+  return request({
+    url: '/busin/initial/edit',
+    method: 'post',
+    data,
+  })
+}
+
+// 4. 删除初始录入
+export const deleteInitialEntry = id => {
+  return request({
+    url: '/busin/initial/delete',
+    method: 'post',
+    data: { id },
+  })
+}
+
+// 5. 提交审核
+export const submitInitialEntry = id => {
+  return request({
+    url: '/busin/initial/submit',
+    method: 'post',
+    data: { id },
+  })
+}
+
+// 6. 审核
 export const auditInitialEntry = data => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({ code: 1, msg: '审核成功' })
-    }, 500)
+  return request({
+    url: '/busin/initial/audit',
+    method: 'post',
+    data, // { id, approved }
   })
 }
 
-export const submitInitialEntry = data => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({ code: 1, msg: '操作成功' })
-    }, 500)
+// 7. 导入初始录入
+export const importInitialEntry = (file, dataId) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (dataId) formData.append('dataId', dataId)
+  return request({
+    url: '/busin/initial/import',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
 
-export const deleteInitialEntry = data => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({ code: 1, msg: '删除成功' })
-    }, 500)
+// 8. 获取导入详情
+export const getImportDetail = params => {
+  return request({
+    url: '/busin/initial/import-detail',
+    method: 'get',
+    params, // { currentPage, pageSize, id }
   })
 }

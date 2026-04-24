@@ -71,7 +71,7 @@
     </div>
     <detail ref="detail" @query="resetSearchParams" />
 
-    <el-dialog title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
+    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
       <el-form :model="auditForm" label-width="100px">
         <el-form-item label="任务编号">
           <span>{{ auditForm.taskNo }}</span>

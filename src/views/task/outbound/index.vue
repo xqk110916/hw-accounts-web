@@ -72,9 +72,9 @@
       </div>
     </div>
     <detail ref="detail" @query="resetSearchParams"></detail>
-    <allocation-basis-dialog ref="basisDialog" />
+    <allocation-basis-list-dialog ref="basisDialog" />
 
-    <el-dialog title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
+    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
       <el-form :model="auditForm" label-width="100px">
         <el-form-item label="任务编号">
           <span>{{ auditForm.taskNo }}</span>
@@ -100,12 +100,12 @@
 <script>
 import detail from './components/detail.vue'
 import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
-import { auditOutbound } from './components/api.js'
-import AllocationBasisDialog from '@/views/task/inbound/components/AllocationBasisDialog.vue'
+import { auditOutbound, confirmOutbound, executeAuditedOutboundUpdate } from './components/api.js'
+import AllocationBasisListDialog from '@/views/task/inbound/components/AllocationBasisListDialog.vue'
 
 export default {
   name: 'OutboundManage',
-  components: { detail, AllocationBasisDialog },
+  components: { detail, AllocationBasisListDialog },
   data() {
     return {
       search: {
@@ -153,7 +153,7 @@ export default {
       this.tableKeys = config.table
       config.search.forEach(item => {
         this.search.options.push(item)
-        this.$set(this.search.params, item.prop, '')
+        this.$set(this.search.params, item.prop, item.defaultValue !== undefined ? item.defaultValue : '')
         if (item.option) this.getOptions(item)
       })
       this.addSearchBtn()
@@ -170,10 +170,16 @@ export default {
             this.open()
             break
           case 'view':
-            this.$refs.detail.open(payload)
+            this.view(payload)
             break
           case 'update':
             this.edit(payload)
+            break
+          case 'modify':
+            this.modify(payload)
+            break
+          case 'confirm':
+            this.confirmRow(payload)
             break
           case 'delete':
             this.remove(payload)
@@ -209,17 +215,28 @@ export default {
     open() {
       this.$refs.detail.open()
     },
+    view(row) {
+      this.$refs.detail.open(row, 0, 'view')
+    },
     edit(row) {
-      if (row.status === 'confirmed') {
-        this.$confirm('已确认的数据修改需要提交变更审核，是否继续？', '提示', {
-          type: 'warning',
-        }).then(() => {
-          this.$message.success('已提交变更审核')
-          this.getTableList()
+      // 未确认状态可编辑
+      this.$refs.detail.open(row, 0, 'edit')
+    },
+    modify(row) {
+      // 已确认状态 -> 修改 -> 提交变更审核
+      this.$refs.detail.open(row, 1, 'modify')
+    },
+    confirmRow(row) {
+      this.$confirm('确定要确认该出库任务?', '提示', { type: 'warning' })
+        .then(() => {
+          confirmOutbound({ id: row.id }).then(res => {
+            if (res.code === 1) {
+              this.$message.success('确认成功')
+              this.getTableList()
+            }
+          })
         })
-        return
-      }
-      this.$refs.detail.open(row)
+        .catch(() => {})
     },
     remove(row) {
       this.$confirm('确定要删除该任务?', '提示', { type: 'warning' })
@@ -243,6 +260,9 @@ export default {
     },
     resetSearchParams() {
       this.search.params = this.$options.data().search.params
+      config.search.forEach(item => {
+        this.$set(this.search.params, item.prop, item.defaultValue !== undefined ? item.defaultValue : '')
+      })
       this.getTableList()
     },
     openAudit(row) {
@@ -255,7 +275,11 @@ export default {
       this.auditDialogVisible = true
     },
     submitAudit() {
-      auditOutbound(this.auditForm).then(res => {
+      const params = {
+        id: this.auditForm.id,
+        approved: this.auditForm.result === 'pass'
+      }
+      executeAuditedOutboundUpdate(params).then(res => {
         if (res.code === 1) {
           this.$message.success('审核成功')
           this.auditDialogVisible = false
@@ -285,14 +309,24 @@ export default {
     },
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
-      if (row.status === 'pending') {
+      const dataStatus = row.dataStatus
+      const auditStatus = row.auditStatus
+
+      if (dataStatus === 0) {
+        // 未确认：显示 编辑、确认、删除
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
+        btns.push({ label: '确认', type: 'text', execute: 'confirm' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
-      } else if (row.status === 'confirmed') {
-        btns.push({ label: '编辑', type: 'text', execute: 'update' })
-      } else if (row.status === 'auditing') {
+      } else if (dataStatus === 1) {
+        // 已确认：显示 修改
+        btns.push({ label: '修改', type: 'text', execute: 'modify' })
+      }
+
+      // 待审核：显示 审核
+      if (auditStatus === 7) {
         btns.push({ label: '审核', type: 'text', execute: 'audit' })
       }
+
       return btns
     },
   },
