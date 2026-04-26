@@ -7,7 +7,7 @@
         <span>{{ warehouseName }} - 内部视图</span>
       </div>
       <div class="toolbar-actions">
-        <el-button-group size="mini">
+        <el-button-group v-if="showModeSwitch" size="mini">
           <el-button :type="viewMode === '3d' ? 'primary' : 'default'" @click="switchMode('3d')">3D视图</el-button>
           <el-button :type="viewMode === '2d' ? 'primary' : 'default'" @click="switchMode('2d')">2D视图</el-button>
         </el-button-group>
@@ -22,7 +22,7 @@
       <div v-if="tooltip.visible" class="shelf-tooltip" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
         <div class="tooltip-title">{{ tooltip.name }}</div>
         <div class="tooltip-stats">已用 {{ tooltip.filled }} / 共 {{ tooltip.total }} 个位置</div>
-        <div class="tooltip-hint">点击进入货架视图</div>
+        <div v-if="showShelfEnterHint" class="tooltip-hint">点击进入货架视图</div>
       </div>
       <div class="control-hint">
         <span>🖱️ 左键拖拽旋转 | 滚轮缩放 | 点击货架查看详情</span>
@@ -31,27 +31,14 @@
 
     <!-- 2D模式 -->
     <div v-show="viewMode === '2d'" class="view-wrapper view-2d">
-      <div class="map-2d-area">
-        <div class="floor-plan">
-          <div class="floor-title">{{ warehouseName }}</div>
-          <div class="shelf-grid" :style="gridStyle">
-            <div
-              v-for="shelf in shelves"
-              :key="shelf.id"
-              class="shelf-cell"
-              :class="{ 'selected': selectedShelfId === shelf.id }"
-              @click="handleShelfClick(shelf)"
-            >
-              <div class="shelf-cell-name">{{ shelf.name }}</div>
-              <div class="shelf-cell-count">{{ getFilledCount(shelf) }}/{{ getTotalCount(shelf) }}</div>
-              <div class="shelf-cell-bar">
-                <div class="shelf-cell-bar-fill" :style="{ width: getUsagePercent(shelf) + '%' }"></div>
-              </div>
-            </div>
-            <div v-for="n in padCount" :key="'pad-' + n" class="shelf-cell shelf-cell-empty"></div>
-          </div>
-        </div>
-      </div>
+      <WarehouseGridMap2D
+        :warehouse-name="warehouseName"
+        :shelves="shelves"
+        :layout="layout"
+        :editable="false"
+        :selected-shelf="selectedShelf"
+        @shelf-select="handleShelfClick"
+      />
     </div>
   </div>
 </template>
@@ -60,17 +47,23 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { getColorByDate } from '../utils/colorHelper';
+import WarehouseGridMap2D from './WarehouseGridMap2D.vue';
 
 export default {
   name: 'WarehouseInterior3D',
+  components: { WarehouseGridMap2D },
   props: {
     warehouseName: { type: String, default: '库房' },
     shelfLayout: { type: Object, default: () => ({ rows: 2, cols: 3 }) },
-    shelves: { type: Array, default: () => [] }
+    shelves: { type: Array, default: () => [] },
+    layout: { type: Object, default: null },
+    initialMode: { type: String, default: '3d' },
+    showModeSwitch: { type: Boolean, default: true },
+    showShelfEnterHint: { type: Boolean, default: true }
   },
   data() {
     return {
-      viewMode: '3d',
+      viewMode: this.initialMode || '3d',
       scene: null, camera: null, renderer: null, controls: null,
       animationId: null,
       shelfClickMeshes: [],   // 可点击的货架框体
@@ -78,6 +71,7 @@ export default {
       tooltip: { visible: false, x: 0, y: 0, name: '', filled: 0, total: 0 },
       hoveredMesh: null,
       selectedShelfId: null,
+      selectedShelf: null,
       threeInited: false
     };
   },
@@ -94,6 +88,9 @@ export default {
   },
   watch: {
     shelves() {
+      if (this.threeInited) this.rebuildAll();
+    },
+    layout() {
       if (this.threeInited) this.rebuildAll();
     },
     viewMode(val) {
@@ -131,10 +128,11 @@ export default {
 
       this.scene = new THREE.Scene();
       this.scene.background = new THREE.Color(0x0d1b2a);
-      this.scene.fog = new THREE.Fog(0x0d1b2a, 22, 55);
+      this.scene.fog = new THREE.Fog(0x0d1b2a, 22, 95);
 
       this.camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 300);
-      this.camera.position.set(0, 16, 18);
+      const roomSize = this.getRoomSize();
+      this.camera.position.set(0, Math.max(16, roomSize.depth * 1.05), Math.max(18, roomSize.depth * 1.25));
 
       this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       this.renderer.setSize(width, height);
@@ -146,7 +144,7 @@ export default {
       this.controls.dampingFactor = 0.05;
       this.controls.target.set(0, 0, 0);
       this.controls.minDistance = 5;
-      this.controls.maxDistance = 40;
+      this.controls.maxDistance = Math.max(40, roomSize.depth * 2.2);
       this.controls.maxPolarAngle = Math.PI / 2.1;
 
       const ambient = new THREE.AmbientLight(0xffffff, 0.6);
@@ -165,9 +163,22 @@ export default {
       canvas.addEventListener('click', this.onMouseClick);
     },
 
+    getRoomSize() {
+      const grid = (this.layout && this.layout.grid) || { cols: 20, rows: 12 };
+      const scale = 0.7;
+      return {
+        scale,
+        width: Math.max(28, (grid.cols || 20) * scale + 4),
+        depth: Math.max(22, (grid.rows || 12) * scale + 4),
+        cols: grid.cols || 20,
+        rows: grid.rows || 12
+      };
+    },
+
     buildScene() {
       if (!this.scene) return;
       this.createInteriorRoom();
+      this.createAisles3D();
       this.createShelves3D();
     },
 
@@ -181,29 +192,32 @@ export default {
       });
       this.shelfClickMeshes = [];
       this.createInteriorRoom();
+      this.createAisles3D();
       this.createShelves3D();
     },
 
     createInteriorRoom() {
+      const roomSize = this.getRoomSize();
       // 地板
-      const floorGeo = new THREE.PlaneGeometry(28, 22);
+      const floorGeo = new THREE.PlaneGeometry(roomSize.width, roomSize.depth);
       const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a2a3a, roughness: 0.9 });
       const floor = new THREE.Mesh(floorGeo, floorMat);
       floor.rotation.x = -Math.PI / 2;
       floor.receiveShadow = true;
       this.scene.add(floor);
       // 网格
-      const grid = new THREE.GridHelper(28, 14, 0x1a3a5c, 0x1a3a5c);
+      const grid = new THREE.GridHelper(Math.max(roomSize.width, roomSize.depth), Math.max(roomSize.cols, roomSize.rows), 0x1a3a5c, 0x1a3a5c);
       grid.position.y = 0.01;
       this.scene.add(grid);
       // 墙壁（半透明）
       const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e3a5a, roughness: 0.8, transparent: true, opacity: 0.35, side: THREE.BackSide });
-      const roomGeo = new THREE.BoxGeometry(28, 12, 22);
+      const roomGeo = new THREE.BoxGeometry(roomSize.width, 12, roomSize.depth);
       const room = new THREE.Mesh(roomGeo, wallMat);
       room.position.y = 6;
       this.scene.add(room);
       // 天花板灯条
-      [-8, 0, 8].forEach(x => {
+      const lampXs = [-roomSize.width / 3, 0, roomSize.width / 3];
+      lampXs.forEach(x => {
         const lampGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.12, 12);
         const lampMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffcc, emissiveIntensity: 1 });
         const lamp = new THREE.Mesh(lampGeo, lampMat);
@@ -212,24 +226,51 @@ export default {
       });
     },
 
+    createAisles3D() {
+      const layout = this.layout || {};
+      const aisles = layout.aisles || [];
+      const grid = layout.grid || { cols: 20, rows: 12 };
+      if (!aisles.length) return;
+      const { scale } = this.getRoomSize();
+      const originX = -(grid.cols * scale) / 2;
+      const originZ = -(grid.rows * scale) / 2;
+      aisles.forEach(item => {
+        const geo = new THREE.BoxGeometry(item.w * scale, 0.04, item.h * scale);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xb9c0ca, roughness: 0.85, transparent: true, opacity: 0.9 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(originX + item.x * scale + item.w * scale / 2, 0.05, originZ + item.y * scale + item.h * scale / 2);
+        mesh.receiveShadow = true;
+        this.scene.add(mesh);
+      });
+    },
+
     createShelves3D() {
       if (!this.shelves || this.shelves.length === 0) return;
-      const rows = this.shelfLayout.rows || 2;
-      const cols = this.shelfLayout.cols || 3;
       const shelfW = 3.0, shelfD = 1.4, shelfH = 3.0;
-      const gapX = 1.4, gapZ = 2.2;
-      const totalW = cols * shelfW + (cols - 1) * gapX;
-      const totalD = rows * shelfD + (rows - 1) * gapZ;
-      const startX = -totalW / 2 + shelfW / 2;
-      const startZ = -totalD / 2 + shelfD / 2;
+      const layout = this.layout || {};
+      const grid = layout.grid || { cols: 20, rows: 12 };
+      const { scale } = this.getRoomSize();
+      const originX = -(grid.cols * scale) / 2;
+      const originZ = -(grid.rows * scale) / 2;
 
       this.shelves.forEach((shelf, idx) => {
-        const row = Math.floor(idx / cols);
-        const col = idx % cols;
-        if (row >= rows) return;
-        const x = startX + col * (shelfW + gapX);
-        const z = startZ + row * (shelfD + gapZ);
-        this.createShelf3D(shelf, x, z, shelfW, shelfD, shelfH);
+        let x;
+        let z;
+        let w = shelfW;
+        let d = shelfD;
+        if (shelf.position && layout.grid) {
+          w = Math.max((shelf.width || 2) * scale, 1.2);
+          d = Math.max((shelf.height || 1) * scale, 0.8);
+          x = originX + shelf.position.x * scale + w / 2;
+          z = originZ + shelf.position.y * scale + d / 2;
+        } else {
+          const cols = this.shelfLayout.cols || 3;
+          const row = Math.floor(idx / cols);
+          const col = idx % cols;
+          x = (col - 1) * 4;
+          z = row * 3;
+        }
+        this.createShelf3D(shelf, x, z, w, d, shelfH);
       });
     },
 
@@ -379,6 +420,7 @@ export default {
 
     handleShelfClick(shelf) {
       this.selectedShelfId = shelf.id;
+      this.selectedShelf = shelf;
       this.$emit('select-shelf', shelf);
     },
 
@@ -421,6 +463,7 @@ export default {
         const mesh = intersects[0].object;
         if (mesh.userData.shelf) {
           this.selectedShelfId = mesh.userData.shelf.id;
+          this.selectedShelf = mesh.userData.shelf;
           this.$emit('select-shelf', mesh.userData.shelf);
         }
       }

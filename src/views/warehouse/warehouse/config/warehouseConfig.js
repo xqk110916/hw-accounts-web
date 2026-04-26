@@ -5,7 +5,10 @@
 
 import { getAllBalanceAreas } from '@/api/warehouse/balanceArea';
 import { getWarehouseListByBalanceArea } from '@/api/warehouse/warehouse';
-import { getHierarchyTree } from '@/api/warehouse/locationMap';
+import { getDictionaryList } from '@/api/common/dictionary';
+import { getHierarchyDetail, getHierarchyListByNodeType, getHierarchyTree, getPositionMap } from '@/api/warehouse/locationMap';
+import { SHELF_TYPE_PARENT_ID, normalizeExtra, getLocalExtra, normalizeShelfTypeOptions } from '../utils/locationLayoutStorage';
+import { buildShelvesFromWarehouse, findNodeById, generateInitialLayout, applyLayoutToShelves } from '../utils/locationLayoutAdapter';
 
 // ==================== 默认本地布局/样式配置 ====================
 
@@ -737,14 +740,14 @@ export async function getBalanceAreaList() {
   } catch (err) {
     console.error('获取平衡区列表失败', err);
   }
-  return balanceAreaConfig;
+  return [];
 }
 
 /**
  * 获取平衡区名称
  */
 export function getBalanceAreaName() {
-  return baseConfig.balanceArea;
+  return '平衡区';
 }
 
 /**
@@ -758,10 +761,10 @@ export async function getWarehouseList(balanceAreaId) {
       const list = Array.isArray(res.data) ? res.data : (res.data.list || []);
       return list.map((w, index) => ({
         ...w,
-        id: w.id || w.warehouseCode,
-        name: w.name || w.warehouseName,
-        width: w.width || warehouseData[index % warehouseData.length]?.width || 20,
-        height: w.height || warehouseData[index % warehouseData.length]?.height || 15,
+        id: w.id || w.warehouseId || w.warehouseCode,
+        name: w.name || w.warehouseName || w.nodeName,
+        width: w.width || 20,
+        height: w.height || 15,
         description: w.remark || w.description,
         position: warehouseData[index % warehouseData.length]?.position || { x: (index - 1) * 3.5, y: 0, z: -2 },
         shelfLayout: warehouseData[index % warehouseData.length]?.shelfLayout || { rows: 2, cols: 3 }
@@ -770,68 +773,98 @@ export async function getWarehouseList(balanceAreaId) {
   } catch (err) {
     console.error('获取库房列表失败', err);
   }
-  
-  if (balanceAreaId) {
-    const area = balanceAreaConfig.find(a => a.id === balanceAreaId);
-    if (area && area.warehouseIds.length > 0) {
-      return warehouseData.filter(w => area.warehouseIds.includes(w.id));
-    }
+
+  try {
+    const res = await getHierarchyListByNodeType(2);
+    const list = Array.isArray(res.data) ? res.data : [];
+    return list
+      .filter(item => !balanceAreaId || String(item.parentId || item.balanceAreaId) === String(balanceAreaId))
+      .map((item, index) => ({
+        ...item,
+        id: item.id || item.warehouseId,
+        name: item.warehouseName || item.nodeName,
+        width: 20,
+        height: 15,
+        description: item.remark,
+        position: warehouseData[index % warehouseData.length]?.position || { x: (index - 1) * 3.5, y: 0, z: -2 },
+        shelfLayout: { rows: 2, cols: 3 }
+      }));
+  } catch (error) {
+    console.error('按节点类型获取库房失败', error);
   }
-  return warehouseData.map(w => ({
-    id: w.id,
-    name: w.name,
-    width: w.width,
-    height: w.height,
-    description: w.description,
-    position: w.position,
-    shelfLayout: w.shelfLayout
-  }));
+  return [];
+}
+
+async function getShelfTypeOptions() {
+  try {
+    const res = await getDictionaryList({ parentId: SHELF_TYPE_PARENT_ID, currentPage: 1, pageSize: 999 });
+    return normalizeShelfTypeOptions((res.data && res.data.list) || []);
+  } catch (error) {
+    console.error('获取货架类型字典失败', error);
+    return [];
+  }
+}
+
+async function getWarehouseNodeWithChildren(warehouseId, detail) {
+  try {
+    const res = await getHierarchyTree();
+    const tree = Array.isArray(res.data) ? res.data : [res.data].filter(Boolean);
+    const node = findNodeById(tree, warehouseId, 2);
+    if (node) return { ...detail, ...node, extra: detail.extra || node.extra };
+  } catch (error) {
+    console.error('获取库房层级树失败', error);
+  }
+  return detail;
+}
+
+function resolveExtra(detail) {
+  const detailExtra = normalizeExtra(detail.extra);
+  if (detailExtra.layout2d) return detailExtra;
+  const localExtra = getLocalExtra(detail.id);
+  return localExtra.layout2d ? localExtra : detailExtra;
 }
 
 /**
  * 根据ID获取库房详情(含货架数据)
  */
 export async function getWarehouseById(warehouseId) {
-  // Try remote first
-  let targetWarehouse = null;
   try {
-    const res = await getHierarchyTree();
-    if (res && res.data) {
-      // Searching tree
-      let foundWh = null;
-      const walk = (nodes) => {
-        for (let n of nodes) {
-          if ((n.id == warehouseId || n.warehouseCode == warehouseId || n.code == warehouseId) && n.nodeType == 2) {
-             foundWh = n;
-             break;
-          }
-          if (n.children) walk(n.children);
-        }
-      };
-      walk(Array.isArray(res.data) ? res.data : [res.data]);
-      if (foundWh) targetWarehouse = foundWh;
-    }
-  } catch (e) {
-    console.error(e);
+    const [detailRes, positionRes, shelfTypeOptions] = await Promise.all([
+      getHierarchyDetail(warehouseId),
+      getPositionMap({ nodeId: warehouseId, nodeType: '2' }),
+      getShelfTypeOptions()
+    ]);
+    const detail = detailRes.data || { id: warehouseId };
+    const warehouseNode = await getWarehouseNodeWithChildren(warehouseId, detail);
+    const positions = Array.isArray(positionRes.data) ? positionRes.data : [];
+    const baseShelves = buildShelvesFromWarehouse(warehouseNode, positions, shelfTypeOptions);
+    const extra = resolveExtra(warehouseNode);
+    const layout = extra.layout2d || generateInitialLayout(baseShelves);
+    const shelves = applyLayoutToShelves(baseShelves, layout);
+    const gridCols = layout.grid ? layout.grid.cols : 20;
+    const gridRows = layout.grid ? layout.grid.rows : 12;
+    return {
+      ...warehouseNode,
+      id: warehouseNode.id || warehouseId,
+      name: warehouseNode.warehouseName || warehouseNode.nodeName || '库房',
+      width: gridCols,
+      height: gridRows,
+      shelves,
+      layout2d: layout,
+      extra: { ...extra, layout2d: layout },
+      shelfLayout: { rows: Math.max(1, Math.ceil(Math.sqrt(shelves.length || 1))), cols: Math.max(1, Math.ceil(Math.sqrt(shelves.length || 1))) }
+    };
+  } catch (error) {
+    console.error('获取库房详情失败', error);
+    return null;
   }
-
-  // Fallback to local
-  const warehouse = warehouseData.find(w => w.id === warehouseId);
-  if (!warehouse && !targetWarehouse) return null;
-  
-  const shelves = shelfData[warehouseId] || [];
-  
-  return {
-    ...(targetWarehouse || warehouse),
-    shelves: (targetWarehouse && targetWarehouse.children) ? targetWarehouse.children : shelves
-  };
 }
 
 /**
  * 获取默认库房ID
  */
 export function getDefaultWarehouseId() {
-  return baseConfig.defaultWarehouseId;
+  return '';
 }
 
 export default {

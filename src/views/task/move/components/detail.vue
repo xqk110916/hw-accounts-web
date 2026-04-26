@@ -1,50 +1,6 @@
 <template>
   <div>
     <theme-edit :show="show" showFooterSlot :title="titleMap[type]" :column="1" @cancle="close">
-    <el-form ref="form" class="form" :model="form" :rules="rules" label-width="130px">
-      <el-form-item
-        v-for="item in formKeys"
-        :label="item.label"
-        :prop="item.prop"
-        v-if="judgeRowShow(item)"
-      >
-        <el-input
-          v-if="judgeInput(item) && item.type !== 'textarea'"
-          v-model="form[item.prop]"
-          size="small"
-          :placeholder="`请输入${item.label}`"
-          @blur="value => changeFormValue(value, item)"
-          clearable
-          :disabled="item.disabled"
-        ></el-input>
-        <el-input
-          v-if="item.type === 'textarea'"
-          v-model="form[item.prop]"
-          type="textarea"
-          :rows="3"
-          size="small"
-          :placeholder="`请输入${item.label}`"
-          @blur="value => changeFormValue(value, item)"
-          clearable
-        ></el-input>
-        <el-select
-          v-if="item.type === 'select'"
-          v-model="form[item.prop]"
-          size="small"
-          :placeholder="`请选择${item.label}`"
-          @change="value => changeFormValue(value, item)"
-          clearable
-        >
-          <el-option
-            v-for="opt in options[item.prop]"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          >
-          </el-option>
-        </el-select>
-      </el-form-item>
-    </el-form>
 
     <!-- 明细表格 -->
     <div class="detail-section">
@@ -94,9 +50,7 @@
 </template>
 
 <script>
-import { deepClone } from '@/utils'
-import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
-import { generateBatchNo } from '@/api/common/batchNo.js'
+import { requestFun, beforeSubmit } from './index.js'
 
 export default {
   data() {
@@ -104,10 +58,7 @@ export default {
       row: {},
       show: false,
       type: 'add',
-      formKeys: [],
       form: {},
-      rules: {},
-      options: {},
       detailList: [],
       positionDialogVisible: false,
       positionForm: {
@@ -121,9 +72,6 @@ export default {
       return { add: '添加位置移动', edit: '编辑位置移动', view: '位置移动详情' }
     },
   },
-  created() {
-    this.handleParams()
-  },
   methods: {
     open(row) {
       this.row = row || {}
@@ -136,121 +84,35 @@ export default {
         this.type = 'add'
         this.detailList = []
         this.show = true
-        generateBatchNo({ batchType: 2 }).then(res => {
-          if (res.code === 1) {
-            this.$set(this.form, 'taskNo', res.data)
-          }
-        })
       }
     },
     close() {
-      this.resetForm()
+      this.row = {}
+      this.form = this.$options.data().form
+      this.detailList = []
       this.$nextTick(() => {
         this.show = false
       })
     },
     getDetails(id) {
       return requestFun.detail({ id }).then(res => {
-        let data = res.data
-        config.detail.forEach(item => {
-          if (data[item.prop]) {
-            this.$set(this.form, item.prop, data[item.prop])
-          }
-        })
-        this.detailList = data.details || []
-        if (beforeRecurrence) beforeRecurrence(this.form, this)
-        return data
+        this.form = res.data || {}
+        this.detailList = res.data.details || []
+        return res.data
       })
     },
     async submitForm() {
-      let payload = deepClone(this.form)
+      let payload = { ...this.form }
       if (this.row.id) payload.id = this.row.id
       payload.details = this.detailList
-      this.$refs.form.validate(async valid => {
-        if (valid) {
-          if (beforeSubmit) payload = await beforeSubmit(payload)
-          requestFun.update(payload).then(res => {
-            if (res.code === 1) {
-              this.$message.success('操作成功')
-              this.$emit('query')
-              this.close()
-            }
-          })
-        } else {
-          return false
+      if (beforeSubmit) payload = await beforeSubmit(payload)
+      requestFun.update(payload).then(res => {
+        if (res.code === 1) {
+          this.$message.success('操作成功')
+          this.$emit('query')
+          this.close()
         }
       })
-    },
-    resetForm() {
-      this.row = {}
-      this.form = this.$options.data().form
-      this.detailList = []
-      this.$refs.form && this.$refs.form.resetFields()
-    },
-    changeFormValue(value, item) {
-      if (item.change && typeof item.change === 'function') {
-        item.change(value, this.form)
-      }
-    },
-    judgeInput(row) {
-      return !row.type || row.type === 'text' || row.type === 'textarea'
-    },
-    judgeRowShow(item) {
-      let handle = null
-      switch (this.type) {
-        case 'add':
-          handle = item.isAdd
-          break
-        case 'edit':
-          handle = item.isUpdate
-          break
-        case 'view':
-          handle = item.isView
-          break
-        default:
-          handle = () => true
-          break
-      }
-      let flag = true
-      switch (typeof handle) {
-        case 'function':
-          flag = handle(this.form)
-          break
-        case 'boolean':
-          flag = handle
-          break
-        case 'undefined':
-          flag = true
-          break
-      }
-      return flag
-    },
-    handleParams() {
-      config.detail.forEach(item => {
-        this.formKeys.push(item)
-        let defaultValue = this.form[item.prop] || item.defaultValue || ''
-        this.$set(this.form, item.prop, defaultValue)
-        if (item.option) this.getOptions(item)
-        if (item.required || item.required !== false) {
-          let isInput = this.judgeInput(item)
-          let rule = {
-            required: true,
-            message: `请${isInput ? '输入' : '选择'}${item.label}`,
-            trigger: isInput ? 'blur' : 'change',
-          }
-          this.$set(this.rules, item.prop, [rule])
-        }
-      })
-    },
-    getOptions(item) {
-      if (!Array.isArray(item.option)) {
-        item.option.then(res => {
-          let ary = Array.isArray(res.data) ? res.data : res.data.list
-          this.$set(this.options, item.prop, ary)
-        })
-      } else {
-        this.$set(this.options, item.prop, item.option)
-      }
     },
     openPositionSelector() {
       this.positionForm = { targetWarehouse: '', targetPosition: '' }
@@ -278,13 +140,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.form {
-  padding: 20px;
-  ::v-deep .el-select,
-  ::v-deep .el-input__inner {
-    width: 100%;
-  }
-}
 .detail-section {
   padding: 0 20px 20px;
   .detail-header {

@@ -161,6 +161,7 @@
 <script>
 import { getBalanceAreaPageList } from '@/api/warehouse/balanceArea';
 import { getDictionaryList } from '@/api/common/dictionary';
+import { normalizeShelfTypeOptions } from '../../warehouse/utils/locationLayoutStorage';
 
 const DICT_PARENT_IDS = {
   materialType: '2046471902119919617',
@@ -246,7 +247,11 @@ export default {
       try {
         const res = await getDictionaryList({ parentId, currentPage: 1, pageSize: 999 });
         const children = res.data?.list || [];
-        this[optionsKey] = children.map(d => ({ label: d.fullName, value: d.dictValue }));
+        this[optionsKey] = normalizeShelfTypeOptions(children).map(d => ({
+          label: d.label,
+          value: d.value,
+          bizCode: d.bizCode
+        }));
       } catch (e) {
         console.error('Failed to fetch dict: ' + parentId, e);
       }
@@ -322,7 +327,8 @@ export default {
     },
     getShelfInfo(typeValue, key) {
       if (!typeValue) return '-';
-      const parts = typeValue.split('-'); // 5-3-2-10
+      const option = this.shelfTypeOptions.find(item => item.value === typeValue || item.bizCode === typeValue);
+      const parts = String((option && option.bizCode) || typeValue).split('-'); // 5-3-2-10
       if (key === 'row') return parts[0] ? `${parts[0]}排` : '-';
       if (key === 'level') return parts[1] ? `${parts[1]}层` : '-';
       return '-';

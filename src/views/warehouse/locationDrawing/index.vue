@@ -47,6 +47,13 @@
               v-if="isWarehouseNode(data)"
               type="text"
               size="mini"
+              icon="el-icon-s-grid"
+              @click.stop="openPositionMap(data)"
+            >位置图</el-button>
+            <el-button
+              v-if="isWarehouseNode(data)"
+              type="text"
+              size="mini"
               icon="el-icon-view"
               @click.stop="openWarehouseDialog(data, 'view')"
             >详情</el-button>
@@ -80,19 +87,22 @@
 
     <LocationAddDialog ref="addDialog" @submit="handleDialogSubmit" />
     <NodeDetailDrawer ref="nodeDetail" @query="fetchTreeData" />
+    <WarehousePositionMapDialog ref="positionMapDialog" @saved="fetchTreeData" />
   </div>
 </template>
 
 <script>
 import LocationAddDialog from './components/LocationAddDialog.vue';
 import NodeDetailDrawer from './components/NodeDetailDrawer.vue';
+import WarehousePositionMapDialog from './components/WarehousePositionMapDialog.vue';
 import { getHierarchyTree, getHierarchyDetail, addHierarchyNode, updateHierarchyNode, deleteHierarchyNode } from '@/api/warehouse/locationMap';
 
 export default {
   name: 'LocationDrawing',
   components: {
     LocationAddDialog,
-    NodeDetailDrawer
+    NodeDetailDrawer,
+    WarehousePositionMapDialog
   },
   watch: {
     filterText(val) {
@@ -150,6 +160,9 @@ export default {
     },
     openNodeDetail(data) {
       this.$refs.nodeDetail.open(data);
+    },
+    openPositionMap(data) {
+      this.$refs.positionMapDialog.open(data);
     },
     async openWarehouseDialog(data, mode) {
       const detail = await this.fetchWarehouseDetail(data);

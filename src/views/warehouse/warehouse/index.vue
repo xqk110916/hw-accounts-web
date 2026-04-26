@@ -94,6 +94,7 @@
           :warehouse-name="currentWarehouse ? currentWarehouse.name : '库房'"
           :shelf-layout="currentWarehouse ? (currentWarehouse.shelfLayout || { rows: 2, cols: 3 }) : { rows: 2, cols: 3 }"
           :shelves="shelves"
+          :layout="layout2d"
           @select-shelf="handleShelfEnter"
         />
       </div>
@@ -119,6 +120,7 @@
             :warehouse-width="currentWarehouse ? currentWarehouse.width : 20"
             :warehouse-height="currentWarehouse ? currentWarehouse.height : 15"
             :shelves="displayShelves"
+            :layout="layout2d"
             :date-color-map="dateColorMap"
             :selected-shelf="selectedShelf"
             @shelf-select="handleShelfSelect"
@@ -175,8 +177,7 @@ import {
   getWarehouseList,
   getWarehouseById,
   getBalanceAreaName,
-  getBalanceAreaList,
-  shelfData
+  getBalanceAreaList
 } from './config/warehouseConfig';
 
 export default {
@@ -215,6 +216,7 @@ export default {
       selectedShelf: null,
       selectedContainer: null,
       containerDialogVisible: false,
+      layout2d: null,
 
       // 颜色映射
       dateColorMap: {},
@@ -240,17 +242,13 @@ export default {
       }));
     },
     locationCascaderOptions() {
-      return this.warehouseList.map(wh => {
-        const shelves = shelfData[wh.id] || [];
-        return {
-          value: wh.id,
-          label: wh.name,
-          children: shelves.map(s => ({
-            value: s.name,
-            label: s.name
-          }))
-        };
-      });
+      return this.warehouseList.map(wh => ({
+        value: wh.id,
+        label: wh.name,
+        children: String(wh.id) === String(this.selectedWarehouseId)
+          ? this.shelves.map(s => ({ value: s.name, label: s.name }))
+          : []
+      }));
     },
     selectedShelfLayers() {
       if (!this.selectedShelf) return [];
@@ -314,6 +312,7 @@ export default {
         this.currentWarehouse = null;
         this.shelves = [];
         this.selectedShelf = null;
+        this.layout2d = null;
       }
       // 保持 shelf 层级不变（不切换到 warehouse 三维）
       this.currentLevel = 'shelf';
@@ -337,6 +336,7 @@ export default {
         }
       } else {
         this.warehouseList = [];
+        this.layout2d = null;
       }
       this.currentLevel = 'shelf';
     },
@@ -367,6 +367,7 @@ export default {
         this.currentArea = null;
         this.currentWarehouse = null;
         this.selectedShelf = null;
+        this.layout2d = null;
       } else if (level === 'warehouse') {
         if (this.currentArea) {
           this.currentLevel = 'warehouse';
@@ -387,6 +388,7 @@ export default {
       if (warehouseData) {
         this.currentWarehouse = warehouseData;
         this.shelves = warehouseData.shelves;
+        this.layout2d = warehouseData.layout2d || null;
 
         if (this.shelves.length > 0) {
           this.selectedShelf = this.shelves[0];
@@ -497,7 +499,7 @@ export default {
     },
 
     handleExport() {
-      this.$message.info('正在生成导出文件...');
+      this.$message.info('请在 2D 平面图中使用“导出图片”按钮导出当前位置图');
     }
   }
 };
