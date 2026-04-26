@@ -44,6 +44,20 @@
               @click.stop="openNodeDetail(data)"
             >详情</el-button>
             <el-button
+              v-if="isWarehouseNode(data)"
+              type="text"
+              size="mini"
+              icon="el-icon-view"
+              @click.stop="openWarehouseDialog(data, 'view')"
+            >详情</el-button>
+            <el-button
+              v-if="isWarehouseNode(data)"
+              type="text"
+              size="mini"
+              icon="el-icon-edit"
+              @click.stop="openWarehouseDialog(data, 'edit')"
+            >编辑</el-button>
+            <el-button
               type="text"
               size="mini"
               icon="el-icon-plus"
@@ -72,7 +86,7 @@
 <script>
 import LocationAddDialog from './components/LocationAddDialog.vue';
 import NodeDetailDrawer from './components/NodeDetailDrawer.vue';
-import { getHierarchyTree, addHierarchyNode, deleteHierarchyNode } from '@/api/warehouse/locationMap';
+import { getHierarchyTree, getHierarchyDetail, addHierarchyNode, updateHierarchyNode, deleteHierarchyNode } from '@/api/warehouse/locationMap';
 
 export default {
   name: 'LocationDrawing',
@@ -127,11 +141,39 @@ export default {
     isBalanceAreaNode(data) {
       return String(data.nodeType) === '1';
     },
+    isWarehouseNode(data) {
+      return String(data.nodeType) === '2';
+    },
     handleNodeDblClick(data) {
       if (this.isBalanceAreaNode(data)) this.openNodeDetail(data);
+      if (this.isWarehouseNode(data)) this.openWarehouseDialog(data, 'view');
     },
     openNodeDetail(data) {
       this.$refs.nodeDetail.open(data);
+    },
+    async openWarehouseDialog(data, mode) {
+      const detail = await this.fetchWarehouseDetail(data);
+      this.$refs.addDialog.open(this.mapWarehouseNodeToForm(detail), {
+        mode,
+        isParentFixed: true
+      });
+    },
+    async fetchWarehouseDetail(data) {
+      if (!data || !data.id) return data;
+      try {
+        const res = await getHierarchyDetail(data.id);
+        if (res && res.data) {
+          return {
+            ...data,
+            ...res.data,
+            children: (res.data.children && res.data.children.length) ? res.data.children : data.children
+          };
+        }
+      } catch (error) {
+        console.error(error);
+        this.$message.warning('获取库房详情失败，已使用当前节点数据');
+      }
+      return data;
     },
     handleExpandAll() {
       const nodes = this.$refs.tree.store._getAllNodes();
@@ -160,14 +202,14 @@ export default {
         balanceAreaName: balanceAreaName,
         warehouseCode: formData.warehouseCode,
         warehouseName: formData.warehouseName,
-        warehouseType: formData.warehouseType === 'new' ? '0' : '1',
+        warehouseType: formData.warehouseType,
         materialTypes: formData.materialType,
         remark: formData.remark,
         sortOrder: 1,
         shelvesList: []
       };
 
-      if (formData.warehouseType === 'new') {
+      if (formData.warehouseType === '0') {
         apiData.shelvesList = formData.columns.map((col, index) => ({
           shelfCode: `S${index + 1}`,
           shelfRowNum: parseInt(col.rows) || 1,
@@ -188,14 +230,71 @@ export default {
         ];
       }
 
+      if (formData.rawNode && formData.rawNode.id) apiData.id = formData.rawNode.id;
+
       try {
-        await addHierarchyNode(apiData);
-        this.$message.success('添加库位图纸成功');
+        if (formData.mode === 'edit') {
+          await updateHierarchyNode(apiData);
+          this.$message.success('编辑库位图纸成功');
+        } else {
+          await addHierarchyNode(apiData);
+          this.$message.success('添加库位图纸成功');
+        }
         this.fetchTreeData();
       } catch (err) {
         console.error(err);
-        this.$message.error('添加失败');
+        this.$message.error(formData.mode === 'edit' ? '编辑失败' : '添加失败');
       }
+    },
+    mapWarehouseNodeToForm(data) {
+      const columns = (data.children || []).map((column, index) => {
+        const rows = column.children || [];
+        const rowCount = rows.length || 1;
+        const levelCount = rows.reduce((max, row) => Math.max(max, (row.children || []).length), 1);
+        const type = this.getShelfTypeValue(column, rowCount, levelCount);
+        this.ensureShelfTypeOption(type, rowCount, levelCount);
+        return {
+          id: column.id,
+          code: column.nodeCode || column.label || `S${index + 1}`,
+          type
+        };
+      });
+      return {
+        rawNode: data,
+        balanceArea: data.parentId,
+        warehouseCode: data.nodeCode || data.warehouseCode || '',
+        warehouseName: this.cleanNodeName(data.nodeName || data.label || data.warehouseName || ''),
+        warehouseType: this.normalizeWarehouseType(data.warehouseType, columns),
+        materialType: data.materialTypes || (data.extra && data.extra.materialTypes) || '',
+        remark: data.remark || (data.extra && data.extra.remark) || '',
+        columns: columns.length ? columns : [{ type: '5-3-2-10' }],
+        columnCount: columns.length || 1,
+        rowCount: columns[0] ? parseInt(columns[0].type, 10) || 1 : 1
+      };
+    },
+    getShelfTypeValue(column, rowCount, levelCount) {
+      const extra = column.extra || {};
+      return column.shelfType || extra.shelfType || `${rowCount}-${levelCount}-2-10`;
+    },
+    normalizeWarehouseType(warehouseType, columns) {
+      if (String(warehouseType) === '0' || String(warehouseType) === '2') return String(warehouseType);
+      if (warehouseType === 'new') return '0';
+      if (warehouseType === 'old' || String(warehouseType) === '1') return '2';
+      return columns.length > 1 ? '0' : '2';
+    },
+    ensureShelfTypeOption(type, rowCount, levelCount) {
+      const dialog = this.$refs.addDialog;
+      if (!dialog || !type) return;
+      const exists = dialog.shelfTypeOptions.some(item => item.value === type);
+      if (!exists) {
+        dialog.shelfTypeOptions.push({
+          label: `${rowCount}排${levelCount}层`,
+          value: type
+        });
+      }
+    },
+    cleanNodeName(name) {
+      return String(name || '').replace(/^【库房】/, '');
     },
     append(data) {
       const label = this.defaultProps.label(data);
