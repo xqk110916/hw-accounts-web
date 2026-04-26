@@ -30,12 +30,19 @@
         :expand-on-click-node="false"
         class="custom-tree"
       >
-        <span class="custom-tree-node" slot-scope="{ node, data }">
+        <span class="custom-tree-node" slot-scope="{ node, data }" @dblclick.stop="handleNodeDblClick(data)">
           <span class="node-label">
             <i :class="getNodeIcon(data)" class="node-icon"></i>
             {{ node.label }}
           </span>
           <span class="node-ops">
+            <el-button
+              v-if="isBalanceAreaNode(data)"
+              type="text"
+              size="mini"
+              icon="el-icon-view"
+              @click.stop="openNodeDetail(data)"
+            >详情</el-button>
             <el-button
               type="text"
               size="mini"
@@ -58,17 +65,20 @@
     </div>
 
     <LocationAddDialog ref="addDialog" @submit="handleDialogSubmit" />
+    <NodeDetailDrawer ref="nodeDetail" @query="fetchTreeData" />
   </div>
 </template>
 
 <script>
 import LocationAddDialog from './components/LocationAddDialog.vue';
+import NodeDetailDrawer from './components/NodeDetailDrawer.vue';
 import { getHierarchyTree, addHierarchyNode, deleteHierarchyNode } from '@/api/warehouse/locationMap';
 
 export default {
   name: 'LocationDrawing',
   components: {
-    LocationAddDialog
+    LocationAddDialog,
+    NodeDetailDrawer
   },
   watch: {
     filterText(val) {
@@ -113,6 +123,15 @@ export default {
         5: 'el-icon-collection-tag'   // 层
       };
       return icons[data.nodeType] || 'el-icon-document';
+    },
+    isBalanceAreaNode(data) {
+      return String(data.nodeType) === '1';
+    },
+    handleNodeDblClick(data) {
+      if (this.isBalanceAreaNode(data)) this.openNodeDetail(data);
+    },
+    openNodeDetail(data) {
+      this.$refs.nodeDetail.open(data);
     },
     handleExpandAll() {
       const nodes = this.$refs.tree.store._getAllNodes();

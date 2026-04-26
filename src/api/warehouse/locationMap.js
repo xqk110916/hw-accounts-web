@@ -40,6 +40,10 @@ export function batchCreateShelf(data) {
   return request({ url: '/busin/locationMap/hierarchy/batchCreateShelf', method: 'post', data });
 }
 
+export function getPositionMap(data) {
+  return request({ url: '/busin/locationMap/positionMap', method: 'post', data });
+}
+
 // 位置信息管理
 export function getPositionPageList(data) {
   return request({ url: '/busin/locationMap/position/pageList', method: 'post', data });
