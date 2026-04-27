@@ -73,6 +73,18 @@
                   :disabled="type === 'view'"
                 >
                 </el-date-picker>
+                <el-date-picker
+                  v-if="item.type === 'datetime'"
+                  v-model="form[item.prop]"
+                  type="datetime"
+                  size="small"
+                  value-format="yyyy-MM-dd HH:mm:ss"
+                  :placeholder="`请选择${item.label}`"
+                  @change="value => changeFormValue(value, item)"
+                  clearable
+                  :disabled="type === 'view'"
+                >
+                </el-date-picker>
 
                 <el-button
                   v-if="item.showMaintenance && type !== 'view'"
@@ -331,6 +343,18 @@ export default {
           this.$set(transferItem, 'disabled', false)
         }
         this.detailList = []
+        this.formKeys.forEach(item => {
+          if (item.defaultValue !== undefined) {
+            let defaultValue = item.defaultValue
+            if (defaultValue instanceof Date) {
+              const y = defaultValue.getFullYear()
+              const m = String(defaultValue.getMonth() + 1).padStart(2, '0')
+              const d = String(defaultValue.getDate()).padStart(2, '0')
+              defaultValue = `${y}-${m}-${d} 00:00:00`
+            }
+            this.$set(this.form, item.prop, defaultValue)
+          }
+        })
         this.refreshOptions()
         this.show = true
         generateBatchNo({ batchType: 1 }).then(res => {

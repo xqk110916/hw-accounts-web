@@ -153,14 +153,14 @@ export default {
     },
     initLayout() {
       const detailExtra = normalizeExtra(this.detail.extra);
-      const localExtra = getLocalExtra(this.detail.id);
+      // const localExtra = getLocalExtra(this.detail.id);
       let layout = null;
       if (detailExtra.layout2d) {
         layout = detailExtra.layout2d;
         this.layoutSource = '接口 extra';
-      } else if (localExtra.layout2d) {
-        layout = localExtra.layout2d;
-        this.layoutSource = '本地 extra';
+      // } else if (localExtra.layout2d) {
+      //   layout = localExtra.layout2d;
+      //   this.layoutSource = '本地 extra';
       } else {
         layout = generateInitialLayout(this.shelves);
         this.layoutSource = '自动生成';
@@ -191,32 +191,25 @@ export default {
       };
       try {
         await updateHierarchyNode({
-          ...this.detail,
           id: this.detail.id,
-          balanceId: this.detail.balanceAreaId || this.detail.parentId,
           warehouseCode: this.detail.warehouseCode || this.detail.nodeCode,
-          warehouseName: this.detail.warehouseName || this.detail.nodeName,
-          warehouseType: this.detail.warehouseType,
-          materialTypes: this.detail.materialTypes,
-          remark: this.detail.remark,
-          sortOrder: this.detail.sortOrder || 1,
-          extra
+          extra: JSON.stringify(extra)
         });
-        saveLocalExtra(this.detail.id, extra);
+        // saveLocalExtra(this.detail.id, extra);
         this.detail = { ...this.detail, extra };
         this.savedLayout = clone(this.draftLayout);
         this.editing = false;
-        this.layoutSource = '本地 extra';
+        this.layoutSource = '接口 extra';
         this.$message.success('布局保存成功');
         this.$emit('saved', this.detail);
       } catch (error) {
         console.error(error);
-        saveLocalExtra(this.detail.id, extra);
+        // saveLocalExtra(this.detail.id, extra);
         this.detail = { ...this.detail, extra };
         this.savedLayout = clone(this.draftLayout);
         this.editing = false;
-        this.layoutSource = '本地 extra';
-        this.$message.warning('接口保存失败，已保存到本地用于布局测试');
+        this.layoutSource = '接口 extra';
+        this.$message.error('布局保存失败');
       }
     },
     getFilledCount(shelf) {

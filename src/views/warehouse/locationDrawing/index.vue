@@ -57,13 +57,13 @@
               icon="el-icon-view"
               @click.stop="openWarehouseDialog(data, 'view')"
             >详情</el-button>
-            <el-button
+            <!-- <el-button
               v-if="isWarehouseNode(data)"
               type="text"
               size="mini"
               icon="el-icon-edit"
               @click.stop="openWarehouseDialog(data, 'edit')"
-            >编辑</el-button>
+            >编辑</el-button> -->
             <el-button
               type="text"
               size="mini"

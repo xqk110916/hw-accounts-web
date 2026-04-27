@@ -111,7 +111,7 @@ export const config = {
     {
       label: '出库时间',
       prop: 'outboundTime',
-      type: 'date',
+      type: 'datetime',
       required: false,
       defaultValue: new Date(),
     },
