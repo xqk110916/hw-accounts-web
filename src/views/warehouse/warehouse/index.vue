@@ -499,7 +499,7 @@ export default {
     },
 
     handleExport() {
-      this.$message.info('请在 2D 平面图中使用“导出图片”按钮导出当前位置图');
+      this.$message.info('请在 2D 平面图中使用“导出”按钮导出当前位置图');
     }
   }
 };

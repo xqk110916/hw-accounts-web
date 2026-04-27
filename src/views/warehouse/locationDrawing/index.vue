@@ -14,8 +14,8 @@
         <el-button size="small" @click="handleCollapseAll">全部折叠</el-button>
       </div>
       <div class="header-right">
-        <el-button type="primary" size="small" icon="el-icon-plus" @click="handleAdd">添加库位图纸</el-button>
-        <el-button type="success" size="small" icon="el-icon-download" @click="handleExport">导出</el-button>
+        <el-button type="primary" size="small" icon="el-icon-plus" @click="handleAdd">添加库位</el-button>
+        <!-- <el-button type="success" size="small" icon="el-icon-download" @click="handleExport">导出</el-button> -->
       </div>
     </div>
 

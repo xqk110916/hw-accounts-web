@@ -32,7 +32,7 @@
           <el-button :type="tool === 'erase' ? 'primary' : 'default'" icon="el-icon-delete" @click="tool = 'erase'">擦除</el-button>
         </el-button-group>
         <el-button v-if="editable" size="mini" icon="el-icon-refresh-left" @click="$emit('reset-layout')">重置</el-button>
-        <el-button size="mini" icon="el-icon-download" @click="exportImage">导出图片</el-button>
+        <el-button size="mini" icon="el-icon-download" @click="exportImage">导出</el-button>
       </div>
     </div>
 

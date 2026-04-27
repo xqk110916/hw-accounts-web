@@ -67,12 +67,12 @@
           </template>
           <el-empty v-else description="请选择货架" :image-size="72"></el-empty>
         </div>
-        <div class="side-card">
+        <!-- <div class="side-card">
           <div class="side-title">布局状态</div>
           <p>货架：{{ displayShelves.length }}</p>
           <p>过道：{{ (draftLayout.aisles || []).length }}</p>
           <p>来源：{{ layoutSource }}</p>
-        </div>
+        </div> -->
       </div>
     </div>
   </el-dialog>
