@@ -942,14 +942,6 @@ export default {
   margin-top: 10px;
 }
 
-::v-deep .el-dialog:not(.show-footer-dialog) .el-dialog__body {
-  padding: 0 !important;
-}
-
-::v-deep .el-dialog:not(.show-footer-dialog) .el-dialog__footer {
-  display: none;
-}
-
 // 审核模式 - 修改字段高亮
 ::v-deep .modified-field {
   background: #fffbe6;

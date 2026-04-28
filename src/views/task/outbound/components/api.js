@@ -1,24 +1,31 @@
 import request from '@/utils/request'
 
-export const getOutboundList = params => {
+export const getOutboundList = data => {
   return request({
-    url: '/task/outbound/listPage',
+    url: '/busin/outbound/list',
     method: 'post',
-    params,
+    data,
   })
 }
 
-export const getOutboundDetail = params => {
+export const getOutboundDetail = id => {
   return request({
-    url: '/task/outbound/getInfoById',
-    method: 'post',
-    params,
+    url: `/busin/outbound/detail/${id}`,
+    method: 'get',
   })
 }
 
-export const saveOrUpdateOutbound = data => {
+export const submitOutbound = data => {
   return request({
-    url: '/task/outbound/saveOrUpdate',
+    url: '/busin/outbound/submit',
+    method: 'post',
+    data,
+  })
+}
+
+export const updateOutbound = data => {
+  return request({
+    url: '/busin/outbound/updateData',
     method: 'post',
     data,
   })
@@ -26,33 +33,53 @@ export const saveOrUpdateOutbound = data => {
 
 export const deleteOutbound = params => {
   return request({
-    url: '/task/outbound/delete',
+    url: '/busin/outbound/delete',
     method: 'post',
     params,
   })
 }
 
-export const auditOutbound = data => {
-  return request({
-    url: '/task/outbound/audit',
-    method: 'post',
-    data,
-  })
-}
-
-// 确认出库数据
 export const confirmOutbound = data => {
   return request({
-    url: '/busin/outbound/confirm',
+    url: '/busin/outbound/confirmAudit',
     method: 'post',
     data,
   })
 }
 
-// 审核通过执行更新
 export const executeAuditedOutboundUpdate = data => {
   return request({
-    url: '/busin/outbound/executeAuditedUpdate',
+    url: '/busin/outbound/executeAudited',
+    method: 'post',
+    data,
+  })
+}
+
+export const getInboundGoodsPageList = data => {
+  return request({
+    url: '/busin/inbound/goodsPageList',
+    method: 'post',
+    data,
+  })
+}
+
+export const getLocationHierarchy = nodeType => {
+  return request({
+    url: `/busin/locationMap/hierarchy/listByNodeType/${nodeType}`,
+    method: 'get',
+  })
+}
+
+export const getLocationChildren = parentId => {
+  return request({
+    url: `/busin/locationMap/hierarchy/listByParentId/${parentId}`,
+    method: 'get',
+  })
+}
+
+export const getPositionMap = data => {
+  return request({
+    url: '/busin/locationMap/positionMap',
     method: 'post',
     data,
   })
@@ -61,6 +88,7 @@ export const executeAuditedOutboundUpdate = data => {
 export const outbound = {
   list: getOutboundList,
   detail: getOutboundDetail,
-  update: saveOrUpdateOutbound,
+  submit: submitOutbound,
+  update: updateOutbound,
   delete: deleteOutbound,
 }

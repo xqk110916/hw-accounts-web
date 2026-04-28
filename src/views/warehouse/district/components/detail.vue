@@ -285,10 +285,4 @@ export default {
   justify-content: flex-end;
   border-top: 1px solid #c4c9cf;
 }
-::v-deep .el-dialog__body {
-  padding: 0 !important;
-}
-::v-deep .el-dialog__footer {
-  display: none;
-}
 </style>

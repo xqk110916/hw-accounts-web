@@ -1,11 +1,14 @@
-import { getAllTransferBasisList, getLocationHierarchy } from '@/views/task/inbound/components/api.js'
+import { getAllTransferBasisList } from '@/views/task/inbound/components/api.js'
+import { getLocationHierarchy } from './api.js'
 
 export const statusOptions = [
-  { label: '待确认', value: 'pending' },
-  { label: '已确认', value: 'confirmed' },
-  { label: '变更审核中', value: 'auditing' },
-  { label: '变更审核通过', value: 'approved' },
-  { label: '变更审核拒绝', value: 'rejected' },
+  { label: '待审核', value: 0 },
+  { label: '审核通过', value: 1 },
+  { label: '审核拒绝', value: 2 },
+  { label: '暂存', value: 4 },
+  { label: '变更审核中', value: 7 },
+  { label: '变更审核通过', value: 8 },
+  { label: '变更审核拒绝', value: 9 },
 ]
 
 export const secretLevelOptions = [
@@ -16,16 +19,16 @@ export const secretLevelOptions = [
 
 export const config = {
   table: [
-    { label: '任务编号', prop: 'taskNo', isTitle: true },
+    { label: '任务编号', prop: 'taskNum', isTitle: true },
     { label: '调拨依据', prop: 'transferBasis' },
-    { label: '出库时间', prop: 'outboundTime' },
+    { label: '出库时间', prop: 'createTime' },
     { label: '库房', prop: 'warehouseName' },
-    { label: '收方单位', prop: 'inboundUnit' },
-    { label: '状态', prop: 'status', type: 'slot' },
+    { label: '收方单位', prop: 'receiveUnit' },
+    { label: '状态', prop: 'auditStatus', type: 'slot' },
   ],
   search: [
-    { label: '任务编号', prop: 'taskNo', type: 'text', col: 4 },
-    { label: '生产单位', prop: 'inboundUnit', type: 'text', col: 4 },
+    { label: '任务编号', prop: 'taskNum', type: 'text', col: 4 },
+    { label: '生产单位', prop: 'productionUnit', type: 'text', col: 4 },
     {
       label: '库房',
       prop: 'warehouseName',
@@ -35,10 +38,10 @@ export const config = {
         return (res.data || []).map(item => ({ label: item.warehouseName, value: item.warehouseName }))
       }),
     },
-    { label: '出库时间', prop: 'outboundTime', type: 'daterange', col: 8 },
+    { label: '出库时间', prop: 'timeRange', type: 'daterange', col: 8 },
     { label: '调拨依据', prop: 'transferBasis', type: 'text', col: 4 },
-    { label: '容器号', prop: 'xxx', type: 'text', col: 4 },
-    { label: '收方单位', prop: 'qqq', type: 'text', col: 4 },
+    { label: '容器号', prop: 'containerCode', type: 'text', col: 4 },
+    { label: '收方单位', prop: 'receiveUnit', type: 'text', col: 4 },
     {
       label: '状态',
       prop: 'statusList',
@@ -52,7 +55,7 @@ export const config = {
   detail: [
     {
       label: '任务编号',
-      prop: 'taskNo',
+      prop: 'taskNum',
       type: 'text',
       required: true,
       defaultValue: '',
@@ -104,26 +107,26 @@ export const config = {
     },
     {
       label: '出库人',
-      prop: 'outboundPerson',
+      prop: 'outboundMan',
       type: 'text',
       required: true,
     },
     {
       label: '出库时间',
-      prop: 'outboundTime',
+      prop: 'createTime',
       type: 'datetime',
       required: false,
       defaultValue: new Date(),
     },
     {
       label: '收方单位',
-      prop: 'inboundUnit',
+      prop: 'receiveUnit',
       type: 'text',
       required: false,
     },
     {
       label: '密级',
-      prop: 'secretLevel',
+      prop: 'securityLevel',
       type: 'select',
       dictParentId: '2046869125529927682', // 密级字典ID
       required: true,
@@ -161,6 +164,19 @@ export const beforeSubmit = async data => {
   // 移除级联组件的中间绑定字段，不向后端提交
   delete data._transferSelected
   return data
+}
+
+export const handleSearchParams = params => {
+  const p = { ...params }
+  if (p.timeRange && p.timeRange.length === 2) {
+    p.startTime = p.timeRange[0]
+    p.endTime = p.timeRange[1]
+  }
+  delete p.timeRange
+  if (p.statusList && !Array.isArray(p.statusList)) {
+    p.statusList = [p.statusList]
+  }
+  return p
 }
 
 export const beforeRecurrence = (data, that) => {
@@ -202,8 +218,8 @@ export const beforeRecurrence = (data, that) => {
   }
 
   // 复现密级：确保值为字符串以匹配 select 的 value
-  if (data.classify !== undefined && data.classify !== null) {
-    that.$set(that.form, 'classify', String(data.classify))
+  if (data.securityLevel !== undefined && data.securityLevel !== null) {
+    that.$set(that.form, 'securityLevel', String(data.securityLevel))
   }
   return data
 }

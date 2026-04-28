@@ -232,14 +232,15 @@ export default {
 <style lang="scss">
 .warehouse-position-dialog {
   .el-dialog__body {
-    padding: 0 18px 18px;
+    padding: 20px;
   }
 }
 </style>
 
 <style lang="scss" scoped>
 .position-shell {
-  height: 78vh;
+  height: calc(86vh - 140px);
+  min-height: 500px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 240px;
   grid-template-rows: 48px minmax(0, 1fr);

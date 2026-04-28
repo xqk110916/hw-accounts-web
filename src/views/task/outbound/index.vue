@@ -33,8 +33,13 @@
             >
               <template slot-scope="scope">
                 <div v-if="item.type === 'slot'">
-                  <span :class="['status-tag', getStatusClass(scope.row.status)]">
-                    {{ getStatusText(scope.row.status) }}
+                  <span v-if="item.prop === 'auditStatus'">
+                    <span :class="['status-tag', getDataStatusClass(scope.row.dataStatus)]">
+                      {{ getDataStatusText(scope.row.dataStatus) }}
+                    </span>
+                    <span v-if="scope.row.auditStatus !== undefined && scope.row.auditStatus !== null && scope.row.auditStatus !== ''" :class="['status-tag', 'audit-tag', getAuditStatusClass(scope.row.auditStatus)]" style="margin-left: 4px;">
+                      {{ getAuditStatusText(scope.row.auditStatus) }}
+                    </span>
                   </span>
                 </div>
                 <div v-else>{{ scope.row[item.prop] }}</div>
@@ -77,7 +82,7 @@
     <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
       <el-form :model="auditForm" label-width="100px">
         <el-form-item label="任务编号">
-          <span>{{ auditForm.taskNo }}</span>
+          <span>{{ auditForm.taskNum }}</span>
         </el-form-item>
         <el-form-item label="审核结果">
           <el-radio-group v-model="auditForm.result">
@@ -99,8 +104,8 @@
 
 <script>
 import detail from './components/detail.vue'
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
-import { auditOutbound, confirmOutbound, executeAuditedOutboundUpdate } from './components/api.js'
+import { config, requestFun, btns, handleTbaleMap, getDefaultOptions, handleSearchParams } from './components/index.js'
+import { confirmOutbound, executeAuditedOutboundUpdate } from './components/api.js'
 import AllocationBasisListDialog from '@/views/task/inbound/components/AllocationBasisListDialog.vue'
 
 export default {
@@ -123,7 +128,7 @@ export default {
       auditDialogVisible: false,
       auditForm: {
         id: '',
-        taskNo: '',
+        taskNum: '',
         result: 'pass',
         remark: '',
       },
@@ -194,7 +199,14 @@ export default {
       }
     },
     getOptions(item) {
-      if (!Array.isArray(item.option)) {
+      if (typeof item.option === 'function') {
+        const result = item.option()
+        if (result && typeof result.then === 'function') {
+          result.then(data => {
+            item.option = Array.isArray(data) ? data : (data.data ? (Array.isArray(data.data) ? data.data : data.data.list) : [])
+          })
+        }
+      } else if (!Array.isArray(item.option) && item.option && typeof item.option.then === 'function') {
         item.option.then(res => {
           item.option = Array.isArray(res.data) ? res.data : res.data.list
         })
@@ -202,7 +214,8 @@ export default {
     },
     getTableList() {
       this.tableData = []
-      return requestFun.list(this.search.params).then(res => {
+      const params = handleSearchParams ? handleSearchParams(this.search.params) : this.search.params
+      return requestFun.list(params).then(res => {
         if (res.code === 1) {
           let data = res.data.list || []
           let page = res.data.pagination || {}
@@ -229,7 +242,7 @@ export default {
     confirmRow(row) {
       this.$confirm('确定要确认该出库任务?', '提示', { type: 'warning' })
         .then(() => {
-          confirmOutbound({ id: row.id }).then(res => {
+          confirmOutbound({ taskNum: row.taskNum, approved: true }).then(res => {
             if (res.code === 1) {
               this.$message.success('确认成功')
               this.getTableList()
@@ -241,7 +254,11 @@ export default {
     remove(row) {
       this.$confirm('确定要删除该任务?', '提示', { type: 'warning' })
         .then(() => {
-          requestFun.delete({ ids: row.id }).then(res => {
+          if (!requestFun.delete) {
+            this.$message.warning('当前接口文档未提供删除接口')
+            return
+          }
+          requestFun.delete({ ids: row.id, id: row.id }).then(res => {
             if (res.code === 1) {
               this.$message({ message: '删除成功', type: 'success' })
               this.getTableList()
@@ -268,7 +285,8 @@ export default {
     openAudit(row) {
       this.auditForm = {
         id: row.id,
-        taskNo: row.taskNo,
+        operationId: row.id,
+        taskNum: row.taskNum,
         result: 'pass',
         remark: '',
       }
@@ -276,8 +294,13 @@ export default {
     },
     submitAudit() {
       const params = {
-        id: this.auditForm.id,
-        approved: this.auditForm.result === 'pass'
+        operationId: this.auditForm.operationId || this.auditForm.id,
+        approved: this.auditForm.result === 'pass',
+        remark: this.auditForm.remark,
+      }
+      if (!params.approved && !params.remark) {
+        this.$message.warning('审核拒绝时请输入备注')
+        return
       }
       executeAuditedOutboundUpdate(params).then(res => {
         if (res.code === 1) {
@@ -287,39 +310,41 @@ export default {
         }
       })
     },
-    getStatusText(status) {
-      const map = {
-        pending: '待确认',
-        confirmed: '已确认',
-        auditing: '变更审核中',
-        approved: '变更审核通过',
-        rejected: '变更审核拒绝',
-      }
-      return map[status] || status
+    getDataStatusText(status) {
+      const value = Number(status)
+      const map = { 0: '待确认', 1: '已确认', 4: '暂存' }
+      return map[value] !== undefined ? map[value] : '-'
     },
-    getStatusClass(status) {
-      const map = {
-        pending: 'status-pending',
-        confirmed: 'status-confirmed',
-        auditing: 'status-auditing',
-        approved: 'status-approved',
-        rejected: 'status-rejected',
-      }
-      return map[status] || ''
+    getDataStatusClass(status) {
+      const value = Number(status)
+      const map = { 0: 'status-pending', 1: 'status-confirmed', 4: 'status-draft' }
+      return map[value] || ''
+    },
+    getAuditStatusText(status) {
+      const value = Number(status)
+      const map = { 0: '待审核', 1: '审核通过', 2: '审核拒绝', 7: '待审核', 8: '审核通过', 9: '审核驳回' }
+      return map[value] !== undefined ? map[value] : ''
+    },
+    getAuditStatusClass(status) {
+      const value = Number(status)
+      const map = { 0: 'status-auditing', 1: 'status-approved', 2: 'status-rejected', 7: 'status-auditing', 8: 'status-approved', 9: 'status-rejected' }
+      return map[value] || ''
     },
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
-      const dataStatus = row.dataStatus
-      const auditStatus = row.auditStatus
+      const dataStatus = Number(row.dataStatus)
+      const auditStatus = Number(row.auditStatus)
 
-      if (dataStatus === 0) {
-        // 未确认：显示 编辑、确认、删除
+      if (dataStatus === 0 || dataStatus === 4) {
+        // 未确认/暂存：显示 编辑、确认、删除
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '确认', type: 'text', execute: 'confirm' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 1) {
-        // 已确认：显示 修改
-        btns.push({ label: '修改', type: 'text', execute: 'modify' })
+        // 已确认且非待审核：显示 修改
+        if (auditStatus !== 7) {
+          btns.push({ label: '修改', type: 'text', execute: 'modify' })
+        }
       }
 
       // 待审核：显示 审核
@@ -430,6 +455,10 @@ export default {
     background: #fff0cc;
     color: #e68600;
   }
+  &.status-draft {
+    background: #f4f4f5;
+    color: #606266;
+  }
   &.status-confirmed {
     background: #e8f5e9;
     color: #2e7d32;
@@ -445,6 +474,11 @@ export default {
   &.status-rejected {
     background: #ffebee;
     color: #c62828;
+  }
+  &.audit-tag {
+    font-size: 11px;
+    padding: 1px 6px;
+    opacity: 0.9;
   }
 }
 </style>

@@ -407,10 +407,4 @@ export default {
   color: #246fe5;
   cursor: pointer;
 }
-::v-deep .el-dialog__body {
-  padding: 0 !important;
-}
-::v-deep .el-dialog__footer {
-  display: none;
-}
 </style>

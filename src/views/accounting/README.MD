@@ -101,7 +101,58 @@
 
 调拨依据中维护材料编码、批准件数和批准量，入库任务通过调拨依据选择材料范围。
 
-## 三、开发与修改注意事项
+## 三、已完成界面：出库管理
+
+入口文件：
+
+- `src/views/task/outbound/index.vue`
+- `src/views/task/outbound/components/detail.vue`
+- `src/views/task/outbound/components/index.js`
+- `src/views/task/outbound/components/api.js`
+- `src/views/task/outbound/components/SelectContainerDialog.vue`
+
+接口参考：
+
+- `md/出库管理-取货方案接口文档.md`
+- `md/出库管理-需求.md`
+
+### 1. 列表查询与状态
+
+列表页通过 `POST /busin/outbound/list` 查询出库任务，筛选项对齐入库管理，包括任务编号、生产单位、库房、出库时间、调拨依据、容器号、收方单位和状态。出库时间在前端转换为 `startTime/endTime`。
+
+页面状态由 `dataStatus` 和 `auditStatus` 共同决定：
+
+- `dataStatus=0`：待确认，可编辑、确认、删除。
+- `dataStatus=4`：暂存，按待确认处理，可编辑、确认、删除。
+- `dataStatus=1`：已确认，非待审核时可发起修改。
+- `auditStatus=7`：待审核，显示审核入口。
+
+### 2. 新增、暂存与提交
+
+新增出库任务的表单字段保持原有业务含义，提交字段映射为 `taskNum`、`transferId`、`securityLevel`、`outboundMan`、`receiveUnit`、`goodCodes` 和 `remark`。
+
+底部提供“暂存”和“提交”两个动作：
+
+- 暂存传 `submitType=4`。
+- 提交传 `submitType=0`。
+
+新增时明细通过 `goodsList` 提交；编辑和修改时通过 `dtoList`、`editList`、`goodIds`、`containerCodes` 区分新增、编辑和删除，修改模式保留 `updateType=1` 进入审核链路。
+
+### 3. 手工选择容器
+
+出库明细的“手工选择”打开“选择容器”弹窗，不再使用旧的明细编辑弹窗。弹窗左侧提供三个选择维度：
+
+- 位置图：先选平衡区，再选库房，调用 `POST /busin/locationMap/positionMap` 以 2D 位置图展示已占用容器；空闲位置不可加入。
+- 容器列表：调用 `POST /busin/inbound/goodsPageList`，支持容器号、货物编码和入库时间筛选。
+- 入库单：调用 `POST /busin/inbound/goodsPageList`，按 `taskNum` 查询入库单容器，弃用 `getByTaskNumAndContainerCode`。
+
+确认选择后，前端统一规范化为出库明细字段：`containerCode`、`goodCode`、`warehouseId`、`warehouseName`、`boxNum`、`grossWeight`、`tareWeight`、`netWeight`、`productionUnit`、`shelfCode`、`rowCode`、`columnCode`、`sealCode1`、`sealCode2`。
+
+### 4. 审核
+
+列表确认出库申请调用 `POST /busin/outbound/confirmAudit`，参数包含 `taskNum` 和 `approved`。变更审核调用 `POST /busin/outbound/executeAudited`，参数包含 `operationId`、`approved` 和 `remark`。
+
+## 四、开发与修改注意事项
 
 - 修改入库管理前，必须先阅读本文档、`docs/PROJECT_ARCHITECTURE.md`、`docs/SYSTEM_MODULES_MAP.md` 和 `md/入库管理接口文档.md`。
 - 入库管理虽然位于 `src/views/task/inbound`，但其数据会影响核算和账务处理，状态流转不能只按普通 CRUD 理解。
@@ -110,5 +161,5 @@
 - 调拨依据级联字段 `_transferSelected` 是前端中间态，不应提交给后端。
 - 库位选择必须继续过滤占用和锁定状态，避免同一库位被重复入库。
 - Excel 导入的两类模板是互补关系，修改字段时要同时检查导入预览、明细编辑和提交 DTO。
-- 若后续补充出库、移库、盘存或账目管理页面，请在本文档追加独立章节，说明入口文件、业务状态、关键接口、数据来源和修改风险。
-
+- 出库管理选择容器时只允许加入有容器号的库存记录，避免把空闲库位作为出库明细提交。
+- 若后续补充移库、盘存或账目管理页面，请在本文档追加独立章节，说明入口文件、业务状态、关键接口、数据来源和修改风险。
