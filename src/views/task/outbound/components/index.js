@@ -70,9 +70,12 @@ export const config = {
         return (res.data || []).map(item => ({
           label: item.documentNo,
           value: item.id,
+          raw: item,
+          goodsList: item.goodsList || [],
           children: item.goodsList && item.goodsList.length ? item.goodsList.map(good => ({
             label: `材料编码: ${good.goodCode || '未命名'} (件数: ${good.goodNum || 0}, 重量: ${good.goodWeight || 0})`,
             value: good.goodCode || good.id,
+            raw: good,
           })) : undefined
         }))
       }),

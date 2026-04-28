@@ -39,17 +39,17 @@ export const deleteOutbound = params => {
   })
 }
 
-export const confirmOutbound = data => {
+export const executeAuditedOutboundUpdate = data => {
   return request({
-    url: '/busin/outbound/confirmAudit',
+    url: '/busin/outbound/executeAudited',
     method: 'post',
     data,
   })
 }
 
-export const executeAuditedOutboundUpdate = data => {
+export const autoWeightPickPlan = data => {
   return request({
-    url: '/busin/outbound/executeAudited',
+    url: '/busin/pick/auto-weight',
     method: 'post',
     data,
   })

@@ -122,10 +122,10 @@
 
 页面状态由 `dataStatus` 和 `auditStatus` 共同决定：
 
-- `dataStatus=0`：待确认，可编辑、确认、删除。
-- `dataStatus=4`：暂存，按待确认处理，可编辑、确认、删除。
+- `dataStatus=0`：待审核，提交后直接进入审核链路，不再提供前端确认操作。
+- `dataStatus=4`：暂存，可编辑、删除。
 - `dataStatus=1`：已确认，非待审核时可发起修改。
-- `auditStatus=7`：待审核，显示审核入口。
+- `auditStatus=0/7`：待审核，显示审核入口。
 
 ### 2. 新增、暂存与提交
 
@@ -150,7 +150,11 @@
 
 ### 4. 审核
 
-列表确认出库申请调用 `POST /busin/outbound/confirmAudit`，参数包含 `taskNum` 和 `approved`。变更审核调用 `POST /busin/outbound/executeAudited`，参数包含 `operationId`、`approved` 和 `remark`。
+出库任务提交后默认进入待审核状态，列表不再提供“确认”操作。审核入口与入库管理保持一致，打开出库详情弹窗的 `audit` 模式：
+
+- 初次审核：若详情接口没有返回修改记录，则按普通详情内容只读展示，并提供“同意/不同意”审核操作。
+- 变更审核：若详情接口返回 `modifyRecords`，则展示修改内容列表，并高亮有变更的表单字段。
+- 审核同意或驳回调用 `POST /busin/outbound/executeAudited`，参数包含 `operationId`、`approved` 和 `remark`。
 
 ## 四、开发与修改注意事项
 

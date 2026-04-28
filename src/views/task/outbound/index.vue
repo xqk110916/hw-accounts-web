@@ -37,7 +37,7 @@
                     <span :class="['status-tag', getDataStatusClass(scope.row.dataStatus)]">
                       {{ getDataStatusText(scope.row.dataStatus) }}
                     </span>
-                    <span v-if="scope.row.auditStatus !== undefined && scope.row.auditStatus !== null && scope.row.auditStatus !== ''" :class="['status-tag', 'audit-tag', getAuditStatusClass(scope.row.auditStatus)]" style="margin-left: 4px;">
+                    <span v-if="shouldShowAuditTag(scope.row)" :class="['status-tag', 'audit-tag', getAuditStatusClass(scope.row.auditStatus)]" style="margin-left: 4px;">
                       {{ getAuditStatusText(scope.row.auditStatus) }}
                     </span>
                   </span>
@@ -79,33 +79,12 @@
     <detail ref="detail" @query="resetSearchParams"></detail>
     <allocation-basis-list-dialog ref="basisDialog" />
 
-    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
-      <el-form :model="auditForm" label-width="100px">
-        <el-form-item label="任务编号">
-          <span>{{ auditForm.taskNum }}</span>
-        </el-form-item>
-        <el-form-item label="审核结果">
-          <el-radio-group v-model="auditForm.result">
-            <el-radio label="pass">审核通过</el-radio>
-            <el-radio label="reject">审核拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="auditForm.remark" type="textarea" :rows="3" size="small" />
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button size="small" @click="auditDialogVisible = false">取消</el-button>
-        <el-button type="primary" size="small" @click="submitAudit">确定</el-button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script>
 import detail from './components/detail.vue'
 import { config, requestFun, btns, handleTbaleMap, getDefaultOptions, handleSearchParams } from './components/index.js'
-import { confirmOutbound, executeAuditedOutboundUpdate } from './components/api.js'
 import AllocationBasisListDialog from '@/views/task/inbound/components/AllocationBasisListDialog.vue'
 
 export default {
@@ -125,13 +104,6 @@ export default {
       height: 0,
       tableKeys: [],
       btns,
-      auditDialogVisible: false,
-      auditForm: {
-        id: '',
-        taskNum: '',
-        result: 'pass',
-        remark: '',
-      },
     }
   },
   async created() {
@@ -183,9 +155,6 @@ export default {
           case 'modify':
             this.modify(payload)
             break
-          case 'confirm':
-            this.confirmRow(payload)
-            break
           case 'delete':
             this.remove(payload)
             break
@@ -232,24 +201,10 @@ export default {
       this.$refs.detail.open(row, 0, 'view')
     },
     edit(row) {
-      // 未确认状态可编辑
       this.$refs.detail.open(row, 0, 'edit')
     },
     modify(row) {
-      // 已确认状态 -> 修改 -> 提交变更审核
       this.$refs.detail.open(row, 1, 'modify')
-    },
-    confirmRow(row) {
-      this.$confirm('确定要确认该出库任务?', '提示', { type: 'warning' })
-        .then(() => {
-          confirmOutbound({ taskNum: row.taskNum, approved: true }).then(res => {
-            if (res.code === 1) {
-              this.$message.success('确认成功')
-              this.getTableList()
-            }
-          })
-        })
-        .catch(() => {})
     },
     remove(row) {
       this.$confirm('确定要删除该任务?', '提示', { type: 'warning' })
@@ -283,41 +238,16 @@ export default {
       this.getTableList()
     },
     openAudit(row) {
-      this.auditForm = {
-        id: row.id,
-        operationId: row.id,
-        taskNum: row.taskNum,
-        result: 'pass',
-        remark: '',
-      }
-      this.auditDialogVisible = true
-    },
-    submitAudit() {
-      const params = {
-        operationId: this.auditForm.operationId || this.auditForm.id,
-        approved: this.auditForm.result === 'pass',
-        remark: this.auditForm.remark,
-      }
-      if (!params.approved && !params.remark) {
-        this.$message.warning('审核拒绝时请输入备注')
-        return
-      }
-      executeAuditedOutboundUpdate(params).then(res => {
-        if (res.code === 1) {
-          this.$message.success('审核成功')
-          this.auditDialogVisible = false
-          this.getTableList()
-        }
-      })
+      this.$refs.detail.open(row, 0, 'audit')
     },
     getDataStatusText(status) {
       const value = Number(status)
-      const map = { 0: '待确认', 1: '已确认', 4: '暂存' }
+      const map = { 0: '待审核', 1: '已确认', 4: '暂存' }
       return map[value] !== undefined ? map[value] : '-'
     },
     getDataStatusClass(status) {
       const value = Number(status)
-      const map = { 0: 'status-pending', 1: 'status-confirmed', 4: 'status-draft' }
+      const map = { 0: 'status-auditing', 1: 'status-confirmed', 4: 'status-draft' }
       return map[value] || ''
     },
     getAuditStatusText(status) {
@@ -330,25 +260,26 @@ export default {
       const map = { 0: 'status-auditing', 1: 'status-approved', 2: 'status-rejected', 7: 'status-auditing', 8: 'status-approved', 9: 'status-rejected' }
       return map[value] || ''
     },
+    shouldShowAuditTag(row) {
+      const auditStatus = row.auditStatus
+      if (auditStatus === undefined || auditStatus === null || auditStatus === '') return false
+      return !(Number(row.dataStatus) === 0 && Number(auditStatus) === 0)
+    },
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
       const dataStatus = Number(row.dataStatus)
       const auditStatus = Number(row.auditStatus)
 
-      if (dataStatus === 0 || dataStatus === 4) {
-        // 未确认/暂存：显示 编辑、确认、删除
+      if (dataStatus === 4) {
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
-        btns.push({ label: '确认', type: 'text', execute: 'confirm' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 1) {
-        // 已确认且非待审核：显示 修改
-        if (auditStatus !== 7) {
+        if (![0, 7].includes(auditStatus)) {
           btns.push({ label: '修改', type: 'text', execute: 'modify' })
         }
       }
 
-      // 待审核：显示 审核
-      if (auditStatus === 7) {
+      if (dataStatus !== 4 && (auditStatus === 0 || auditStatus === 7 || dataStatus === 0)) {
         btns.push({ label: '审核', type: 'text', execute: 'audit' })
       }
 

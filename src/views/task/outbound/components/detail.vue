@@ -9,89 +9,115 @@
             :key="item.prop"
             :span="item.full ? 24 : 12"
           >
-            <el-form-item :label="item.label" :prop="item.prop">
+            <el-form-item :label="item.label" :prop="item.prop" :class="{ 'modified-field': type === 'audit' && isFieldModified(item.prop) }">
               <div class="form-item-content">
-                <el-input
-                  v-if="judgeInput(item) && item.type !== 'textarea'"
-                  v-model="form[item.prop]"
-                  :type="item.type || 'text'"
-                  size="small"
-                  :placeholder="`请输入${item.label}`"
-                  clearable
-                  :disabled="type === 'view' || item.disabled"
-                  @blur="value => changeFormValue(value, item)"
-                />
-                <el-input
-                  v-if="item.type === 'textarea'"
-                  v-model="form[item.prop]"
-                  type="textarea"
-                  :rows="3"
-                  size="small"
-                  :placeholder="`请输入${item.label}`"
-                  clearable
-                  :disabled="type === 'view'"
-                  @blur="value => changeFormValue(value, item)"
-                />
-                <el-select
-                  v-if="item.type === 'select'"
-                  v-model="form[item.prop]"
-                  size="small"
-                  :placeholder="`请选择${item.label}`"
-                  clearable
-                  :disabled="type === 'view' || item.disabled"
-                  @change="value => changeFormValue(value, item)"
-                >
-                  <el-option
-                    v-for="opt in options[item.prop]"
-                    :key="opt.value"
-                    :label="opt.label"
-                    :value="opt.value"
+                <template v-if="type !== 'audit' || item.type === 'cascader'">
+                  <el-input
+                    v-if="judgeInput(item) && item.type !== 'textarea'"
+                    v-model="form[item.prop]"
+                    :type="item.type || 'text'"
+                    size="small"
+                    :placeholder="`请输入${item.label}`"
+                    clearable
+                    :disabled="isReadonlyMode || item.disabled"
+                    @blur="value => changeFormValue(value, item)"
                   />
-                </el-select>
-                <el-cascader
-                  v-if="item.type === 'cascader'"
-                  v-model="form[item.prop]"
-                  :options="options[item.prop]"
-                  size="small"
-                  :placeholder="`请选择${item.label}`"
-                  :props="item.props || { emitPath: false }"
-                  clearable
-                  filterable
-                  :disabled="type === 'view' || item.disabled"
-                  @change="value => changeFormValue(value, item)"
-                />
-                <el-date-picker
-                  v-if="item.type === 'datetime'"
-                  v-model="form[item.prop]"
-                  type="datetime"
-                  size="small"
-                  value-format="yyyy-MM-dd HH:mm:ss"
-                  :placeholder="`请选择${item.label}`"
-                  clearable
-                  :disabled="type === 'view'"
-                  @change="value => changeFormValue(value, item)"
-                />
-                <el-button
-                  v-if="item.showMaintenance && type !== 'view'"
-                  type="primary"
-                  icon="el-icon-setting"
-                  size="mini"
-                  circle
-                  class="maintenance-btn"
-                  title="维护"
-                  @click="openMaintenance"
-                />
+                  <el-input
+                    v-if="item.type === 'textarea'"
+                    v-model="form[item.prop]"
+                    type="textarea"
+                    :rows="3"
+                    size="small"
+                    :placeholder="`请输入${item.label}`"
+                    clearable
+                    :disabled="isReadonlyMode"
+                    @blur="value => changeFormValue(value, item)"
+                  />
+                  <el-select
+                    v-if="item.type === 'select'"
+                    v-model="form[item.prop]"
+                    size="small"
+                    :placeholder="`请选择${item.label}`"
+                    clearable
+                    :disabled="isReadonlyMode || item.disabled"
+                    @change="value => changeFormValue(value, item)"
+                  >
+                    <el-option
+                      v-for="opt in options[item.prop]"
+                      :key="opt.value"
+                      :label="opt.label"
+                      :value="opt.value"
+                    />
+                  </el-select>
+                  <el-cascader
+                    v-if="item.type === 'cascader'"
+                    v-model="form[item.prop]"
+                    :options="options[item.prop]"
+                    size="small"
+                    :placeholder="`请选择${item.label}`"
+                    :props="item.props || { emitPath: false }"
+                    clearable
+                    filterable
+                    :disabled="isReadonlyMode || item.disabled"
+                    @change="value => changeFormValue(value, item)"
+                  />
+                  <el-date-picker
+                    v-if="item.type === 'datetime'"
+                    v-model="form[item.prop]"
+                    type="datetime"
+                    size="small"
+                    value-format="yyyy-MM-dd HH:mm:ss"
+                    :placeholder="`请选择${item.label}`"
+                    clearable
+                    :disabled="isReadonlyMode"
+                    @change="value => changeFormValue(value, item)"
+                  />
+                  <el-button
+                    v-if="item.showMaintenance && !isReadonlyMode"
+                    type="primary"
+                    icon="el-icon-setting"
+                    size="mini"
+                    circle
+                    class="maintenance-btn"
+                    title="维护"
+                    @click="openMaintenance"
+                  />
+                </template>
+                <template v-else>
+                  <div class="audit-text-display" :class="{ 'is-textarea': item.type === 'textarea' }">
+                    <span class="original-text" :class="{ 'is-deleted': isFieldModified(item.prop) }">
+                      {{ getDisplayValue(item) }}
+                    </span>
+                    <template v-if="isFieldModified(item.prop)">
+                      <div v-if="item.type === 'textarea'" class="modify-text-block">
+                        <span class="modify-badge"><i class="el-icon-edit"></i> 修改为：{{ getModifiedDisplayValue(item.prop) }}</span>
+                      </div>
+                      <span v-else class="modify-badge"><i class="el-icon-edit"></i> 改：{{ getModifiedDisplayValue(item.prop) }}</span>
+                    </template>
+                  </div>
+                </template>
               </div>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
 
+      <div class="detail-section" v-if="type === 'audit' && modifyDescList.length">
+        <div class="detail-header">
+          <span class="detail-title">修改内容</span>
+        </div>
+        <div class="modify-desc-list">
+          <div v-for="(desc, index) in modifyDescList" :key="index" class="modify-desc-item">
+            {{ index + 1 }}. {{ desc }}
+          </div>
+        </div>
+      </div>
+
       <div class="detail-section">
         <div class="detail-header">
           <span class="detail-title">明细信息</span>
-          <div class="detail-actions" v-if="type !== 'view'">
-            <el-button v-if="type === 'add'" size="small" @click="autoAllocate">自动配置</el-button>
+          <div class="detail-actions" v-if="!isReadonlyMode">
+            <el-button size="small" @click="autoAllocate">自动配置</el-button>
             <el-button size="small" type="primary" @click="openSelectContainer">手工选择</el-button>
           </div>
         </div>
@@ -115,7 +141,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="metalPercentage" label="金属量%" width="100" show-overflow-tooltip />
-          <el-table-column v-if="type !== 'view'" label="操作" width="80" fixed="right">
+          <el-table-column v-if="!isReadonlyMode" label="操作" width="80" fixed="right">
             <template slot-scope="scope">
               <span class="table_operation">
                 <span class="btn text" @click="removeDetailRow(scope.$index)">删除</span>
@@ -128,7 +154,12 @@
         </div>
       </div>
 
-      <div class="footer" v-if="type !== 'view'">
+      <div class="footer" v-if="type === 'audit'">
+        <el-button size="small" @click="close">取消</el-button>
+        <el-button type="danger" size="small" @click="handleAuditReject">不同意</el-button>
+        <el-button type="primary" size="small" @click="handleAuditApprove">同意</el-button>
+      </div>
+      <div class="footer" v-else-if="type !== 'view'">
         <el-button size="small" @click="close">取消</el-button>
         <el-button v-if="type !== 'modify'" size="small" @click="submitForm(4)">暂存</el-button>
         <el-button type="primary" size="small" @click="submitForm(0)">
@@ -142,6 +173,7 @@
 
     <allocation-basis-list-dialog ref="basisDialog" @success="handleBasisSuccess" />
     <select-container-dialog ref="selectContainerDialog" @confirm="handleSelectContainerConfirm" />
+    <auto-pick-plan-dialog ref="autoPickPlanDialog" @confirm="handleAutoPickConfirm" />
   </div>
 </template>
 
@@ -150,8 +182,10 @@ import { deepClone } from '@/utils'
 import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
 import AllocationBasisListDialog from '@/views/task/inbound/components/AllocationBasisListDialog.vue'
 import SelectContainerDialog from './SelectContainerDialog.vue'
+import AutoPickPlanDialog from './AutoPickPlanDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
+import { executeAuditedOutboundUpdate } from './api.js'
 
 function formatDefaultDate(value) {
   if (!(value instanceof Date)) return value
@@ -165,7 +199,7 @@ function formatDefaultDate(value) {
 }
 
 export default {
-  components: { AllocationBasisListDialog, SelectContainerDialog },
+  components: { AllocationBasisListDialog, SelectContainerDialog, AutoPickPlanDialog },
   data() {
     return {
       row: {},
@@ -177,13 +211,53 @@ export default {
       rules: {},
       options: {},
       detailList: [],
+      modifyRecords: [],
       deletedGoodIds: [],
       deletedContainerCodes: [],
     }
   },
   computed: {
     titleMap() {
-      return { add: '添加出库任务', edit: '编辑出库任务', view: '出库任务详情', modify: '修改出库任务' }
+      return { add: '添加出库任务', edit: '编辑出库任务', view: '出库任务详情', modify: '修改出库任务', audit: '审核出库任务' }
+    },
+    isReadonlyMode() {
+      return this.type === 'view' || this.type === 'audit'
+    },
+    modifyDescList() {
+      const record = (this.modifyRecords && this.modifyRecords[0]) || {}
+      return (record.modifyDescList || []).filter(Boolean)
+    },
+    modifiedFieldMap() {
+      if (!this.modifyRecords || !this.modifyRecords.length) return {}
+      try {
+        const record = this.modifyRecords[0]
+        const before = JSON.parse(record.beforeData || '{}')
+        const after = JSON.parse(record.afterData || '{}')
+        const apiToFormProp = {
+          taskNum: 'taskNum',
+          transferId: 'transferId',
+          securityLevel: 'securityLevel',
+          outboundMan: 'outboundMan',
+          receiveUnit: 'receiveUnit',
+          createTime: 'createTime',
+          remark: 'remark',
+          goodCodes: 'goodCodes',
+          warehouseName: 'warehouseName',
+        }
+        const map = {}
+        Object.keys(apiToFormProp).forEach(apiField => {
+          const formProp = apiToFormProp[apiField]
+          const beforeVal = before[apiField] === undefined || before[apiField] === null ? '' : String(before[apiField])
+          const afterVal = after[apiField] === undefined || after[apiField] === null ? '' : String(after[apiField])
+          if (beforeVal !== afterVal) {
+            map[formProp] = { before: before[apiField], after: after[apiField] }
+          }
+        })
+        return map
+      } catch (error) {
+        console.error('解析出库修改记录失败', error)
+        return {}
+      }
     },
     totalWeightGross() {
       return this.detailList.reduce((sum, item) => sum + (Number(item.grossWeight) || 0), 0).toFixed(5)
@@ -204,6 +278,7 @@ export default {
       this.updateType = updateType
       this.deletedGoodIds = []
       this.deletedContainerCodes = []
+      this.modifyRecords = []
       this.resetFormValues()
       if (this.row.id) {
         this.type = mode || 'edit'
@@ -248,6 +323,7 @@ export default {
         if (data.goodCodes) this.$set(this.form, 'goodCodes', data.goodCodes)
         if (data.securityLevel) this.$set(this.form, 'securityLevel', String(data.securityLevel))
         this.detailList = ((res.data && res.data.goodsList) || data.goodsList || data.details || []).map(this.normalizeGoods)
+        this.modifyRecords = (res.data && res.data.modifyRecords) || data.modifyRecords || []
         return data
       })
     },
@@ -297,6 +373,7 @@ export default {
       this.row = {}
       this.resetFormValues()
       this.detailList = []
+      this.modifyRecords = []
       this.deletedGoodIds = []
       this.deletedContainerCodes = []
       this.$refs.form && this.$refs.form.resetFields()
@@ -354,7 +431,7 @@ export default {
       let handle
       if (this.type === 'add') handle = item.isAdd
       else if (this.type === 'edit') handle = item.isUpdate
-      else if (this.type === 'view') handle = item.isView
+      else if (this.type === 'view' || this.type === 'audit') handle = item.isView
       if (typeof handle === 'function') return handle(this.form)
       if (typeof handle === 'boolean') return handle
       return true
@@ -371,6 +448,18 @@ export default {
     },
     handleSelectContainerConfirm(list) {
       this.detailList = (list || []).map(this.normalizeGoods)
+    },
+    handleAutoPickConfirm(list) {
+      if (this.detailList.length) this.markDeletedDetails(this.detailList)
+      this.detailList = (list || []).map(this.normalizeGoods)
+    },
+    markDeletedDetails(list) {
+      ;(list || []).forEach(item => {
+        if (item.id && !this.deletedGoodIds.includes(item.id)) this.deletedGoodIds.push(item.id)
+        if (item.containerCode && !this.deletedContainerCodes.includes(item.containerCode)) {
+          this.deletedContainerCodes.push(item.containerCode)
+        }
+      })
     },
     normalizeGoods(row = {}) {
       return {
@@ -400,6 +489,73 @@ export default {
       const values = [row.shelfCode, row.rowCode, row.columnCode].filter(Boolean)
       return values.length ? values.join('-') : '-'
     },
+    getDisplayValue(item) {
+      const value = this.form[item.prop]
+      if (value === undefined || value === null || value === '') return '-'
+      if (item.type === 'select') {
+        const option = (this.options[item.prop] || []).find(opt => String(opt.value) === String(value))
+        return option ? option.label : value
+      }
+      if (item.type === 'cascader') {
+        return Array.isArray(value) ? value.map(path => Array.isArray(path) ? path.join('/') : path).join(', ') : value
+      }
+      return value
+    },
+    isFieldModified(prop) {
+      return !!this.modifiedFieldMap[prop]
+    },
+    getModifiedDisplayValue(prop) {
+      const info = this.modifiedFieldMap[prop]
+      if (!info) return ''
+      const value = info.after
+      if (prop === 'securityLevel') {
+        const option = (this.options.securityLevel || []).find(opt => String(opt.value) === String(value))
+        return option ? option.label : value
+      }
+      return value === undefined || value === null || value === '' ? '-' : String(value)
+    },
+    getAuditOperationId() {
+      const record = (this.modifyRecords && this.modifyRecords[0]) || {}
+      return record.operationId || record.id || this.row.operationId || this.row.id
+    },
+    handleAuditApprove() {
+      this.$confirm('确定同意该审核申请？', '审核确认', { type: 'info' }).then(() => {
+        executeAuditedOutboundUpdate({
+          operationId: this.getAuditOperationId(),
+          approved: true,
+        }).then(res => {
+          if (res.code === 1) {
+            this.$message.success('审核通过')
+            this.$emit('query')
+            this.close()
+          }
+        })
+      }).catch(() => {})
+    },
+    handleAuditReject() {
+      this.$prompt('请输入驳回原因', '审核驳回', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputType: 'textarea',
+        inputPlaceholder: '请输入驳回原因',
+        inputValidator: value => {
+          if (!value || !value.trim()) return '请输入驳回原因'
+          return true
+        },
+      }).then(({ value }) => {
+        executeAuditedOutboundUpdate({
+          operationId: this.getAuditOperationId(),
+          approved: false,
+          remark: value,
+        }).then(res => {
+          if (res.code === 1) {
+            this.$message.success('已驳回')
+            this.$emit('query')
+            this.close()
+          }
+        })
+      }).catch(() => {})
+    },
     removeDetailRow(index) {
       this.$confirm('确定要删除该明细?', '提示', { type: 'warning' }).then(() => {
         const removed = this.detailList.splice(index, 1)[0]
@@ -408,7 +564,38 @@ export default {
       })
     },
     autoAllocate() {
-      this.$message.info('自动配置位置功能')
+      const materials = this.buildAutoPickMaterials()
+      if (!this.form.transferId || !materials.length) {
+        this.$message.warning('请先选择调拨依据/材料')
+        return
+      }
+      this.$refs.autoPickPlanDialog.open(materials, this.detailList.length > 0)
+    },
+    buildAutoPickMaterials() {
+      const transferId = this.form.transferId
+      const goodCodes = String(this.form.goodCodes || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean)
+      if (!transferId || !goodCodes.length) return []
+      const transferOption = (this.options['_transferSelected'] || []).find(item => String(item.value) === String(transferId))
+      const goodsList = (transferOption && (transferOption.goodsList || (transferOption.raw && transferOption.raw.goodsList))) || []
+      return goodCodes.map(code => {
+        const good = goodsList.find(item => String(item.goodCode || item.id) === String(code)) || {}
+        return {
+          goodCode: good.goodCode || code,
+          materialName: good.materialName || good.goodsName || good.goodName || good.goodCode || code,
+          netWeight: good.goodWeight || good.netWeight || '',
+          grossWeight: good.grossWeight || good.goodWeight || '',
+          tareWeight: good.tareWeight || 0,
+          unit: good.unit || 'kg',
+          suppliers: good.suppliers || good.productionUnit || '',
+          warehouses: good.warehouses || good.warehouseName || '',
+          batchNos: good.batchNos || good.taskNum || '',
+          startStorageTime: good.startStorageTime || '',
+          endStorageTime: good.endStorageTime || '',
+        }
+      })
     },
   },
 }
@@ -474,6 +661,86 @@ export default {
     &.text {
       color: #246fe5;
     }
+  }
+}
+
+::v-deep .modified-field {
+  background: #fffbe6;
+  border-left: 3px solid #e6a23c;
+  border-radius: 4px;
+  padding-left: 8px;
+
+  .el-form-item__label {
+    color: #e6a23c;
+    font-weight: bold;
+  }
+}
+
+.audit-text-display {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+  padding: 5px 0;
+
+  &.is-textarea {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .original-text {
+    color: #1b2129;
+    line-height: 22px;
+
+    &.is-deleted {
+      color: #999;
+      text-decoration: line-through;
+    }
+  }
+
+  .modify-text-block {
+    width: 100%;
+    margin-top: 6px;
+  }
+}
+
+.modify-desc-list {
+  padding: 10px 16px;
+  background: #fdf6ec;
+  border-left: 4px solid #e6a23c;
+  border-radius: 4px;
+
+  .modify-desc-item {
+    margin-bottom: 4px;
+    color: #e6a23c;
+    font-size: 13px;
+    line-height: 1.6;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.modify-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid #f5dab1;
+  border-radius: 3px;
+  background: #fdf6ec;
+  color: #e6a23c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  i {
+    margin-right: 2px;
+    font-size: 12px;
   }
 }
 
