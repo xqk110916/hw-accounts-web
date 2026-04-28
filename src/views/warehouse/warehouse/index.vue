@@ -146,6 +146,9 @@
       v-if="currentLevel === 'shelf'"
       :date-color-map="dateColorMap"
       :container-stats="containerStats"
+      :warehouse-list="warehouseList"
+      :current-warehouse="currentWarehouse"
+      :shelves="shelves"
       @filter-date="handleFilterDate"
       @filter-clear="handleFilterClear"
     />
@@ -461,7 +464,7 @@ export default {
     },
 
     handleContainerClick(container) {
-      if (container && container.code) {
+      if (container && (container.code || container.materialCode || String(container.status) === '1')) {
         this.selectedContainer = container;
         this.containerDialogVisible = true;
       }
@@ -486,7 +489,8 @@ export default {
       const shelfName = targetLocation[1];
       const warehouseName = this.warehouseList.find(w => w.id === warehouseId)?.name || warehouseId;
 
-      this.$confirm(`确定要将容器 ${this.selectedContainer.code} 移动到 ${warehouseName} - ${shelfName} 吗?`, '提示', {
+      const containerCode = this.selectedContainer.code || this.selectedContainer.materialCode || this.selectedContainer.id || '-';
+      this.$confirm(`确定要将容器 ${containerCode} 移动到 ${warehouseName} - ${shelfName} 吗?`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'

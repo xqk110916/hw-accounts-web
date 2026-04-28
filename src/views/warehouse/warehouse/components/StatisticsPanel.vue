@@ -56,7 +56,6 @@
 
 <script>
 import * as echarts from 'echarts';
-import { getWarehouseList, getWarehouseById } from '../config/warehouseConfig';
 
 export default {
   name: 'StatisticsPanel',
@@ -68,79 +67,72 @@ export default {
     containerStats: {
       type: Object,
       default: () => ({})
+    },
+    warehouseList: {
+      type: Array,
+      default: () => []
+    },
+    currentWarehouse: {
+      type: Object,
+      default: null
+    },
+    shelves: {
+      type: Array,
+      default: () => []
     }
   },
   data() {
     return {
       collapsed: true,
-      warehouseList: [],
-      statsType: 'quantity', // 'quantity' 或 'weight'
+      statsType: 'quantity',
       chartInstance: null
     };
   },
   computed: {
     // 库房的详细统计，用于左侧的库房容量进度条
     computedWarehouseStats() {
-      return this.warehouseList.map(whConfig => {
-        const warehouse = getWarehouseById(whConfig.id);
-        if (!warehouse) return null;
+      const current = this.currentWarehouse || this.warehouseList[0];
+      if (!current) return [];
+      const shelves = this.shelves || [];
+      let capacity = 0;
+      let stock = 0;
         
-        const shelves = warehouse.shelves || [];
-        let capacity = 0;
-        let stock = 0;
+      shelves.forEach(shelf => {
+        if (shelf.layers) {
+          shelf.layers.forEach(layer => {
+            if (layer.containers) {
+              layer.containers.forEach(container => {
+                capacity++;
+                if (container.materialCode) {
+                  stock++;
+                }
+              });
+            }
+          });
+        }
+      });
         
-        shelves.forEach(shelf => {
-          if (shelf.layers) {
-            shelf.layers.forEach(layer => {
-              if (layer.containers) {
-                layer.containers.forEach(container => {
-                  capacity++;
-                  if (container.materialCode) {
-                    stock++;
-                  }
-                });
-              }
-            });
-          }
-        });
-        
-        return {
-          id: warehouse.id,
-          name: warehouse.name,
-          capacity,
-          stock,
-          usageRate: capacity > 0 ? Math.round((stock / capacity) * 100) : 0
-        };
-      }).filter(Boolean);
+      return [{
+        id: current.id,
+        name: current.name,
+        capacity,
+        stock,
+        usageRate: capacity > 0 ? Math.round((stock / capacity) * 100) : 0
+      }];
     },
     
     // 用于右侧产品统计的数据聚合
     productPieData() {
       const productMap = {};
       
-      this.warehouseList.forEach(whConfig => {
-        const warehouse = getWarehouseById(whConfig.id);
-        if (warehouse && warehouse.shelves) {
-          warehouse.shelves.forEach(shelf => {
-            if (shelf.layers) {
-              shelf.layers.forEach(layer => {
-                if (layer.containers) {
-                  layer.containers.forEach(container => {
-                    const materialName = container.materialName;
-                    if (materialName) {
-                      if (!productMap[materialName]) {
-                        productMap[materialName] = { quantity: 0, weight: 0 };
-                      }
-                      productMap[materialName].quantity += 1;
-                      // 模拟重量逻辑：不同类型的材料有不同的重量基数
-                      const weightFactor = materialName.length * 5 + 10; 
-                      productMap[materialName].weight += weightFactor;
-                    }
-                  });
-                }
-              });
-            }
-          });
+      this.getContainersFromShelves(this.shelves).forEach(container => {
+        const materialName = container.materialName || container.materialCode;
+        if (materialName) {
+          if (!productMap[materialName]) {
+            productMap[materialName] = { quantity: 0, weight: 0 };
+          }
+          productMap[materialName].quantity += 1;
+          productMap[materialName].weight += Number(container.netWeight || container.grossWeight || 0) || 0;
         }
       });
       
@@ -153,7 +145,6 @@ export default {
     }
   },
   created() {
-    this.warehouseList = getWarehouseList();
   },
   mounted() {
     this.$nextTick(() => {
@@ -177,6 +168,19 @@ export default {
     }
   },
   methods: {
+    getContainersFromShelves(shelves) {
+      const containers = [];
+      (shelves || []).forEach(shelf => {
+        (shelf.layers || []).forEach(layer => {
+          (layer.containers || []).forEach(container => {
+            if (container && (container.materialCode || String(container.status) === '1')) {
+              containers.push(container);
+            }
+          });
+        });
+      });
+      return containers;
+    },
     togglePanel() {
       this.collapsed = !this.collapsed;
       if (!this.collapsed) {

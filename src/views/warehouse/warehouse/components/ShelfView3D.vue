@@ -454,7 +454,7 @@ export default {
 
       if (intersects.length > 0) {
         const object = intersects[0].object;
-        if (object.userData.container && object.userData.container.code) {
+        if (object.userData.container && (object.userData.container.code || object.userData.container.materialCode || String(object.userData.container.status) === '1')) {
           this.$emit('container-click', object.userData.container);
         }
       }

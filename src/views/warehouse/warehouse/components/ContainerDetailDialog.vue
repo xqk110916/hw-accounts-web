@@ -20,15 +20,45 @@
         <table class="custom-descriptions">
           <tr>
             <td class="label">容器编号</td>
-            <td class="value">{{ container.code }}</td>
-            <td class="label">入库时间</td>
-            <td class="value">{{ container.storageDate || '-' }}</td>
+            <td class="value">{{ detailValue('containerCode', 'code') }}</td>
+            <td class="label">任务编号</td>
+            <td class="value">{{ detailValue('taskNum') }}</td>
           </tr>
           <tr>
-            <td class="label">物料代码</td>
-            <td class="value">{{ container.materialCode || '-' }}</td>
+            <td class="label">材料类型</td>
+            <td class="value">{{ materialTypesText }}</td>
+            <td class="label">入库时间</td>
+            <td class="value">{{ inboundTime }}</td>
+          </tr>
+          <tr>
+            <td class="label">物料编码</td>
+            <td class="value">{{ detailValue('goodCode', 'goodsCode', 'materialCode') }}</td>
             <td class="label">物料名称</td>
-            <td class="value">{{ container.materialName || '-' }}</td>
+            <td class="value">{{ detailValue('goodsName', 'goodName', 'materialName') }}</td>
+          </tr>
+          <tr>
+            <td class="label">生产单位</td>
+            <td class="value">{{ detailValue('productionUnit') }}</td>
+            <td class="label">货箱号</td>
+            <td class="value">{{ detailValue('boxNum') }}</td>
+          </tr>
+          <tr>
+            <td class="label">封记编码1</td>
+            <td class="value">{{ detailValue('sealCode1') }}</td>
+            <td class="label">封记编码2</td>
+            <td class="value">{{ detailValue('sealCode2') }}</td>
+          </tr>
+          <tr>
+            <td class="label">毛重</td>
+            <td class="value">{{ formatWeight(detailValueRaw('grossWeight')) }}</td>
+            <td class="label">皮重</td>
+            <td class="value">{{ formatWeight(detailValueRaw('tareWeight')) }}</td>
+          </tr>
+          <tr>
+            <td class="label">净重</td>
+            <td class="value">{{ formatWeight(detailValueRaw('netWeight')) }}</td>
+            <!-- <td class="label">重量单位</td>
+            <td class="value">{{ detailValue('weightUnit') }}</td> -->
           </tr>
           <tr>
             <td class="label location-highlight"> <i class="el-icon-location"></i> 当前位置</td>
@@ -108,9 +138,56 @@ export default {
       set(val) {
         this.$emit('update:visible', val);
       }
+    },
+    goodsDetail() {
+      return (this.container && this.container.inboundGoodsEntity) || {};
+    },
+    inboundTime() {
+      return this.detailValue('lastInboundTime', 'inboundTime', 'createTime', 'storageDate');
+    },
+    materialTypesText() {
+      const value = this.detailValueRaw('materialTypes');
+      if (!value) return '-';
+      if (Array.isArray(value)) return value.length ? value.join('、') : '-';
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.length ? parsed.map(item => {
+            if (item && typeof item === 'object') {
+              return item.name || item.label || item.value || item.materialType || JSON.stringify(item);
+            }
+            return item;
+          }).join('、') : '-';
+        }
+      } catch (error) {
+        return value || '-';
+      }
+      return value || '-';
     }
   },
   methods: {
+    detailValueRaw(...keys) {
+      const detail = this.goodsDetail || {};
+      const container = this.container || {};
+      for (const key of keys) {
+        const value = detail[key];
+        if (value !== null && typeof value !== 'undefined' && value !== '') return value;
+      }
+      for (const key of keys) {
+        const value = container[key];
+        if (value !== null && typeof value !== 'undefined' && value !== '') return value;
+      }
+      return '';
+    },
+    detailValue(...keys) {
+      const value = this.detailValueRaw(...keys);
+      return value === '' ? '-' : value;
+    },
+    formatWeight(value) {
+      if (value === null || typeof value === 'undefined' || value === '') return '-';
+      const unit = this.detailValueRaw('weightUnit');
+      return `${value}${unit ? ` ${unit}` : ''}`;
+    },
     handleClose() {
       this.targetLocation = [];
       this.$emit('update:visible', false);
