@@ -37,7 +37,6 @@
           end-placeholder="结束日期"
           value-format="yyyy-MM-dd"
           style="width: 260px"
-          placement="bottom-start"
           @change="handleDateFilter"
         ></el-date-picker>
         

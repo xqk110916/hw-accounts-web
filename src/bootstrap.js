@@ -19,6 +19,23 @@ import Components from '@/components';
 import axios from 'axios';
 import './assets/icons';
 import * as echarts from 'echarts';
+
+const originalWarnHandler = Vue.config.warnHandler;
+Vue.config.warnHandler = (msg, vm, trace) => {
+  const isElementDatePickerPlacementWarning =
+    msg && msg.includes('Prop being mutated: "placement"') &&
+    trace && trace.includes('<ElDatePicker>');
+
+  if (isElementDatePickerPlacementWarning) return;
+
+  if (originalWarnHandler) {
+    originalWarnHandler(msg, vm, trace);
+    return;
+  }
+
+  console.error(`[Vue warn]: ${msg}${trace || ''}`);
+};
+
 Vue.use(zcUI);
 Vue.use(VueMeta);
 Vue.use(Plugins);
