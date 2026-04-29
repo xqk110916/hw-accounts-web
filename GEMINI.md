@@ -19,11 +19,10 @@ When generating a new page, component, route, menu, or standard List/CRUD interf
 
 1. Verify the existing routing and business scope in `docs/SYSTEM_MODULES_MAP.md`.
 2. Update `menu.json`, `docs/SYSTEM_MODULES_MAP.md`, and the relevant module README.
-3. Use the `Menu Management Skill` located at `.agent/skills/menu_management/SKILL.md` to register backend menu and permission entries.
+3. Do not automatically use the `Menu Management Skill` located at `.agent/skills/menu_management/SKILL.md`. Only run it when the user explicitly asks to register menus/permissions or explicitly requests this skill.
 
 ## Tech Stack Reminder
 
 - Framework: Vue 2.7.14
 - UI & State: Element UI 2.15.9, Vuex 3.6.0, Vue Router 3.4.9
 - Build Tool: Vue CLI / Webpack 5
-

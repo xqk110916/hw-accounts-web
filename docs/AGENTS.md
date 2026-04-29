@@ -44,7 +44,7 @@
 - `docs/SYSTEM_MODULES_MAP.md`
 - 对应模块 README
 
-新增菜单还必须使用 `.agent/skills/menu_management/SKILL.md` 中的菜单管理技能完成后端菜单与权限注册。
+新增菜单默认不自动调用 `.agent/skills/menu_management/SKILL.md` 中的菜单管理技能。仅当用户明确要求注册菜单/权限，或明确要求触发菜单管理技能时，才使用该技能完成后端菜单与权限注册。
 
 ## 四、跨 Agent 适配要求
 
@@ -55,4 +55,3 @@
 - Gemini：读取根目录 `GEMINI.md`，并继续读取本文档。
 
 三类 Agent 的行为应保持一致：先读规则和背景，再分析或修改；如新增架构、路由、菜单或模块边界，必须同步更新文档。
-
