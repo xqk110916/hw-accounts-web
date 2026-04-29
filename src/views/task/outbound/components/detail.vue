@@ -309,7 +309,7 @@ export default {
         this.detailList = []
         this.refreshOptions()
         this.show = true
-        generateBatchNo({ batchType: 'outbound', prefix: 'CK' }).then(res => {
+        generateBatchNo({ batchType: 1 }).then(res => {
           if (res.code === 1) this.$set(this.form, 'taskNum', res.data)
         })
       }
