@@ -198,6 +198,15 @@ function formatDefaultDate(value) {
   return `${y}-${m}-${d} ${H}:${M}:${S}`
 }
 
+function getDefaultFormValue(item) {
+  if (item.defaultValue === undefined) return ''
+  const value = typeof item.defaultValue === 'function' ? item.defaultValue() : item.defaultValue
+  if (Array.isArray(value)) return []
+  const formattedValue = formatDefaultDate(value)
+  if (formattedValue && typeof formattedValue === 'object') return { ...formattedValue }
+  return formattedValue
+}
+
 export default {
   components: { AllocationBasisListDialog, SelectContainerDialog, AutoPickPlanDialog },
   data() {
@@ -365,8 +374,7 @@ export default {
     },
     resetFormValues() {
       config.detail.forEach(item => {
-        const value = item.defaultValue !== undefined ? formatDefaultDate(item.defaultValue) : ''
-        this.$set(this.form, item.prop, value)
+        this.$set(this.form, item.prop, getDefaultFormValue(item))
       })
     },
     resetForm() {
@@ -376,13 +384,12 @@ export default {
       this.modifyRecords = []
       this.deletedGoodIds = []
       this.deletedContainerCodes = []
-      this.$refs.form && this.$refs.form.resetFields()
+      this.$refs.form && this.$refs.form.clearValidate()
     },
     handleParams() {
       config.detail.forEach(item => {
         this.formKeys.push(item)
-        const value = item.defaultValue !== undefined ? formatDefaultDate(item.defaultValue) : ''
-        this.$set(this.form, item.prop, value)
+        this.$set(this.form, item.prop, getDefaultFormValue(item))
         if (item.option || item.dictParentId) this.getOptions(item)
         if (item.required) {
           const isInput = this.judgeInput(item)

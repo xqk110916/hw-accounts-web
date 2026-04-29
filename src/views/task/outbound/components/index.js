@@ -119,7 +119,7 @@ export const config = {
       prop: 'createTime',
       type: 'datetime',
       required: false,
-      defaultValue: new Date(),
+      defaultValue: () => new Date(),
     },
     {
       label: '收方单位',

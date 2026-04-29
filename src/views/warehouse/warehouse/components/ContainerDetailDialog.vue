@@ -79,19 +79,52 @@
         </div>
         <div class="move-action-area">
           <div class="action-label">移动至:</div>
-          <el-cascader
-            v-model="targetLocation"
-            :options="locationOptions"
-            placeholder="请选择目标库房/货架"
+          <el-select
+            v-model="targetWarehouseId"
+            :loading="warehouseLoading"
+            placeholder="请选择目标库房"
             size="small"
-            class="location-cascader"
+            class="warehouse-select"
             clearable
-          ></el-cascader>
+            filterable
+            @change="handleWarehouseChange"
+          >
+            <el-option
+              v-for="warehouse in warehouseOptions"
+              :key="warehouse.id"
+              :label="warehouse.warehouseName || warehouse.nodeName"
+              :value="warehouse.id"
+            />
+          </el-select>
+          <el-select
+            v-model="targetPositionId"
+            placeholder="请选择目标位置"
+            size="small"
+            class="position-select"
+            clearable
+            filterable
+            :disabled="!targetWarehouseId"
+            :loading="positionLoading"
+            @change="handlePositionChange"
+          >
+            <el-option
+              v-for="position in positionOptions"
+              :key="position.id"
+              :label="formatPositionLabel(position)"
+              :value="position.id"
+              :disabled="position.status !== 0"
+            >
+              <span>{{ formatPositionLabel(position) }}</span>
+              <span v-if="position.status !== 0" style="color: #999; margin-left: 8px;">
+                ({{ position.status === 1 ? '占用' : '锁定' }})
+              </span>
+            </el-option>
+          </el-select>
           <el-button 
             type="primary" 
             size="small" 
             @click="handleMove" 
-            :disabled="!targetLocation.length"
+            :disabled="!targetWarehouseId || !targetPositionId"
           >
             确认移动
           </el-button>
@@ -105,6 +138,8 @@
 </template>
 
 <script>
+import { getHierarchyListByNodeType, getPositionMap } from '@/api/warehouse/locationMap';
+
 export default {
   name: 'ContainerDetailDialog',
   props: {
@@ -119,16 +154,24 @@ export default {
     containerLocation: {
       type: String,
       default: '-'
-    },
-    locationOptions: {
-      type: Array,
-      default: () => []
     }
   },
   data() {
     return {
-      targetLocation: []
+      targetWarehouseId: '',
+      targetPositionId: '',
+      targetWarehouse: null,
+      targetPosition: null,
+      warehouseOptions: [],
+      positionOptions: [],
+      warehouseLoading: false,
+      positionLoading: false
     };
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) this.loadWarehouseOptions();
+    }
   },
   computed: {
     dialogVisible: {
@@ -166,6 +209,39 @@ export default {
     }
   },
   methods: {
+    async loadWarehouseOptions() {
+      this.warehouseLoading = true;
+      try {
+        const res = await getHierarchyListByNodeType(2);
+        this.warehouseOptions = Array.isArray(res.data) ? res.data : [];
+      } finally {
+        this.warehouseLoading = false;
+      }
+    },
+    async handleWarehouseChange(warehouseId) {
+      this.targetPositionId = '';
+      this.targetPosition = null;
+      this.positionOptions = [];
+      this.targetWarehouse = this.warehouseOptions.find(item => String(item.id) === String(warehouseId)) || null;
+      if (!warehouseId) return;
+      this.positionLoading = true;
+      try {
+        const res = await getPositionMap({ nodeId: warehouseId, nodeType: '2' });
+        const positions = Array.isArray(res.data) ? res.data : [];
+        this.positionOptions = positions.map(item => ({
+          ...item,
+          status: Number(item.status)
+        }));
+      } finally {
+        this.positionLoading = false;
+      }
+    },
+    handlePositionChange(positionId) {
+      this.targetPosition = this.positionOptions.find(item => String(item.id) === String(positionId)) || null;
+    },
+    formatPositionLabel(position = {}) {
+      return [position.shelfCode, position.rowCode, position.columnCode].filter(Boolean).join('-') || '-';
+    },
     detailValueRaw(...keys) {
       const detail = this.goodsDetail || {};
       const container = this.container || {};
@@ -189,17 +265,33 @@ export default {
       return `${value}${unit ? ` ${unit}` : ''}`;
     },
     handleClose() {
-      this.targetLocation = [];
+      this.targetWarehouseId = '';
+      this.targetPositionId = '';
+      this.targetWarehouse = null;
+      this.targetPosition = null;
+      this.positionOptions = [];
       this.$emit('update:visible', false);
       this.$emit('close');
     },
     handleMove() {
-      if (!this.targetLocation || this.targetLocation.length < 2) {
+      if (!this.targetWarehouseId || !this.targetPositionId || !this.targetPosition) {
         this.$message.warning('请选择目标位置');
         return;
       }
-      this.$emit('move-container', this.targetLocation);
-      this.targetLocation = [];
+      this.$emit('move-container', {
+        warehouseId: this.targetWarehouseId,
+        warehouseName: this.targetWarehouse?.warehouseName || this.targetWarehouse?.nodeName || '',
+        positionId: this.targetPositionId,
+        shelfCode: this.targetPosition.shelfCode || '',
+        rowCode: this.targetPosition.rowCode || '',
+        columnCode: this.targetPosition.columnCode || '',
+        positionLabel: this.formatPositionLabel(this.targetPosition)
+      });
+      this.targetWarehouseId = '';
+      this.targetPositionId = '';
+      this.targetWarehouse = null;
+      this.targetPosition = null;
+      this.positionOptions = [];
     },
     handleViewHistory() {
       this.$emit('view-history');
@@ -285,7 +377,8 @@ export default {
       white-space: nowrap;
     }
     
-    .location-cascader {
+    .warehouse-select,
+    .position-select {
       flex: 1;
     }
   }

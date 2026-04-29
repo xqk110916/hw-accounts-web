@@ -157,7 +157,6 @@
       :visible.sync="containerDialogVisible"
       :container="selectedContainer"
       :container-location="getContainerLocation()"
-      :location-options="locationCascaderOptions"
       @move-container="handleMoveContainer"
       @view-history="viewContainerHistory"
       @close="containerDialogVisible = false"
@@ -241,15 +240,6 @@ export default {
           ...layer,
           containers: layer.containers ? layer.containers.filter(c => c.storageDate === this.filterDate) : []
         })) : []
-      }));
-    },
-    locationCascaderOptions() {
-      return this.warehouseList.map(wh => ({
-        value: wh.id,
-        label: wh.name,
-        children: String(wh.id) === String(this.selectedWarehouseId)
-          ? this.shelves.map(s => ({ value: s.name, label: s.name }))
-          : []
       }));
     },
     selectedShelfLayers() {
@@ -479,14 +469,18 @@ export default {
     },
 
     handleMoveContainer(targetLocation) {
-      if (!targetLocation || targetLocation.length < 2) {
+      if (!targetLocation || !targetLocation.warehouseId || !targetLocation.positionId) {
         this.$message.warning('请选择目标位置');
         return;
       }
 
-      const warehouseId = targetLocation[0];
-      const shelfName = targetLocation[1];
-      const warehouseName = this.warehouseList.find(w => w.id === warehouseId)?.name || warehouseId;
+      const warehouseName = targetLocation.warehouseName || targetLocation.warehouseId;
+      const positionName = targetLocation.positionLabel || [
+        targetLocation.shelfCode,
+        targetLocation.rowCode,
+        targetLocation.columnCode
+      ].filter(Boolean).join('-');
+      const shelfName = positionName;
 
       const containerCode = this.selectedContainer.code || this.selectedContainer.materialCode || this.selectedContainer.id || '-';
       this.$confirm(`确定要将容器 ${containerCode} 移动到 ${warehouseName} - ${shelfName} 吗?`, '提示', {

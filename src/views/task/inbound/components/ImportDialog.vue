@@ -158,6 +158,55 @@ export default {
     clearPreview() {
       this.previewList = []
     },
+    isEmptyValue(value) {
+      return value === undefined || value === null || String(value).trim() === ''
+    },
+    isCompleteImportRow(item, type) {
+      const type1RequiredFields = ['goodCode', 'containerCode', 'productionUnit', 'warehouseName']
+      const type2RequiredFields = [
+        'containerCode',
+        'sealCode1',
+        'sealType1',
+        'sealCode2',
+        'sealType2',
+        'grossWeight',
+        'tareWeight',
+        'netWeight',
+        'metalPercentage',
+        'boxNum',
+        'position'
+      ]
+      const fields = type === 1 ? type1RequiredFields : type2RequiredFields
+      return fields.every(field => !this.isEmptyValue(item[field]))
+    },
+    isCompletePreviewRow(item) {
+      const requiredFields = [
+        'goodCode',
+        'containerCode',
+        'productionUnit',
+        'warehouseName',
+        'sealCode1',
+        'sealType1',
+        'sealCode2',
+        'sealType2',
+        'grossWeight',
+        'tareWeight',
+        'netWeight',
+        'metalPercentage',
+        'boxNum',
+        'position'
+      ]
+      return requiredFields.every(field => !this.isEmptyValue(item[field]))
+    },
+    filterCompleteRows(list, type) {
+      const rows = Array.isArray(list) ? list : []
+      const completeRows = rows.filter(item => this.isCompleteImportRow(item, type))
+      const skippedCount = rows.length - completeRows.length
+      if (skippedCount > 0) {
+        this.$message.warning(`已跳过 ${skippedCount} 条信息不全的数据`)
+      }
+      return completeRows
+    },
     downloadTemplate() {
       downloadTemplate({ tempType: this.importForm.inboundImportType }).then(res => {
         const blob = new Blob([res], { type: 'application/vnd.ms-excel' })
@@ -195,6 +244,7 @@ export default {
         if (res.code === 1) {
           // 处理预览数据
           const importedData = (res.data && Array.isArray(res.data.successList)) ? res.data.successList : []
+          const completeImportedData = this.filterCompleteRows(importedData, this.importForm.inboundImportType)
           
           // 处理错误信息
           this.remindList = (res.data && Array.isArray(res.data.remindList)) ? res.data.remindList : []
@@ -208,7 +258,7 @@ export default {
 
           if (this.importForm.inboundImportType === 1) {
             // 类型1：直接覆盖预览列表，使用类型1的字段
-            this.previewList = importedData.map(item => ({
+            this.previewList = completeImportedData.map(item => ({
               goodCode: item.goodCode || '',
               containerCode: item.containerCode || '',
               productionUnit: item.productionUnit || '',
@@ -223,7 +273,7 @@ export default {
             // 类型2：通过容器号匹配并合并到现有 previewList
             if (this.previewList.length === 0) {
               // 若还未导入类型1，直接填充类型2字段
-              this.previewList = importedData.map(item => ({
+              this.previewList = completeImportedData.map(item => ({
                 goodCode: '', productionUnit: '', warehouseName: '',
                 containerCode: item.containerCode || '',
                 sealCode1: item.sealCode1 || '', sealType1: item.sealType1 || '',
@@ -234,7 +284,7 @@ export default {
               }))
             } else {
               // 通过容器号 containerCode 匹配更新
-              importedData.forEach(importItem => {
+              completeImportedData.forEach(importItem => {
                 const target = this.previewList.find(p => p.containerCode === importItem.containerCode)
                 if (target) {
                   target.sealCode1 = importItem.sealCode1 || target.sealCode1
@@ -269,7 +319,16 @@ export default {
         this.$message.warning('暂无预览数据可提交')
         return
       }
-      this.$emit('success', this.previewList)
+      const completeRows = this.previewList.filter(item => this.isCompletePreviewRow(item))
+      const skippedCount = this.previewList.length - completeRows.length
+      if (skippedCount > 0) {
+        this.$message.warning(`已跳过 ${skippedCount} 条信息不全的数据`)
+      }
+      if (completeRows.length === 0) {
+        this.$message.warning('没有信息完整的数据可提交')
+        return
+      }
+      this.$emit('success', completeRows)
       this.visible = false
     }
   }

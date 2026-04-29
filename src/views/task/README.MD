@@ -70,7 +70,7 @@
 
 导入接口为 `POST /busin/excelImport/import`，参数包含 `importType=inbound` 和 `inboundImportType`。类型 1 主要建立基础预览数据，类型 2 通过 `containerCode` 合并补充封记、重量和位置等字段。导入异常时会展示行级提示，并支持下载后端返回的错误文件。
 
-确认提交导入结果后，父组件会把预览数据合并到入库明细表格中。若存在 `position` 字符串，会按 `排-行-列` 的格式解析为 `shelfCode`、`rowCode`、`columnCode`。
+确认提交导入结果后，父组件会把预览数据合并到入库明细表格中。导入预览和最终填充都会跳过信息不完整的数据，只填充两类模板字段均完整的记录。若存在 `position` 字符串，会按 `排-行-列` 的格式解析为 `shelfCode`、`rowCode`、`columnCode`。
 
 ### 5. 确认、修改与审核
 

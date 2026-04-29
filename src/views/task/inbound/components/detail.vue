@@ -292,6 +292,29 @@ import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
 import { getLocationHierarchy, getPositionMap, executeAuditedUpdate } from './api.js'
 
+function formatDefaultDate(value, type) {
+  if (!(value instanceof Date)) return value
+  const y = value.getFullYear()
+  const m = String(value.getMonth() + 1).padStart(2, '0')
+  const d = String(value.getDate()).padStart(2, '0')
+  if (type === 'datetime') {
+    const H = String(value.getHours()).padStart(2, '0')
+    const M = String(value.getMinutes()).padStart(2, '0')
+    const S = String(value.getSeconds()).padStart(2, '0')
+    return `${y}-${m}-${d} ${H}:${M}:${S}`
+  }
+  return `${y}-${m}-${d} 00:00:00`
+}
+
+function getDefaultFormValue(item) {
+  if (item.defaultValue === undefined) return ''
+  const value = typeof item.defaultValue === 'function' ? item.defaultValue() : item.defaultValue
+  if (Array.isArray(value)) return []
+  const formattedValue = formatDefaultDate(value, item.type)
+  if (formattedValue && typeof formattedValue === 'object') return { ...formattedValue }
+  return formattedValue
+}
+
 export default {
   components: { AllocationBasisListDialog, ImportDialog },
   data() {
@@ -381,6 +404,7 @@ export default {
   },
   created() {
     this.handleParams()
+    this.resetFormValues()
     this.loadWarehouseOptions()
   },
   methods: {
@@ -388,6 +412,7 @@ export default {
       this.row = row || {}
       this.updateType = updateType
       this.deletedGoodIds = []
+      this.resetFormValues()
       if (this.row.id) {
         // mode: 'view' | 'edit' | 'modify'
         this.type = mode || 'edit'
@@ -493,10 +518,10 @@ export default {
     },
     resetForm() {
       this.row = {}
-      this.form = this.$options.data().form
+      this.resetFormValues()
       this.detailList = []
       this.modifyRecords = []
-      this.$refs.form && this.$refs.form.resetFields()
+      this.$refs.form && this.$refs.form.clearValidate()
     },
     changeFormValue(value, item) {
       if (item.change && typeof item.change === 'function') {
@@ -539,6 +564,11 @@ export default {
           break
       }
       return flag
+    },
+    resetFormValues() {
+      config.detail.forEach(item => {
+        this.$set(this.form, item.prop, getDefaultFormValue(item))
+      })
     },
     handleParams() {
       config.detail.forEach(item => {
@@ -765,11 +795,44 @@ export default {
         }
         return item
       }
+      const isEmptyValue = value => value === undefined || value === null || String(value).trim() === ''
+      const isCompleteDetail = item => {
+        const hasPosition = !isEmptyValue(item.position) ||
+          (!isEmptyValue(item.shelfCode) && !isEmptyValue(item.rowCode) && !isEmptyValue(item.columnCode))
+        return [
+          'goodCode',
+          'containerCode',
+          'productionUnit',
+          'warehouseName',
+          'sealCode1',
+          'sealType1',
+          'sealCode2',
+          'sealType2',
+          'grossWeight',
+          'tareWeight',
+          'netWeight',
+          'metalPercentage',
+          'boxNum'
+        ].every(field => !isEmptyValue(item[field])) && hasPosition
+      }
+      const appendCompleteRows = rows => {
+        const parsedRows = rows.map(parsePosition)
+        const completeRows = parsedRows.filter(isCompleteDetail)
+        const skippedCount = parsedRows.length - completeRows.length
+        if (skippedCount > 0) {
+          this.$message.warning(`已跳过 ${skippedCount} 条信息不全的数据`)
+        }
+        if (completeRows.length === 0) {
+          this.$message.warning('没有信息完整的数据可填充')
+          return
+        }
+        this.detailList = this.detailList.concat(completeRows)
+      }
       // 合并导入的明细数据到 detailList
       if (Array.isArray(data)) {
-        this.detailList = this.detailList.concat(data.map(parsePosition))
+        appendCompleteRows(data)
       } else if (data && Array.isArray(data.goodsList)) {
-        this.detailList = this.detailList.concat(data.goodsList.map(parsePosition))
+        appendCompleteRows(data.goodsList)
       } else {
         this.$message.success('导入成功，请刷新页面')
       }

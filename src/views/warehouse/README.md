@@ -40,6 +40,8 @@
 - 库位占用：调用 `getPositionMap({ nodeId: warehouseId, nodeType: '2' })`。
 - 货架类型字典：调用 `getDictionaryList({ parentId: '2046473482554638338' })`。
 
+容器详情中的移库操作需要先选择目标库房，再选择目标位置。目标库房使用 `GET /busin/locationMap/hierarchy/listByNodeType/2`，目标位置使用 `POST /busin/locationMap/positionMap`，请求体包含 `nodeId` 和 `nodeType: '2'`。位置下拉沿用入库管理添加明细的禁用规则：`status !== 0` 的位置不可选。
+
 布局读取规则：
 
 1. 优先使用库房详情接口返回的 `extra.layout2d`。
