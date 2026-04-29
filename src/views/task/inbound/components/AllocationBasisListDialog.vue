@@ -45,7 +45,7 @@
     </div>
 
     <!-- 新增/编辑弹窗 -->
-    <AllocationBasisDialog ref="editDialog" @success="getList" />
+    <AllocationBasisDialog ref="editDialog" @success="handleEditSuccess" />
   </el-dialog>
 </template>
 
@@ -93,6 +93,10 @@ export default {
     },
     handleEdit(row) {
       this.$refs.editDialog.open(row)
+    },
+    handleEditSuccess() {
+      this.getList()
+      this.$emit('success')
     },
     handleDelete(row) {
       this.$confirm(`确定要删除文号为 "${row.documentNo}" 的调拨依据吗?`, '提示', {

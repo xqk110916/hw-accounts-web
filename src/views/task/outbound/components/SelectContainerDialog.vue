@@ -211,7 +211,7 @@
 <script>
 import WarehouseGridMap2D from '@/views/warehouse/warehouse/components/WarehouseGridMap2D.vue'
 import { generateInitialLayout } from '@/views/warehouse/warehouse/utils/locationLayoutAdapter.js'
-import { getInboundGoodsPageList, getLocationHierarchy, getLocationChildren, getPositionMap } from './api.js'
+import { getInboundGoodsPageList, getLocationHierarchy, getLocationChildren, getPositionMap, getMaterialCodeListAll } from './api.js'
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || []))
@@ -255,9 +255,10 @@ export default {
       inboundTotal: 0,
       containerCheckedRows: [],
       inboundCheckedRows: [],
+      materialCodeOptions: [],
       containerSearchOptions: [
         { label: '容器号', prop: 'containerCode', type: 'text', col: 5 },
-        { label: '货物编码', prop: 'goodCode', type: 'text', col: 5 },
+        { label: '货物编码', prop: 'goodCode', type: 'select', col: 5, option: [] },
         { label: '入库时间', prop: 'timeRange', type: 'daterange', col: 8 },
         { type: 'slot', slotName: 'footer', col: 4 },
       ],
@@ -295,6 +296,7 @@ export default {
       this.visible = true
       this.selectedContainers = clone(list).map(this.normalizeGoods)
       if (!this.balanceAreaOptions.length) this.loadBalanceAreas()
+      if (!this.materialCodeOptions.length) this.loadMaterialCodeOptions()
     },
     handleClosed() {
       this.activeTab = 'map'
@@ -304,6 +306,25 @@ export default {
     async loadBalanceAreas() {
       const res = await getLocationHierarchy(1)
       this.balanceAreaOptions = res.data || []
+    },
+    async loadMaterialCodeOptions() {
+      try {
+        const res = await getMaterialCodeListAll()
+        this.materialCodeOptions = (res.data || [])
+          .map(item => {
+            const goodCode = item.goodCode || item.materialCode || item.code || item.id
+            const name = item.goodName || item.materialName || item.commonName || goodCode
+            return {
+              label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
+              value: goodCode,
+            }
+          })
+          .filter(item => item.value)
+        const goodCodeOption = this.containerSearchOptions.find(item => item.prop === 'goodCode')
+        if (goodCodeOption) this.$set(goodCodeOption, 'option', this.materialCodeOptions)
+      } catch (error) {
+        this.materialCodeOptions = []
+      }
     },
     async handleBalanceAreaChange(value) {
       this.mapSearch.warehouseId = ''

@@ -408,7 +408,7 @@ export default {
     },
     getOptions(item) {
       if (item.dictParentId) {
-        getDictionaryList({ parentId: item.dictParentId, currentPage: 1, pageSize: 999 }).then(res => {
+        return getDictionaryList({ parentId: item.dictParentId, currentPage: 1, pageSize: 999 }).then(res => {
           if (res.code === 1) {
             this.$set(this.options, item.prop, (res.data.list || []).map(i => ({
               label: i.fullName,
@@ -419,14 +419,17 @@ export default {
       } else if (item.option) {
         const result = typeof item.option === 'function' ? item.option() : item.option
         if (result && typeof result.then === 'function') {
-          result.then(data => {
+          return result.then(data => {
             const ary = Array.isArray(data) ? data : (data.data ? (Array.isArray(data.data) ? data.data : data.data.list) : [])
             this.$set(this.options, item.prop, ary || [])
+            return ary || []
           })
         } else {
           this.$set(this.options, item.prop, result || [])
+          return Promise.resolve(result || [])
         }
       }
+      return Promise.resolve([])
     },
     changeFormValue(value, item) {
       if (item.change && typeof item.change === 'function') item.change(value, this.form, this)
@@ -448,7 +451,24 @@ export default {
     },
     handleBasisSuccess() {
       const item = this.formKeys.find(i => i.prop === '_transferSelected')
-      if (item) this.getOptions(item)
+      if (!item) return
+      const currentValue = deepClone(this.form._transferSelected)
+      this.getOptions(item).then(() => {
+        const nextValue = this.filterTransferSelected(currentValue, this.options._transferSelected || [])
+        this.$set(this.form, '_transferSelected', nextValue)
+        this.changeFormValue(nextValue, item)
+      })
+    },
+    filterTransferSelected(values, options) {
+      if (!Array.isArray(values) || !Array.isArray(options)) return []
+      return values.filter(path => {
+        if (!Array.isArray(path) || !path.length) return false
+        const parent = options.find(opt => String(opt.value) === String(path[0]))
+        if (!parent) return false
+        const children = parent.children || []
+        if (path.length === 1) return children.length === 0
+        return children.some(child => String(child.value) === String(path[1]))
+      })
     },
     openSelectContainer() {
       this.$refs.selectContainerDialog.open(this.detailList)
@@ -571,38 +591,7 @@ export default {
       })
     },
     autoAllocate() {
-      const materials = this.buildAutoPickMaterials()
-      if (!this.form.transferId || !materials.length) {
-        this.$message.warning('请先选择调拨依据/材料')
-        return
-      }
-      this.$refs.autoPickPlanDialog.open(materials, this.detailList.length > 0)
-    },
-    buildAutoPickMaterials() {
-      const transferId = this.form.transferId
-      const goodCodes = String(this.form.goodCodes || '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean)
-      if (!transferId || !goodCodes.length) return []
-      const transferOption = (this.options['_transferSelected'] || []).find(item => String(item.value) === String(transferId))
-      const goodsList = (transferOption && (transferOption.goodsList || (transferOption.raw && transferOption.raw.goodsList))) || []
-      return goodCodes.map(code => {
-        const good = goodsList.find(item => String(item.goodCode || item.id) === String(code)) || {}
-        return {
-          goodCode: good.goodCode || code,
-          materialName: good.materialName || good.goodsName || good.goodName || good.goodCode || code,
-          netWeight: good.goodWeight || good.netWeight || '',
-          grossWeight: good.grossWeight || good.goodWeight || '',
-          tareWeight: good.tareWeight || 0,
-          unit: good.unit || 'kg',
-          suppliers: good.suppliers || good.productionUnit || '',
-          warehouses: good.warehouses || good.warehouseName || '',
-          batchNos: good.batchNos || good.taskNum || '',
-          startStorageTime: good.startStorageTime || '',
-          endStorageTime: good.endStorageTime || '',
-        }
-      })
+      this.$refs.autoPickPlanDialog.open([], this.detailList.length > 0)
     },
   },
 }

@@ -63,6 +63,27 @@ export const getInboundGoodsPageList = data => {
   })
 }
 
+export const getInboundTaskListAll = () => {
+  return request({
+    url: '/busin/inbound/inListAll',
+    method: 'get',
+  })
+}
+
+export const getMaterialCodeListAll = () => {
+  return request({
+    url: '/busin/material-code/listAll',
+    method: 'get',
+  })
+}
+
+export const getInboundGoodsList = () => {
+  return request({
+    url: '/busin/inbound/getGoodsList',
+    method: 'get',
+  })
+}
+
 export const getLocationHierarchy = nodeType => {
   return request({
     url: `/busin/locationMap/hierarchy/listByNodeType/${nodeType}`,

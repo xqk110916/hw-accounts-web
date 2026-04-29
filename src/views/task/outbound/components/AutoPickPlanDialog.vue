@@ -13,79 +13,117 @@
       <div class="section">
         <div class="section-header">
           <span>待出库物料</span>
-          <el-button size="mini" icon="el-icon-edit" @click="editingConditions = !editingConditions">
-            {{ editingConditions ? '完成' : '编辑' }}
-          </el-button>
+          <el-button size="mini" type="primary" icon="el-icon-plus" @click="addMaterial">新增物料</el-button>
         </div>
-        <el-table :data="materials" border size="small" max-height="190">
-          <el-table-column type="index" label="序号" width="55" />
-          <el-table-column prop="materialName" label="物料名称" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="goodCode" label="材料编码" min-width="110" show-overflow-tooltip />
-          <el-table-column label="毛重" width="120">
-            <template slot-scope="scope">
-              <el-input v-if="editingConditions" v-model="scope.row.grossWeight" size="mini" />
-              <span v-else>{{ formatWeight(scope.row.grossWeight) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="皮重" width="120">
-            <template slot-scope="scope">
-              <el-input v-if="editingConditions" v-model="scope.row.tareWeight" size="mini" />
-              <span v-else>{{ formatWeight(scope.row.tareWeight) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="净重" width="120">
-            <template slot-scope="scope">
-              <el-input v-if="editingConditions" v-model="scope.row.netWeight" size="mini" />
-              <span v-else>{{ formatWeight(scope.row.netWeight) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="单位" width="90">
-            <template slot-scope="scope">
-              <el-input v-if="editingConditions" v-model="scope.row.unit" size="mini" />
-              <span v-else>{{ scope.row.unit || 'kg' }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="库房" min-width="160" show-overflow-tooltip>
-            <template slot-scope="scope">
-              <el-input v-if="editingConditions" v-model="scope.row.warehousesText" size="mini" placeholder="多个用;分隔" />
-              <span v-else>{{ joinText(scope.row.warehouses) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="生产单位" min-width="160" show-overflow-tooltip>
-            <template slot-scope="scope">
-              <el-input v-if="editingConditions" v-model="scope.row.suppliersText" size="mini" placeholder="多个用;分隔" />
-              <span v-else>{{ joinText(scope.row.suppliers) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="入库任务编号" min-width="160" show-overflow-tooltip>
-            <template slot-scope="scope">
-              <el-input v-if="editingConditions" v-model="scope.row.batchNosText" size="mini" placeholder="多个用;分隔" />
-              <span v-else>{{ joinText(scope.row.batchNos) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="入库时间" width="250">
-            <template slot-scope="scope">
-              <el-date-picker
-                v-if="editingConditions"
-                v-model="scope.row.storageTimeRange"
-                type="datetimerange"
-                size="mini"
-                range-separator="-"
-                start-placeholder="开始时间"
-                end-placeholder="结束时间"
-                value-format="yyyy-MM-dd HH:mm:ss"
-              />
-              <span v-else>{{ getStorageTimeText(scope.row) }}</span>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div class="material-config-list">
+          <div v-for="(material, index) in materials" :key="material._key" class="material-config-item">
+            <div class="material-config-head">
+              <span class="material-index">{{ index + 1 }}</span>
+              <el-select
+                v-model="material.goodCode"
+                size="small"
+                class="material-name-input"
+                filterable
+                clearable
+                placeholder="请选择物料"
+                @change="value => handleMaterialChange(material, value)"
+              >
+                <el-option
+                  v-for="item in materialOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+              <el-button type="text" size="mini" icon="el-icon-delete" @click="removeMaterial(index)">删除</el-button>
+            </div>
+            <el-row :gutter="12" class="material-config-body">
+              <el-col :span="8">
+                <div class="field-label">库房</div>
+                <el-select
+                  v-model="material.warehouses"
+                  size="small"
+                  multiple
+                  collapse-tags
+                  filterable
+                  clearable
+                  placeholder="请选择"
+                  @change="clearPlans"
+                >
+                  <el-option
+                    v-for="item in warehouseOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <div class="field-label">任务批次</div>
+                <el-select
+                  v-model="material.batchNos"
+                  size="small"
+                  multiple
+                  collapse-tags
+                  filterable
+                  clearable
+                  placeholder="请选择"
+                  @change="clearPlans"
+                >
+                  <el-option
+                    v-for="item in inboundTaskOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <div class="field-label">入库时间</div>
+                <div class="date-range-fields">
+                  <el-date-picker
+                    v-model="material.startStorageTime"
+                    type="datetime"
+                    size="small"
+                    placeholder="开始时间"
+                    value-format="yyyy-MM-dd HH:mm:ss"
+                    @change="clearPlans"
+                  />
+                  <el-date-picker
+                    v-model="material.endStorageTime"
+                    type="datetime"
+                    size="small"
+                    placeholder="结束时间"
+                    value-format="yyyy-MM-dd HH:mm:ss"
+                    @change="clearPlans"
+                  />
+                </div>
+              </el-col>
+              <el-col :span="10">
+                <div class="field-label">重量</div>
+                <div class="weight-fields">
+                  <el-input v-model="material.grossWeight" size="small" placeholder="毛重" @input="clearPlans" />
+                  <el-input v-model="material.tareWeight" size="small" placeholder="皮重" @input="clearPlans" />
+                  <el-input v-model="material.netWeight" size="small" placeholder="净重" @input="clearPlans" />
+                  <el-select v-model="material.unit" size="small" class="unit-select" placeholder="单位" @change="clearPlans">
+                    <el-option label="kg" value="kg" />
+                  </el-select>
+                </div>
+              </el-col>
+              <el-col :span="14">
+                <div class="field-label">出方单位</div>
+                <el-input v-model="material.suppliersText" size="small" placeholder="多个用,隔开" @input="clearPlans" />
+              </el-col>
+            </el-row>
+          </div>
+        </div>
       </div>
 
       <div class="priority-bar">
         <span class="priority-title">优先级</span>
         <el-checkbox v-model="priority.priorityWarehouse">尽量一个库房</el-checkbox>
         <el-checkbox v-model="priority.priorityBatch">尽量一个批次</el-checkbox>
-        <el-checkbox v-model="priority.priorityManufacturer">尽量一个生产单位</el-checkbox>
+        <el-checkbox v-model="priority.priorityManufacturer">尽量一个出方单位</el-checkbox>
         <el-checkbox v-model="priority.priorityFifo">入库时间先进先出</el-checkbox>
         <span class="max-solutions">最大方案数</span>
         <el-input-number v-model="priority.maxSolutions" size="mini" :min="1" :max="20" />
@@ -117,7 +155,7 @@
         <el-tag size="mini">容器 {{ currentPlan.containerCount || currentContainers.length }}</el-tag>
         <el-tag size="mini" type="info">库房 {{ currentPlan.warehouseCount || 0 }}</el-tag>
         <el-tag size="mini" type="info">批次 {{ currentPlan.batchCount || 0 }}</el-tag>
-        <el-tag size="mini" type="info">生产单位 {{ currentPlan.manufacturerCount || 0 }}</el-tag>
+        <el-tag size="mini" type="info">出方单位 {{ currentPlan.manufacturerCount || 0 }}</el-tag>
         <el-tag size="mini" type="success">净重 {{ formatWeight(currentPlan.totalNetWeight) }}</el-tag>
         <el-tag v-if="currentPlan.oldestStorageTime" size="mini" type="warning">最早入库 {{ currentPlan.oldestStorageTime }}</el-tag>
       </div>
@@ -146,7 +184,7 @@
           <el-table-column type="index" label="序号" width="55" />
           <el-table-column prop="goodCode" label="材料编码" width="115" show-overflow-tooltip />
           <el-table-column prop="containerCode" label="容器号" width="125" show-overflow-tooltip />
-          <el-table-column prop="productionUnit" label="生产单位" width="125" show-overflow-tooltip />
+          <el-table-column prop="productionUnit" label="出方单位" width="125" show-overflow-tooltip />
           <el-table-column prop="warehouseName" label="库房" width="110" show-overflow-tooltip />
           <el-table-column label="位置(排-行-列)" width="130" show-overflow-tooltip>
             <template slot-scope="scope">{{ getPositionText(scope.row) }}</template>
@@ -176,7 +214,7 @@
 </template>
 
 <script>
-import { autoWeightPickPlan } from './api.js'
+import { autoWeightPickPlan, getInboundTaskListAll, getLocationHierarchy, getInboundGoodsList } from './api.js'
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || []))
@@ -202,8 +240,11 @@ export default {
     return {
       visible: false,
       loading: false,
-      editingConditions: false,
       materials: [],
+      materialIndexSeed: 0,
+      materialOptions: [],
+      warehouseOptions: [],
+      inboundTaskOptions: [],
       priority: {
         priorityWarehouse: true,
         priorityManufacturer: false,
@@ -216,6 +257,11 @@ export default {
       activePlanKey: '',
       currentContainers: [],
     }
+  },
+  created() {
+    this.loadMaterialOptions()
+    this.loadWarehouseOptions()
+    this.loadInboundTaskOptions()
   },
   computed: {
     visiblePlans() {
@@ -230,7 +276,7 @@ export default {
     satisfactionList() {
       return this.materials.map(material => {
         const actual = this.currentContainers
-          .filter(item => !material.goodCode || String(item.goodCode) === String(material.goodCode))
+          .filter(item => this.isSameMaterial(item, material))
           .reduce((sum, item) => ({
             grossWeight: sum.grossWeight + (Number(item.grossWeight) || 0),
             tareWeight: sum.tareWeight + (Number(item.tareWeight) || 0),
@@ -260,58 +306,156 @@ export default {
   },
   methods: {
     open(materials = [], overwriteRequired = false) {
-      this.materials = clone(materials).map(this.normalizeMaterial)
+      const initialMaterials = clone(materials)
+      this.materialIndexSeed = 0
+      this.materials = (initialMaterials.length ? initialMaterials : [this.createMaterial()]).map(this.normalizeMaterial)
       this.overwriteRequired = overwriteRequired
       this.visible = true
-      this.editingConditions = false
       this.plans = []
       this.activePlanKey = ''
       this.currentContainers = []
-      this.$nextTick(() => this.queryPlans())
     },
     handleClosed() {
       this.loading = false
-      this.editingConditions = false
+    },
+    async loadMaterialOptions() {
+      try {
+        const res = await getInboundGoodsList()
+        this.materialOptions = (res.data || [])
+          .map(item => {
+            const goodCode = item.goodCode || item.materialCode || item.code || item.id
+            const name = item.goodName || item.materialName || item.commonName || goodCode
+            return {
+              label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
+              value: goodCode,
+              raw: item,
+            }
+          })
+          .filter(item => item.value)
+      } catch (error) {
+        this.materialOptions = []
+      }
+    },
+    async loadWarehouseOptions() {
+      try {
+        const res = await getLocationHierarchy(2)
+        this.warehouseOptions = (res.data || [])
+          .map(item => {
+            const name = item.warehouseName || item.nodeName || item.name || item.label || item.id
+            return {
+              label: name,
+              value: name,
+            }
+          })
+          .filter(item => item.value)
+      } catch (error) {
+        this.warehouseOptions = []
+      }
+    },
+    async loadInboundTaskOptions() {
+      try {
+        const res = await getInboundTaskListAll()
+        this.inboundTaskOptions = (res.data || [])
+          .map(item => {
+            const taskNum = item.taskNum || item.batchNo || item.batchNum || item.id
+            return {
+              label: taskNum,
+              value: taskNum,
+            }
+          })
+          .filter(item => item.value)
+      } catch (error) {
+        this.inboundTaskOptions = []
+      }
+    },
+    createMaterial() {
+      this.materialIndexSeed += 1
+      return {
+        _key: `material-${Date.now()}-${this.materialIndexSeed}`,
+        goodCode: '',
+        materialName: '',
+        grossWeight: '',
+        tareWeight: '',
+        netWeight: '',
+        unit: 'kg',
+        suppliers: [],
+        warehouses: [],
+        batchNos: [],
+        suppliersText: '',
+        startStorageTime: '',
+        endStorageTime: '',
+      }
+    },
+    addMaterial() {
+      this.materials.push(this.normalizeMaterial(this.createMaterial()))
+      this.clearPlans()
+    },
+    removeMaterial(index) {
+      if (this.materials.length === 1) {
+        this.$message.warning('至少保留一条待出库物料')
+        return
+      }
+      this.materials.splice(index, 1)
+      this.clearPlans()
+    },
+    clearPlans() {
+      this.plans = []
+      this.activePlanKey = ''
+      this.currentContainers = []
+    },
+    handleMaterialChange(material, value) {
+      const option = this.materialOptions.find(item => String(item.value) === String(value))
+      material.goodCode = value || ''
+      material.materialName = value || ''
+      if (option && option.raw && option.raw.commonUnit) {
+        material.unit = option.raw.commonUnit
+      }
+      this.clearPlans()
     },
     normalizeMaterial(row = {}) {
+      if (!row._key) this.materialIndexSeed += 1
+      const warehouses = splitText(row.warehouses || row.warehousesText)
+      const suppliers = splitText(row.suppliers || row.suppliersText)
+      const batchNos = splitText(row.batchNos || row.batchNosText)
       return {
         ...row,
+        _key: row._key || `material-${Date.now()}-${this.materialIndexSeed}`,
         goodCode: row.goodCode || '',
-        materialName: row.materialName || row.goodsName || row.goodName || row.goodCode || '',
+        materialName: row.materialName || row.goodCode || '',
         grossWeight: row.grossWeight || '',
         tareWeight: row.tareWeight || '',
         netWeight: row.netWeight || row.goodWeight || '',
         unit: row.unit || 'kg',
-        suppliers: splitText(row.suppliers),
-        warehouses: splitText(row.warehouses),
-        batchNos: splitText(row.batchNos),
-        suppliersText: splitText(row.suppliers).join(';'),
-        warehousesText: splitText(row.warehouses).join(';'),
-        batchNosText: splitText(row.batchNos).join(';'),
+        suppliers,
+        warehouses,
+        batchNos,
+        suppliersText: suppliers.join(','),
         startStorageTime: row.startStorageTime || '',
         endStorageTime: row.endStorageTime || '',
-        storageTimeRange: row.startStorageTime || row.endStorageTime ? [row.startStorageTime, row.endStorageTime] : [],
       }
     },
     syncEditableFields() {
       this.materials = this.materials.map(item => {
-        const range = item.storageTimeRange || []
         return {
           ...item,
           suppliers: splitText(item.suppliersText),
-          warehouses: splitText(item.warehousesText),
-          batchNos: splitText(item.batchNosText),
-          startStorageTime: range[0] || '',
-          endStorageTime: range[1] || '',
+          warehouses: splitText(item.warehouses),
+          batchNos: splitText(item.batchNos),
+          startStorageTime: item.startStorageTime || '',
+          endStorageTime: item.endStorageTime || '',
         }
       })
     },
     validateMaterials() {
       if (!this.materials.length) {
-        this.$message.warning('请先选择调拨依据/材料')
+        this.$message.warning('请先配置待出库物料')
         return false
       }
       for (const item of this.materials) {
+        if (!item.materialName && !item.goodCode) {
+          this.$message.warning('请填写物料')
+          return false
+        }
         const weights = [item.grossWeight, item.tareWeight, item.netWeight].filter(value => value !== '' && value !== null && value !== undefined)
         if (!weights.length) {
           this.$message.warning(`${item.materialName || item.goodCode || '物料'}缺少目标重量`)
@@ -399,6 +543,11 @@ export default {
     removeContainer(index) {
       this.currentContainers.splice(index, 1)
     },
+    isSameMaterial(container, material) {
+      if (material.goodCode) return String(container.goodCode || '') === String(material.goodCode)
+      const containerName = container.goodsName || container.materialName || container.material || ''
+      return String(containerName) === String(material.materialName || '')
+    },
     useCurrentPlan() {
       if (!this.currentContainers.length) {
         this.$message.warning('当前方案没有可用容器')
@@ -440,13 +589,6 @@ export default {
       const number = Number(value)
       return Number.isNaN(number) ? '0.00000' : number.toFixed(5)
     },
-    joinText(value) {
-      return splitText(value).join(';') || '-'
-    },
-    getStorageTimeText(row) {
-      if (!row.startStorageTime && !row.endStorageTime) return '-'
-      return `${row.startStorageTime || ''}-${row.endStorageTime || ''}`
-    },
     getPositionText(row) {
       const values = [row.shelfCode, row.rowCode, row.columnCode].filter(Boolean)
       return values.length ? values.join('-') : '-'
@@ -475,6 +617,81 @@ export default {
     justify-content: space-between;
     font-weight: 700;
     color: #1b2129;
+  }
+
+  .material-config-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .material-config-item {
+    padding: 12px 14px 14px;
+    border: 1px solid #e3e8f0;
+    border-radius: 6px;
+    background: #fbfcff;
+  }
+
+  .material-config-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+
+    .material-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #246fe5;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .material-name-input {
+      width: 220px;
+    }
+  }
+
+  .material-config-body {
+    ::v-deep .el-col {
+      margin-bottom: 10px;
+    }
+
+    ::v-deep .el-select,
+    ::v-deep .el-date-editor.el-input {
+      width: 100%;
+    }
+  }
+
+  .field-label {
+    margin-bottom: 6px;
+    color: #606266;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .date-range-fields,
+  .weight-fields {
+    display: grid;
+    gap: 8px;
+  }
+
+  .date-range-fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .weight-fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 86px;
+
+    .unit-select {
+      width: 86px;
+    }
   }
 
   .priority-bar {

@@ -92,6 +92,14 @@ export const getPositionMap = data => {
   })
 }
 
+// 查询所有材料编码（下拉选择用）
+export const getMaterialCodeListAll = () => {
+  return request({
+    url: '/busin/material-code/listAll',
+    method: 'get',
+  })
+}
+
 // 10. 新增调拨依据
 export const addTransferBasis = data => {
   return request({
@@ -198,6 +206,7 @@ export const inbound = {
   executeAuditedUpdate,
   getLocationHierarchy,
   getPositionMap,
+  getMaterialCodeListAll,
   addTransferBasis,
   deleteTransferBasis,
   getTransferBasisDetail,

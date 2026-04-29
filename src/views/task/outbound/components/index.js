@@ -79,7 +79,7 @@ export const config = {
           })) : undefined
         }))
       }),
-      props: { multiple: true, checkStrictly: true, emitPath: true },
+      props: { multiple: true, checkStrictly: false, emitPath: true },
       required: true,
       defaultValue: [],
       change: (values, form, that) => {

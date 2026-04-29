@@ -48,6 +48,7 @@
 新增时由 `generateBatchNo({ batchType: 1 })` 自动生成任务编号。表单核心字段包括任务编号、调拨依据、入库人、入库时间、出方单位、密级和备注。
 
 调拨依据使用级联选择，数据来源为 `getAllTransferBasisList()`。选择规则是同一入库任务只允许围绕一个文号/调拨依据选择材料编码：选中第一个文号后，其他文号会在前端置灰，避免跨依据混合入库。
+调拨依据级联启用父子联动：勾选文号父级时自动勾选其材料编码子级，取消子级时同步影响父级半选/选中状态。新增、编辑或删除调拨依据后，维护弹窗会向任务弹窗抛出刷新事件，任务弹窗重新加载级联数据并保留仍然有效的已选项。
 
 提交前通过 `beforeSubmit` 移除 `_transferSelected` 这类前端中间绑定字段，只向后端提交 `transferId`、`goodCodes` 和明细数据。
 
@@ -148,7 +149,13 @@
 
 确认选择后，前端统一规范化为出库明细字段：`containerCode`、`goodCode`、`warehouseId`、`warehouseName`、`boxNum`、`grossWeight`、`tareWeight`、`netWeight`、`productionUnit`、`shelfCode`、`rowCode`、`columnCode`、`sealCode1`、`sealCode2`。
 
-### 4. 审核
+### 4. 自动配置
+
+出库明细的“自动配置”打开“自动配置”弹窗，由用户在弹窗内自行维护待出库物料，可新增或删除多条物料条件。待出库物料按“物料、库房、任务批次、入库时间、重量、出方单位”的顺序配置：物料名称通过 `GET /busin/inbound/getGoodsList` 获取已入库物料并单选，选中值使用 `goodCode`；库房通过 `GET /busin/locationMap/hierarchy/listByNodeType/2` 多选；任务批次通过 `GET /busin/inbound/inListAll` 获取入库任务并多选；入库时间拆分为开始时间和结束时间；出方单位多个值使用英文逗号分隔。保存条件后点击“重新计算”调用 `POST /busin/pick/auto-weight` 获取取货方案。
+
+自动配置不再从调拨依据所选材料自动生成待出库物料，调拨依据仍作为出库任务主表字段参与原有提交链路。使用某个方案时，方案容器会规范化为出库明细字段并覆盖当前明细；若当前已有明细，弹窗会二次确认。
+
+### 5. 审核
 
 出库任务提交后默认进入待审核状态，列表不再提供“确认”操作。审核入口与入库管理保持一致，打开出库详情弹窗的 `audit` 模式：
 

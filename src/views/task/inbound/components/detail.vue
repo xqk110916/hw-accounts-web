@@ -201,7 +201,20 @@
   <el-dialog :close-on-click-modal="false" title="明细编辑" custom-class="show-footer-dialog" :visible.sync="detailEditVisible" width="600px" append-to-body>
     <el-form ref="detailForm" :model="detailEditForm" label-width="120px" :rules="detailRules">
       <el-form-item label="材料编码" prop="goodCode">
-        <el-input v-model="detailEditForm.goodCode" size="small" placeholder="请输入材料编码" />
+        <el-select
+          v-model="detailEditForm.goodCode"
+          size="small"
+          placeholder="请选择材料编码"
+          clearable
+          filterable
+        >
+          <el-option
+            v-for="item in materialCodeOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item label="容器号" prop="containerCode">
         <el-input v-model="detailEditForm.containerCode" size="small" placeholder="请输入容器号" />
@@ -290,7 +303,7 @@ import AllocationBasisListDialog from './AllocationBasisListDialog.vue'
 import ImportDialog from './ImportDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
-import { getLocationHierarchy, getPositionMap, executeAuditedUpdate } from './api.js'
+import { getLocationHierarchy, getPositionMap, executeAuditedUpdate, getMaterialCodeListAll } from './api.js'
 
 function formatDefaultDate(value, type) {
   if (!(value instanceof Date)) return value
@@ -339,12 +352,13 @@ export default {
       detailEditForm: {},
       detailEditIndex: -1,
       detailRules: {
-        goodCode: [{ required: true, message: '请输入材料编码', trigger: 'blur' }],
+        goodCode: [{ required: true, message: '请选择材料编码', trigger: 'change' }],
         containerCode: [{ required: true, message: '请输入容器号', trigger: 'blur' }],
         productionUnit: [{ required: true, message: '请输入生产单位', trigger: 'blur' }],
         warehouseId: [{ required: true, message: '请选择库房', trigger: 'change' }],
         positionId: [{ required: true, message: '请选择位置', trigger: 'change' }],
       },
+      materialCodeOptions: [],
       warehouseOptions: [], // 库房下拉选项
       positionOptions: [],  // 位置下拉选项
       // 导入
@@ -405,6 +419,7 @@ export default {
   created() {
     this.handleParams()
     this.resetFormValues()
+    this.loadMaterialCodeOptions()
     this.loadWarehouseOptions()
   },
   methods: {
@@ -621,14 +636,31 @@ export default {
     handleBasisSuccess() {
       // 维护成功后刷新调拨依据列表
       const item = this.formKeys.find(i => i.prop === '_transferSelected')
-      if (item) this.getOptions(item)
+      if (!item) return
+      const currentValue = deepClone(this.form._transferSelected)
+      this.getOptions(item).then(() => {
+        const nextValue = this.filterTransferSelected(currentValue, this.options._transferSelected || [])
+        this.$set(this.form, '_transferSelected', nextValue)
+        this.changeFormValue(nextValue, item)
+      })
+    },
+    filterTransferSelected(values, options) {
+      if (!Array.isArray(values) || !Array.isArray(options)) return []
+      return values.filter(path => {
+        if (!Array.isArray(path) || !path.length) return false
+        const parent = options.find(opt => String(opt.value) === String(path[0]))
+        if (!parent) return false
+        const children = parent.children || []
+        if (path.length === 1) return children.length === 0
+        return children.some(child => String(child.value) === String(path[1]))
+      })
     },
     getOptions(item) {
       if (item.dictParentId) {
-        getDictionaryList({ 
-          parentId: item.dictParentId, 
-          currentPage: 1, 
-          pageSize: 999 
+        return getDictionaryList({
+          parentId: item.dictParentId,
+          currentPage: 1,
+          pageSize: 999
         }).then(res => {
           if (res.code === 1) {
             // 映射为通用的 label/value 格式以适配模板
@@ -643,22 +675,42 @@ export default {
         if (typeof item.option === 'function') {
           const res = item.option()
           if (res && typeof res.then === 'function') {
-            res.then(data => {
+            return res.then(data => {
               const ary = Array.isArray(data) ? data : (data.data ? (Array.isArray(data.data) ? data.data : data.data.list) : [])
               this.$set(this.options, item.prop, ary || [])
+              return ary || []
             })
           }
         } else if (item.option.then) {
-          item.option.then(res => {
+          return item.option.then(res => {
             const ary = Array.isArray(res) ? res : (res.data ? (Array.isArray(res.data) ? res.data : res.data.list) : [])
             this.$set(this.options, item.prop, ary || [])
+            return ary || []
           })
         } else {
           this.$set(this.options, item.prop, item.option)
+          return Promise.resolve(item.option)
         }
       }
+      return Promise.resolve([])
     },
     // 库房/位置接口联动
+    loadMaterialCodeOptions() {
+      getMaterialCodeListAll().then(res => {
+        this.materialCodeOptions = (res.data || [])
+          .map(item => {
+            const goodCode = item.goodCode || item.materialCode || item.code || item.id
+            const name = item.goodName || item.materialName || item.commonName || goodCode
+            return {
+              label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
+              value: goodCode,
+            }
+          })
+          .filter(item => item.value)
+      }).catch(() => {
+        this.materialCodeOptions = []
+      })
+    },
     loadWarehouseOptions() {
       getLocationHierarchy(2).then(res => {
         this.warehouseOptions = res.data || []

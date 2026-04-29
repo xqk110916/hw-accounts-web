@@ -68,7 +68,19 @@
         <el-table :data="form.goodsList" border stripe size="mini" max-height="250">
           <el-table-column prop="goodCode" label="材料编码">
             <template slot-scope="scope">
-              <el-input v-model="scope.row.goodCode" placeholder="请输入" />
+              <el-select
+                v-model="scope.row.goodCode"
+                placeholder="请选择"
+                clearable
+                filterable
+              >
+                <el-option
+                  v-for="item in materialCodeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
             </template>
           </el-table-column>
           <el-table-column prop="goodNum" label="批准件数" width="100">
@@ -119,6 +131,7 @@ import {
   addDocNumber,
   deleteDocNumber,
   getAllDocNumberList,
+  getMaterialCodeListAll,
   updateDocNumber
 } from './api'
 
@@ -137,6 +150,7 @@ export default {
         goodsList: []
       },
       docNumberOptions: [],
+      materialCodeOptions: [],
       rules: {
         documentNoId: [{ required: true, message: '请选择或输入文号', trigger: 'change' }],
         type: [{ required: true, message: '请选择类型', trigger: 'change' }],
@@ -149,6 +163,7 @@ export default {
       this.resetForm()
       this.visible = true
       this.fetchDocNumbers()
+      this.fetchMaterialCodes()
       
       if (data && data.id) {
         this.loading = true
@@ -194,6 +209,24 @@ export default {
         if (res.code === 1) {
           this.docNumberOptions = res.data || []
         }
+      })
+    },
+    fetchMaterialCodes() {
+      return getMaterialCodeListAll().then(res => {
+        if (res.code === 1) {
+          this.materialCodeOptions = (res.data || [])
+            .map(item => {
+              const goodCode = item.goodCode || item.materialCode || item.code || item.id
+              const name = item.goodName || item.materialName || item.commonName || goodCode
+              return {
+                label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
+                value: goodCode
+              }
+            })
+            .filter(item => item.value)
+        }
+      }).catch(() => {
+        this.materialCodeOptions = []
       })
     },
     handleAddDoc() {
@@ -328,6 +361,9 @@ export default {
   }
 }
 ::v-deep .el-table {
+  .el-select {
+    width: 100%;
+  }
   .el-input__inner {
     border: none;
     padding: 0 5px;
