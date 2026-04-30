@@ -149,11 +149,11 @@
 
 确认选择后，前端统一规范化为出库明细字段：`containerCode`、`goodCode`、`warehouseId`、`warehouseName`、`boxNum`、`grossWeight`、`tareWeight`、`netWeight`、`productionUnit`、`shelfCode`、`rowCode`、`columnCode`、`sealCode1`、`sealCode2`。
 
-### 4. 自动配置
+### 4. 自动配重
 
-出库明细的“自动配置”打开“自动配置”弹窗，由用户在弹窗内自行维护待出库物料，可新增或删除多条物料条件。待出库物料按“物料、库房、任务批次、入库时间、重量、出方单位”的顺序配置：物料名称通过 `GET /busin/inbound/getGoodsList` 获取已入库物料并单选，选中值使用 `goodCode`；库房通过 `GET /busin/locationMap/hierarchy/listByNodeType/2` 多选；任务批次通过 `GET /busin/inbound/inListAll` 获取入库任务并多选；入库时间拆分为开始时间和结束时间；出方单位多个值使用英文逗号分隔。保存条件后点击“重新计算”调用 `POST /busin/pick/auto-weight` 获取取货方案。
+出库明细的“自动配重”打开“自动配重”弹窗，由用户在弹窗内自行维护待出库物料，可新增或删除多条物料条件。修改已确认出库任务时不允许自动配重。待出库物料按“物料、库房、任务批次、出方单位、入库时间、重量”的顺序配置：物料名称通过 `GET /busin/inbound/getGoodsList` 获取已入库物料并单选，选中值使用 `goodCode`；库房、任务批次、出方单位不再单独请求接口，而是由所选物料返回的 `warehouse`、`batchNo`、`productionUnit` 数组生成各自下拉选项；入库时间拆分为开始时间和结束时间。保存条件后点击“重新计算”调用 `POST /busin/pick/auto-weight` 获取取货方案。
 
-自动配置不再从调拨依据所选材料自动生成待出库物料，调拨依据仍作为出库任务主表字段参与原有提交链路。使用某个方案时，方案容器会规范化为出库明细字段并覆盖当前明细；若当前已有明细，弹窗会二次确认。
+自动配重不再从调拨依据所选材料自动生成待出库物料，调拨依据仍作为出库任务主表字段参与原有提交链路。使用某个方案时，方案容器会规范化为出库明细字段并覆盖当前明细；若当前已有明细，弹窗会二次确认。
 
 ### 5. 审核
 
@@ -161,7 +161,8 @@
 
 - 初次审核：若详情接口没有返回修改记录，则按普通详情内容只读展示，并提供“同意/不同意”审核操作。
 - 变更审核：若详情接口返回 `modifyRecords`，则展示修改内容列表，并高亮有变更的表单字段。
-- 审核同意或驳回调用 `POST /busin/outbound/executeAudited`，参数包含 `operationId`、`approved` 和 `remark`。
+- 初次审核同意或驳回调用 `POST /busin/outbound/confirmAudit`，参数包含 `taskNum`、`approved` 和 `remark`。
+- 已审核数据再次修改产生的变更审核调用 `POST /busin/outbound/executeAudited`，参数包含 `operationId`、`approved` 和 `remark`。
 
 ## 四、开发与修改注意事项
 

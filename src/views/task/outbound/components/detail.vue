@@ -117,7 +117,7 @@
         <div class="detail-header">
           <span class="detail-title">明细信息</span>
           <div class="detail-actions" v-if="!isReadonlyMode">
-            <el-button size="small" @click="autoAllocate">自动配置</el-button>
+            <el-button v-if="type !== 'modify'" size="small" @click="autoAllocate">自动配重</el-button>
             <el-button size="small" type="primary" @click="openSelectContainer">手工选择</el-button>
           </div>
         </div>
@@ -185,7 +185,7 @@ import SelectContainerDialog from './SelectContainerDialog.vue'
 import AutoPickPlanDialog from './AutoPickPlanDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
-import { executeAuditedOutboundUpdate } from './api.js'
+import { confirmAuditOutbound, executeAuditedOutboundUpdate } from './api.js'
 
 function formatDefaultDate(value) {
   if (!(value instanceof Date)) return value
@@ -545,12 +545,26 @@ export default {
       const record = (this.modifyRecords && this.modifyRecords[0]) || {}
       return record.operationId || record.id || this.row.operationId || this.row.id
     },
+    isAuditedModification() {
+      return Array.isArray(this.modifyRecords) && this.modifyRecords.length > 0
+    },
+    submitAuditResult(approved, remark) {
+      if (this.isAuditedModification()) {
+        return executeAuditedOutboundUpdate({
+          operationId: this.getAuditOperationId(),
+          approved,
+          remark,
+        })
+      }
+      return confirmAuditOutbound({
+        taskNum: this.form.taskNum || this.row.taskNum,
+        approved,
+        remark,
+      })
+    },
     handleAuditApprove() {
       this.$confirm('确定同意该审核申请？', '审核确认', { type: 'info' }).then(() => {
-        executeAuditedOutboundUpdate({
-          operationId: this.getAuditOperationId(),
-          approved: true,
-        }).then(res => {
+        this.submitAuditResult(true).then(res => {
           if (res.code === 1) {
             this.$message.success('审核通过')
             this.$emit('query')
@@ -570,11 +584,7 @@ export default {
           return true
         },
       }).then(({ value }) => {
-        executeAuditedOutboundUpdate({
-          operationId: this.getAuditOperationId(),
-          approved: false,
-          remark: value,
-        }).then(res => {
+        this.submitAuditResult(false, value).then(res => {
           if (res.code === 1) {
             this.$message.success('已驳回')
             this.$emit('query')
@@ -591,6 +601,7 @@ export default {
       })
     },
     autoAllocate() {
+      if (this.type === 'modify') return
       this.$refs.autoPickPlanDialog.open([], this.detailList.length > 0)
     },
   },

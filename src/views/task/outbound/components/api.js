@@ -47,6 +47,14 @@ export const executeAuditedOutboundUpdate = data => {
   })
 }
 
+export const confirmAuditOutbound = data => {
+  return request({
+    url: '/busin/outbound/confirmAudit',
+    method: 'post',
+    data,
+  })
+}
+
 export const autoWeightPickPlan = data => {
   return request({
     url: '/busin/pick/auto-weight',
@@ -60,13 +68,6 @@ export const getInboundGoodsPageList = data => {
     url: '/busin/inbound/goodsPageList',
     method: 'post',
     data,
-  })
-}
-
-export const getInboundTaskListAll = () => {
-  return request({
-    url: '/busin/inbound/inListAll',
-    method: 'get',
   })
 }
 

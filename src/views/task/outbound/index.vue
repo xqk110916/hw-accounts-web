@@ -274,9 +274,8 @@ export default {
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 1) {
-        if (![0, 7].includes(auditStatus)) {
-          btns.push({ label: '修改', type: 'text', execute: 'modify' })
-        }
+        btns.push({ label: '修改', type: 'text', execute: 'modify' })
+        return btns
       }
 
       if (dataStatus !== 4 && (auditStatus === 0 || auditStatus === 7 || dataStatus === 0)) {

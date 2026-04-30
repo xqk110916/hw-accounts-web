@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    title="自动配置"
+    title="自动配重"
     :visible.sync="visible"
     width="94vw"
     top="4vh"
@@ -51,7 +51,7 @@
                   @change="clearPlans"
                 >
                   <el-option
-                    v-for="item in warehouseOptions"
+                    v-for="item in material.warehouseOptions"
                     :key="item.value"
                     :label="item.label"
                     :value="item.value"
@@ -71,7 +71,27 @@
                   @change="clearPlans"
                 >
                   <el-option
-                    v-for="item in inboundTaskOptions"
+                    v-for="item in material.batchNoOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <div class="field-label">出方单位</div>
+                <el-select
+                  v-model="material.suppliers"
+                  size="small"
+                  multiple
+                  collapse-tags
+                  filterable
+                  clearable
+                  placeholder="请选择"
+                  @change="clearPlans"
+                >
+                  <el-option
+                    v-for="item in material.supplierOptions"
                     :key="item.value"
                     :label="item.label"
                     :value="item.value"
@@ -109,10 +129,6 @@
                     <el-option label="kg" value="kg" />
                   </el-select>
                 </div>
-              </el-col>
-              <el-col :span="14">
-                <div class="field-label">出方单位</div>
-                <el-input v-model="material.suppliersText" size="small" placeholder="多个用,隔开" @input="clearPlans" />
               </el-col>
             </el-row>
           </div>
@@ -214,7 +230,7 @@
 </template>
 
 <script>
-import { autoWeightPickPlan, getInboundTaskListAll, getLocationHierarchy, getInboundGoodsList } from './api.js'
+import { autoWeightPickPlan, getInboundGoodsList } from './api.js'
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || []))
@@ -243,8 +259,6 @@ export default {
       materials: [],
       materialIndexSeed: 0,
       materialOptions: [],
-      warehouseOptions: [],
-      inboundTaskOptions: [],
       priority: {
         priorityWarehouse: true,
         priorityManufacturer: false,
@@ -260,8 +274,6 @@ export default {
   },
   created() {
     this.loadMaterialOptions()
-    this.loadWarehouseOptions()
-    this.loadInboundTaskOptions()
   },
   computed: {
     visiblePlans() {
@@ -336,37 +348,26 @@ export default {
         this.materialOptions = []
       }
     },
-    async loadWarehouseOptions() {
-      try {
-        const res = await getLocationHierarchy(2)
-        this.warehouseOptions = (res.data || [])
-          .map(item => {
-            const name = item.warehouseName || item.nodeName || item.name || item.label || item.id
-            return {
-              label: name,
-              value: name,
-            }
-          })
-          .filter(item => item.value)
-      } catch (error) {
-        this.warehouseOptions = []
-      }
+    buildOptions(values) {
+      return splitText(values).map(value => ({
+        label: value,
+        value,
+      }))
     },
-    async loadInboundTaskOptions() {
-      try {
-        const res = await getInboundTaskListAll()
-        this.inboundTaskOptions = (res.data || [])
-          .map(item => {
-            const taskNum = item.taskNum || item.batchNo || item.batchNum || item.id
-            return {
-              label: taskNum,
-              value: taskNum,
-            }
-          })
-          .filter(item => item.value)
-      } catch (error) {
-        this.inboundTaskOptions = []
-      }
+    filterSelectedByOptions(values, options) {
+      const validValueSet = new Set((options || []).map(item => String(item.value)))
+      return splitText(values).filter(value => validValueSet.has(String(value)))
+    },
+    applyMaterialOptionData(material, raw = {}) {
+      const warehouseOptions = this.buildOptions(raw.warehouse)
+      const batchNoOptions = this.buildOptions(raw.batchNo)
+      const supplierOptions = this.buildOptions(raw.productionUnit)
+      this.$set(material, 'warehouseOptions', warehouseOptions)
+      this.$set(material, 'batchNoOptions', batchNoOptions)
+      this.$set(material, 'supplierOptions', supplierOptions)
+      this.$set(material, 'warehouses', this.filterSelectedByOptions(material.warehouses, warehouseOptions))
+      this.$set(material, 'batchNos', this.filterSelectedByOptions(material.batchNos, batchNoOptions))
+      this.$set(material, 'suppliers', this.filterSelectedByOptions(material.suppliers, supplierOptions))
     },
     createMaterial() {
       this.materialIndexSeed += 1
@@ -381,7 +382,9 @@ export default {
         suppliers: [],
         warehouses: [],
         batchNos: [],
-        suppliersText: '',
+        warehouseOptions: [],
+        batchNoOptions: [],
+        supplierOptions: [],
         startStorageTime: '',
         endStorageTime: '',
       }
@@ -406,10 +409,11 @@ export default {
     handleMaterialChange(material, value) {
       const option = this.materialOptions.find(item => String(item.value) === String(value))
       material.goodCode = value || ''
-      material.materialName = value || ''
+      material.materialName = (option && option.raw && option.raw.goodName) || value || ''
       if (option && option.raw && option.raw.commonUnit) {
         material.unit = option.raw.commonUnit
       }
+      this.applyMaterialOptionData(material, option ? option.raw : {})
       this.clearPlans()
     },
     normalizeMaterial(row = {}) {
@@ -417,7 +421,8 @@ export default {
       const warehouses = splitText(row.warehouses || row.warehousesText)
       const suppliers = splitText(row.suppliers || row.suppliersText)
       const batchNos = splitText(row.batchNos || row.batchNosText)
-      return {
+      const raw = row.raw || row.materialRaw || {}
+      const normalized = {
         ...row,
         _key: row._key || `material-${Date.now()}-${this.materialIndexSeed}`,
         goodCode: row.goodCode || '',
@@ -429,16 +434,30 @@ export default {
         suppliers,
         warehouses,
         batchNos,
-        suppliersText: suppliers.join(','),
+        warehouseOptions: row.warehouseOptions || this.buildOptions(raw.warehouse),
+        batchNoOptions: row.batchNoOptions || this.buildOptions(raw.batchNo),
+        supplierOptions: row.supplierOptions || this.buildOptions(raw.productionUnit),
         startStorageTime: row.startStorageTime || '',
         endStorageTime: row.endStorageTime || '',
       }
+      if (normalized.goodCode && (!normalized.warehouseOptions.length || !normalized.batchNoOptions.length || !normalized.supplierOptions.length)) {
+        const option = this.materialOptions.find(item => String(item.value) === String(normalized.goodCode))
+        if (option && option.raw) {
+          normalized.warehouseOptions = this.buildOptions(option.raw.warehouse)
+          normalized.batchNoOptions = this.buildOptions(option.raw.batchNo)
+          normalized.supplierOptions = this.buildOptions(option.raw.productionUnit)
+        }
+      }
+      normalized.warehouses = this.filterSelectedByOptions(normalized.warehouses, normalized.warehouseOptions)
+      normalized.batchNos = this.filterSelectedByOptions(normalized.batchNos, normalized.batchNoOptions)
+      normalized.suppliers = this.filterSelectedByOptions(normalized.suppliers, normalized.supplierOptions)
+      return normalized
     },
     syncEditableFields() {
       this.materials = this.materials.map(item => {
         return {
           ...item,
-          suppliers: splitText(item.suppliersText),
+          suppliers: splitText(item.suppliers),
           warehouses: splitText(item.warehouses),
           batchNos: splitText(item.batchNos),
           startStorageTime: item.startStorageTime || '',
@@ -505,7 +524,7 @@ export default {
         this.activePlanKey = this.plans[0] ? this.plans[0]._key : ''
         this.resetCurrentContainers()
       } catch (error) {
-        this.$message.error((error && error.message) || '自动配置失败')
+        this.$message.error((error && error.message) || '自动配重失败')
       } finally {
         this.loading = false
       }
