@@ -183,6 +183,8 @@ import {
   getBalanceAreaName,
   getBalanceAreaList
 } from './config/warehouseConfig';
+import { generateBatchNo } from '@/api/common/batchNo.js';
+import { submitMove } from '@/views/task/move/components/api.js';
 
 export default {
   name: 'LocationIndex',
@@ -471,6 +473,48 @@ export default {
       this.$message.info('跳转到入库信息页面...');
     },
 
+    getCurrentUserName() {
+      const userInfo = (this.$store && this.$store.getters && this.$store.getters.userInfo) || {};
+      return userInfo.realName || userInfo.userName || userInfo.nickName || '';
+    },
+
+    formatDateTime(date = new Date()) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      const H = String(date.getHours()).padStart(2, '0');
+      const M = String(date.getMinutes()).padStart(2, '0');
+      const S = String(date.getSeconds()).padStart(2, '0');
+      return `${y}-${m}-${d} ${H}:${M}:${S}`;
+    },
+
+    buildWarehouseMoveGoods(targetLocation) {
+      const container = this.selectedContainer || {};
+      const inboundGoods = container.inboundGoodsEntity || {};
+      return {
+        containerCode: inboundGoods.containerCode || container.containerCode || container.code || '',
+        goodCode: inboundGoods.goodCode || inboundGoods.goodsCode || container.goodCode || container.materialCode || '',
+        productionUnit: inboundGoods.productionUnit || container.productionUnit || '',
+        goodsWeight: inboundGoods.goodsWeight || container.goodsWeight || '',
+        grossWeight: inboundGoods.grossWeight || container.grossWeight || '',
+        netWeight: inboundGoods.netWeight || container.netWeight || '',
+        tareWeight: inboundGoods.tareWeight || container.tareWeight || '',
+        sealCode1: inboundGoods.sealCode1 || container.sealCode1 || '',
+        sealCode2: inboundGoods.sealCode2 || container.sealCode2 || '',
+        sealType1: inboundGoods.sealType1 || container.sealType1 || '',
+        sealType2: inboundGoods.sealType2 || container.sealType2 || '',
+        taskNum: inboundGoods.taskNum || container.taskNum || '',
+        sourceWarehouse: this.currentWarehouse ? this.currentWarehouse.name : '',
+        sourceShelf: container.shelfCode || (this.selectedShelf && this.selectedShelf.columnCode) || '',
+        sourceRow: container.rowCode || (this.selectedShelf && this.selectedShelf.rowCode) || '',
+        sourceColumn: container.columnCode || '',
+        targetWarehouse: targetLocation.warehouseName || '',
+        targetShelf: targetLocation.shelfCode || '',
+        targetRow: targetLocation.rowCode || '',
+        targetColumn: targetLocation.columnCode || ''
+      };
+    },
+
     handleMoveContainer(targetLocation) {
       if (!targetLocation || !targetLocation.warehouseId || !targetLocation.positionId) {
         this.$message.warning('请选择目标位置');
@@ -490,9 +534,21 @@ export default {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(() => {
-        this.$message.success('容器移动成功');
-        this.containerDialogVisible = false;
+      }).then(async () => {
+        const batchRes = await generateBatchNo({ batchType: 'move' });
+        if (batchRes.code !== 1) return;
+        const res = await submitMove({
+          taskNum: batchRes.data,
+          saveType: 0,
+          executor: this.getCurrentUserName(),
+          moveTime: this.formatDateTime(),
+          goodsList: [this.buildWarehouseMoveGoods(targetLocation)]
+        });
+        if (res.code === 1) {
+          this.$message.success('移库申请已提交');
+          this.containerDialogVisible = false;
+          if (this.selectedWarehouseId) await this.loadWarehouseData(this.selectedWarehouseId);
+        }
       }).catch(() => {
         this.$message.info('已取消移动');
       });

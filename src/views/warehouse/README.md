@@ -40,7 +40,7 @@
 - 库位占用：调用 `getPositionMap({ nodeId: warehouseId, nodeType: '2' })`。
 - 货架类型字典：调用 `getDictionaryList({ parentId: '2046473482554638338' })`。
 
-容器详情中的移库操作需要先选择目标库房，再选择目标位置。目标库房使用 `GET /busin/locationMap/hierarchy/listByNodeType/2`，目标位置使用 `POST /busin/locationMap/positionMap`，请求体包含 `nodeId` 和 `nodeType: '2'`。位置下拉沿用入库管理添加明细的禁用规则：`status !== 0` 的位置不可选。移库也支持通过 2D 位置图选择空闲位置，打开位置图时默认当前平衡区和当前库房，并允许在弹窗内切换平衡区、库房。
+容器详情中的移库操作需要先选择目标库房，再选择目标位置。目标库房使用 `GET /busin/locationMap/hierarchy/listByNodeType/2`，目标位置使用 `POST /busin/locationMap/positionMap`，请求体包含 `nodeId` 和 `nodeType: '2'`。位置下拉沿用入库管理添加明细的禁用规则：`status !== 0` 的位置不可选。移库也支持通过 2D 位置图选择空闲位置，打开位置图时默认当前平衡区和当前库房，并允许在弹窗内切换平衡区、库房。确认移动时已对接 `POST /busin/move/submit`，由前端生成 `batchType=move` 的移库任务编号，按当前容器原位置和选择的目标位置提交一条移库申请，成功后刷新当前库房位置数据。
 
 布局读取规则：
 

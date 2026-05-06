@@ -168,7 +168,64 @@
 
 详情模式通过详情接口返回的 `modifyRecords` 展示“变更记录”。该区域仅在点击列表“详情”打开弹窗时显示；记录 `status=7` 时在记录后提供“撤回”按钮，调用 `GET /busin/outbound/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）。
 
-## 四、开发与修改注意事项
+## 四、已完成界面：位置移动
+
+入口文件：
+
+- `src/views/task/move/index.vue`
+- `src/views/task/move/components/detail.vue`
+- `src/views/task/move/components/index.js`
+- `src/views/task/move/components/api.js`
+
+接口参考：
+
+- `docs/移库管理-接口文档.md`
+
+位置移动用于处理库内已入库容器从原位置到目标位置的移库申请，支持从位置移动列表创建，也支持在库房管理的容器详情中直接提交移库申请。
+
+### 1. 列表查询与状态
+
+列表页通过 `POST /busin/move/list` 查询移库任务，筛选项包括任务编号、容器号、位置、移动时间和状态。移动时间在前端转换为 `startTime/endTime`，状态以 `statusList` 数组提交。
+
+页面状态沿用出库管理的组合判断方式：
+
+- `dataStatus=0`：待审核，显示审核入口。
+- `dataStatus=1`：已确认；若 `auditStatus=0/7` 表示修改申请待审核，只允许审核；否则可发起修改。
+- `dataStatus=2`：已拒绝，可编辑。
+- `dataStatus=4`：暂存，可编辑。
+
+接口文档未提供删除接口，前端不提供删除按钮。
+
+### 2. 新增、暂存与提交
+
+新增移库任务时调用 `generateBatchNo({ batchType: 'move' })` 生成移库任务编号。主表字段包括任务编号、执行人、移动时间和备注。
+
+底部提供“暂存”和“提交”两个动作：
+
+- 暂存传 `saveType=4`。
+- 提交传 `saveType=0`。
+
+新增时明细通过 `goodsList` 提交；编辑和修改时按打开详情时的原始明细和当前明细对比：新增明细放入 `dtoList`，已有明细放入 `editList`，删除明细的 `id` 和 `containerCode` 分别汇总到 `goodIds`、`containerCodes`。已审核任务修改时传 `updateType=1` 进入变更审核链路。
+
+### 3. 源位置与目标位置选择
+
+明细编辑采用库房和位置联动选择：
+
+- 库房列表来自 `GET /busin/locationMap/hierarchy/listByNodeType/2`。
+- 位置列表来自 `POST /busin/locationMap/positionMap`，请求体包含 `nodeId` 和 `nodeType: '2'`。
+- 原位置只允许选择 `status=1` 且有容器号的位置，选择后自动回填入库任务编号、容器号、材料编码、生产单位、重量、封记和原排/行/列。
+- 目标位置沿用入库管理规则：下拉展示全部位置，但 `status !== 0` 的位置置灰不可选。
+- 提交前会阻止原位置和目标位置完全相同的明细。
+
+### 4. 审核、修改与变更记录
+
+初次提交后的审核调用 `POST /busin/move/confirm`，参数包含 `taskNum`、`approved` 和 `remark`。
+
+已审核数据再次修改后进入变更审核，审核调用 `POST /busin/move/executeAudited`，参数通过 query string 传 `modifyRecordId`、`approved` 和 `remark`。
+
+详情模式展示 `modifyRecords` 变更记录，记录 `status=7` 时提供“撤回”按钮，调用 `GET /busin/move/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）。审核模式解析 `beforeData`、`afterData` 和 `modifyDescList`，高亮有变更的主表字段并展示修改内容。
+
+## 五、开发与修改注意事项
 
 - 修改入库管理前，必须先阅读本文档、`docs/PROJECT_ARCHITECTURE.md`、`docs/SYSTEM_MODULES_MAP.md` 和 `md/入库管理接口文档.md`。
 - 入库管理虽然位于 `src/views/task/inbound`，但其数据会影响核算和账务处理，状态流转不能只按普通 CRUD 理解。

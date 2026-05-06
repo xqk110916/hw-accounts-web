@@ -1,40 +1,70 @@
 import request from '@/utils/request'
 
-export const getMoveList = params => {
+export const getMoveList = data => {
   return request({
-    url: '/task/move/listPage',
-    method: 'post',
-    params,
-  })
-}
-
-export const getMoveDetail = params => {
-  return request({
-    url: '/task/move/getInfoById',
-    method: 'post',
-    params,
-  })
-}
-
-export const saveOrUpdateMove = data => {
-  return request({
-    url: '/task/move/saveOrUpdate',
+    url: '/busin/move/list',
     method: 'post',
     data,
   })
 }
 
-export const deleteMove = params => {
+export const getMoveDetail = id => {
   return request({
-    url: '/task/move/delete',
+    url: `/busin/move/detail/${id}`,
+    method: 'get',
+  })
+}
+
+export const submitMove = data => {
+  return request({
+    url: '/busin/move/submit',
+    method: 'post',
+    data,
+  })
+}
+
+export const updateMove = data => {
+  return request({
+    url: '/busin/move/update',
+    method: 'post',
+    data,
+  })
+}
+
+export const confirmMove = data => {
+  return request({
+    url: '/busin/move/confirm',
+    method: 'post',
+    data,
+  })
+}
+
+export const executeAuditedMove = params => {
+  return request({
+    url: '/busin/move/executeAudited',
     method: 'post',
     params,
   })
 }
 
-export const auditMove = data => {
+export const cancelMoveApply = params => {
   return request({
-    url: '/task/move/audit',
+    url: '/busin/move/cancelApply',
+    method: 'get',
+    params,
+  })
+}
+
+export const getLocationHierarchy = nodeType => {
+  return request({
+    url: `/busin/locationMap/hierarchy/listByNodeType/${nodeType}`,
+    method: 'get',
+  })
+}
+
+export const getPositionMap = data => {
+  return request({
+    url: '/busin/locationMap/positionMap',
     method: 'post',
     data,
   })
@@ -43,6 +73,6 @@ export const auditMove = data => {
 export const move = {
   list: getMoveList,
   detail: getMoveDetail,
-  update: saveOrUpdateMove,
-  delete: deleteMove,
+  submit: submitMove,
+  update: updateMove,
 }

@@ -32,8 +32,16 @@
             >
               <template slot-scope="scope">
                 <div v-if="item.type === 'slot'">
-                  <span :class="['status-tag', getStatusClass(scope.row.status)]">
-                    {{ getStatusText(scope.row.status) }}
+                  <span v-if="item.prop === 'auditStatus'">
+                    <span :class="['status-tag', getDataStatusClass(scope.row.dataStatus)]">
+                      {{ getDataStatusText(scope.row.dataStatus) }}
+                    </span>
+                    <span
+                      v-if="shouldShowAuditTag(scope.row)"
+                      :class="['status-tag', 'audit-tag', getAuditStatusClass(scope.row.auditStatus)]"
+                    >
+                      {{ getAuditStatusText(scope.row.auditStatus) }}
+                    </span>
                   </span>
                 </div>
                 <div v-else>{{ scope.row[item.prop] }}</div>
@@ -43,10 +51,10 @@
               <template slot-scope="scope">
                 <div class="table_operation">
                   <div
-                    v-for="item in btns.table"
+                    v-for="item in getRowBtns(scope.row)"
                     :key="item.label"
                     :class="['btn', 'text']"
-                    @click="e => handleBtnClick(item, scope.row)"
+                    @click="handleBtnClick(item, scope.row)"
                   >
                     {{ item.label }}
                   </div>
@@ -70,31 +78,12 @@
       </div>
     </div>
     <detail ref="detail" @query="resetSearchParams" />
-
-    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
-      <el-form :model="auditForm" label-width="100px">
-        <el-form-item label="任务编号">
-          <span>{{ auditForm.taskNo }}</span>
-        </el-form-item>
-        <el-form-item label="审核结果">
-          <el-radio-group v-model="auditForm.result">
-            <el-radio label="pass">审核通过</el-radio>
-            <el-radio label="reject">审核拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button size="small" @click="auditDialogVisible = false">取消</el-button>
-        <el-button type="primary" size="small" @click="submitAudit">确定</el-button>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script>
 import detail from './components/detail.vue'
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
-import { auditMove } from './components/api.js'
+import { config, requestFun, btns, handleTbaleMap, getDefaultOptions, handleSearchParams } from './components/index.js'
 
 export default {
   name: 'MoveManage',
@@ -109,8 +98,6 @@ export default {
       height: 0,
       tableKeys: [],
       btns,
-      auditDialogVisible: false,
-      auditForm: { id: '', taskNo: '', result: 'pass' },
     }
   },
   async created() {
@@ -125,19 +112,19 @@ export default {
   },
   methods: {
     computedTableHeight() {
-      let rightDom = document.querySelector('.right')
-      let rightDomHeight = rightDom ? rightDom.clientHeight : 0
-      let searchDom = document.querySelector('.search')
-      let searchDomHeight = searchDom ? searchDom.clientHeight : 0
-      let operationDom = document.querySelector('.operation')
-      let operationDomHeight = operationDom ? operationDom.clientHeight : 0
+      const rightDom = document.querySelector('.right')
+      const rightDomHeight = rightDom ? rightDom.clientHeight : 0
+      const searchDom = document.querySelector('.search')
+      const searchDomHeight = searchDom ? searchDom.clientHeight : 0
+      const operationDom = document.querySelector('.operation')
+      const operationDomHeight = operationDom ? operationDom.clientHeight : 0
       this.height = rightDomHeight - searchDomHeight - operationDomHeight - 90
     },
     async handleData() {
       this.tableKeys = config.table
       config.search.forEach(item => {
         this.search.options.push(item)
-        this.$set(this.search.params, item.prop, '')
+        this.$set(this.search.params, item.prop, item.defaultValue !== undefined ? item.defaultValue : '')
         if (item.option) this.getOptions(item)
       })
       this.addSearchBtn()
@@ -154,19 +141,29 @@ export default {
             this.open()
             break
           case 'view':
-            this.$refs.detail.open(payload)
+            this.$refs.detail.open(payload, 0, 'view')
             break
           case 'update':
-            this.$refs.detail.open(payload)
+            this.$refs.detail.open(payload, 0, 'edit')
+            break
+          case 'modify':
+            this.$refs.detail.open(payload, 1, 'modify')
             break
           case 'audit':
-            this.openAudit(payload)
+            this.$refs.detail.open(payload, 0, 'audit')
             break
         }
       }
     },
     getOptions(item) {
-      if (!Array.isArray(item.option)) {
+      if (typeof item.option === 'function') {
+        const result = item.option()
+        if (result && typeof result.then === 'function') {
+          result.then(data => {
+            item.option = Array.isArray(data) ? data : (data.data ? (Array.isArray(data.data) ? data.data : data.data.list) : [])
+          })
+        }
+      } else if (!Array.isArray(item.option) && item.option && typeof item.option.then === 'function') {
         item.option.then(res => {
           item.option = Array.isArray(res.data) ? res.data : res.data.list
         })
@@ -174,10 +171,11 @@ export default {
     },
     getTableList() {
       this.tableData = []
-      return requestFun.list(this.search.params).then(res => {
+      const params = handleSearchParams ? handleSearchParams(this.search.params) : this.search.params
+      return requestFun.list(params).then(res => {
         if (res.code === 1) {
           let data = res.data.list || []
-          let page = res.data.pagination || {}
+          const page = res.data.pagination || {}
           if (handleTbaleMap) data = handleTbaleMap(data)
           this.tableData = data
           this.search.params.totoal = page.total
@@ -197,38 +195,54 @@ export default {
     },
     resetSearchParams() {
       this.search.params = this.$options.data().search.params
+      config.search.forEach(item => {
+        this.$set(this.search.params, item.prop, item.defaultValue !== undefined ? item.defaultValue : '')
+      })
       this.getTableList()
     },
-    openAudit(row) {
-      this.auditForm = { id: row.id, taskNo: row.taskNo, result: 'pass' }
-      this.auditDialogVisible = true
+    getDataStatusText(status) {
+      const value = Number(status)
+      const map = { 0: '待审核', 1: '已确认', 2: '已拒绝', 4: '暂存' }
+      return map[value] !== undefined ? map[value] : '-'
     },
-    submitAudit() {
-      auditMove(this.auditForm).then(res => {
-        if (res.code === 1) {
-          this.$message.success('审核成功')
-          this.auditDialogVisible = false
-          this.getTableList()
-        }
-      })
+    getDataStatusClass(status) {
+      const value = Number(status)
+      const map = { 0: 'status-auditing', 1: 'status-confirmed', 2: 'status-rejected', 4: 'status-draft' }
+      return map[value] || ''
     },
-    getStatusText(status) {
-      const map = {
-        pending: '待审核',
-        auditing: '审核中',
-        approved: '审核通过',
-        rejected: '审核拒绝',
+    getAuditStatusText(status) {
+      const value = Number(status)
+      const map = { 0: '待审核', 1: '审核通过', 2: '审核拒绝', 7: '待审核', 8: '审核通过', 9: '审核驳回' }
+      return map[value] !== undefined ? map[value] : ''
+    },
+    getAuditStatusClass(status) {
+      const value = Number(status)
+      const map = { 0: 'status-auditing', 1: 'status-approved', 2: 'status-rejected', 7: 'status-auditing', 8: 'status-approved', 9: 'status-rejected' }
+      return map[value] || ''
+    },
+    shouldShowAuditTag(row) {
+      const auditStatus = row.auditStatus
+      if (auditStatus === undefined || auditStatus === null || auditStatus === '') return false
+      return !(Number(row.dataStatus) === 0 && Number(auditStatus) === 0)
+    },
+    getRowBtns(row) {
+      const rowBtns = [{ label: '详情', type: 'text', execute: 'view' }]
+      const dataStatus = Number(row.dataStatus)
+      const hasAuditStatus = row.auditStatus !== undefined && row.auditStatus !== null && row.auditStatus !== ''
+      const auditStatus = hasAuditStatus ? Number(row.auditStatus) : NaN
+      const isPendingAudit = auditStatus === 0 || auditStatus === 7
+
+      if (dataStatus === 4 || dataStatus === 2) {
+        rowBtns.push({ label: '编辑', type: 'text', execute: 'update' })
+        return rowBtns
       }
-      return map[status] || status
-    },
-    getStatusClass(status) {
-      const map = {
-        pending: 'status-pending',
-        auditing: 'status-auditing',
-        approved: 'status-approved',
-        rejected: 'status-rejected',
+      if (dataStatus === 1) {
+        if (isPendingAudit) rowBtns.push({ label: '审核', type: 'text', execute: 'audit' })
+        else rowBtns.push({ label: '修改', type: 'text', execute: 'modify' })
+        return rowBtns
       }
-      return map[status] || ''
+      if (isPendingAudit || dataStatus === 0) rowBtns.push({ label: '审核', type: 'text', execute: 'audit' })
+      return rowBtns
     },
   },
 }
@@ -321,26 +335,34 @@ export default {
     margin-left: 10px;
   }
 }
+
 .status-tag {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 3px;
   font-size: 12px;
-  &.status-pending {
-    background: #fff0cc;
-    color: #e68600;
+  &.status-draft {
+    background: #f4f4f5;
+    color: #606266;
+  }
+  &.status-confirmed,
+  &.status-approved {
+    background: #e8f5e9;
+    color: #2e7d32;
   }
   &.status-auditing {
     background: #e3f2fd;
     color: #1565c0;
   }
-  &.status-approved {
-    background: #e8f5e9;
-    color: #2e7d32;
-  }
   &.status-rejected {
     background: #ffebee;
     color: #c62828;
+  }
+  &.audit-tag {
+    margin-left: 4px;
+    font-size: 11px;
+    padding: 1px 6px;
+    opacity: 0.9;
   }
 }
 </style>
