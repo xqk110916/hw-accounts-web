@@ -84,6 +84,7 @@
 - 修改过的字段会高亮，并展示修改前后差异。
 - 审核同意或驳回调用 `POST /busin/inbound/executeAuditedUpdate`。
 - 驳回时需要输入驳回原因。
+详情模式通过详情接口返回的 `modifyRecords` 展示“变更记录”，展示样式与位置移动保持一致；记录 `status=7` 时在记录后提供“撤回”按钮，调用 `GET /busin/inbound/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）；记录 `status=9` 且返回 `auditRemark` 时，在申请人、申请时间同一行展示驳回原因。
 
 ### 6. 调拨依据与文号维护
 
@@ -166,7 +167,7 @@
 - 初次审核同意或驳回调用 `POST /busin/outbound/confirmAudit`，参数包含 `taskNum`、`approved` 和 `remark`。
 - 已审核数据再次修改产生的变更审核调用 `POST /busin/outbound/executeAudited`，参数包含 `operationId`、`approved` 和 `remark`。
 
-详情模式通过详情接口返回的 `modifyRecords` 展示“变更记录”。该区域仅在点击列表“详情”打开弹窗时显示；记录 `status=7` 时在记录后提供“撤回”按钮，调用 `GET /busin/outbound/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）。
+详情模式通过详情接口返回的 `modifyRecords` 展示“变更记录”。该区域仅在点击列表“详情”打开弹窗时显示；记录 `status=7` 时在记录后提供“撤回”按钮，调用 `GET /busin/outbound/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）。记录 `status=9` 且返回 `auditRemark` 时，在申请人、申请时间同一行展示驳回原因；驳回审核提交参数仍使用 `remark`。
 
 ## 四、已完成界面：位置移动
 
@@ -198,14 +199,14 @@
 
 ### 2. 新增、暂存与提交
 
-新增移库任务时调用 `generateBatchNo({ batchType: 'move' })` 生成移库任务编号。主表字段包括任务编号、执行人、移动时间和备注。
+新增移库任务时调用 `generateBatchNo({ batchType: 'move', prefix: 'YK' })` 生成移库任务编号。主表字段包括任务编号、执行人、移动时间和备注。
 
 底部提供“暂存”和“提交”两个动作：
 
 - 暂存传 `saveType=4`。
 - 提交传 `saveType=0`。
 
-新增时明细通过 `goodsList` 提交；编辑和修改时按打开详情时的原始明细和当前明细对比：新增明细放入 `dtoList`，已有明细放入 `editList`，删除明细的 `id` 和 `containerCode` 分别汇总到 `goodIds`、`containerCodes`。已审核任务修改时传 `updateType=1` 进入变更审核链路。
+新增时明细通过 `goodsList` 提交；编辑和修改时按打开详情时的原始明细和当前明细对比：新增明细放入 `dtoList`，当前版本不允许直接编辑已有移库明细，所以 `editList` 固定传空数组，删除明细的 `id` 和 `containerCode` 分别汇总到 `goodIds`、`containerCodes`。已审核任务修改时传 `updateType=1` 进入变更审核链路。
 
 ### 3. 源位置与目标位置选择
 
@@ -223,7 +224,7 @@
 
 已审核数据再次修改后进入变更审核，审核调用 `POST /busin/move/executeAudited`，参数通过 query string 传 `modifyRecordId`、`approved` 和 `remark`。
 
-详情模式展示 `modifyRecords` 变更记录，记录 `status=7` 时提供“撤回”按钮，调用 `GET /busin/move/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）。审核模式解析 `beforeData`、`afterData` 和 `modifyDescList`，高亮有变更的主表字段并展示修改内容。
+详情模式展示 `modifyRecords` 变更记录，记录 `status=7` 时提供“撤回”按钮，调用 `GET /busin/move/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）。记录 `status=9` 且返回 `auditRemark` 时，在申请人、申请时间同一行展示驳回原因；驳回审核提交参数仍使用 `remark`。审核模式解析 `beforeData`、`afterData` 和 `modifyDescList`，高亮有变更的主表字段并展示修改内容。
 
 ## 五、开发与修改注意事项
 

@@ -85,6 +85,7 @@
                 <span>申请时间：{{ record.createTime || '-' }}</span>
                 <span v-if="record.auditUserName">审核人：{{ record.auditUserName }}</span>
                 <span v-if="record.auditTime">审核时间：{{ record.auditTime }}</span>
+                <span v-if="getModifyRecordAuditRemark(record)">驳回原因：{{ getModifyRecordAuditRemark(record) }}</span>
               </div>
               <el-button v-if="Number(record.status) === 7" type="text" size="mini" @click="cancelModifyRecord(record)">
                 撤回
@@ -135,7 +136,7 @@
           <el-table-column v-if="!isReadonlyMode" label="操作" width="120" fixed="right">
             <template slot-scope="scope">
               <span class="table_operation">
-                <span class="btn text" @click="editDetailRow(scope.row, scope.$index)">编辑</span>
+                <span v-if="type !== 'modify'" class="btn text" @click="editDetailRow(scope.row, scope.$index)">编辑</span>
                 <span class="btn text danger" @click="removeDetailRow(scope.$index)">删除</span>
               </span>
             </template>
@@ -146,21 +147,23 @@
         </div>
       </div>
 
-      <div class="footer" v-if="type === 'audit'">
-        <el-button size="small" @click="close">取消</el-button>
-        <el-button type="danger" size="small" @click="handleAuditReject">不同意</el-button>
-        <el-button type="primary" size="small" @click="handleAuditApprove">同意</el-button>
-      </div>
-      <div class="footer" v-else-if="type !== 'view'">
-        <el-button size="small" @click="close">取消</el-button>
-        <el-button v-if="type !== 'modify'" size="small" @click="submitForm(4)">暂存</el-button>
-        <el-button type="primary" size="small" @click="submitForm(0)">
-          {{ type === 'modify' ? '提交变更审核' : '提交' }}
-        </el-button>
-      </div>
-      <div class="footer" v-else>
-        <el-button size="small" @click="close">关闭</el-button>
-      </div>
+      <template slot="footer">
+        <div class="footer" v-if="type === 'audit'">
+          <el-button size="small" @click="close">取消</el-button>
+          <el-button type="danger" size="small" @click="handleAuditReject">不同意</el-button>
+          <el-button type="primary" size="small" @click="handleAuditApprove">同意</el-button>
+        </div>
+        <div class="footer" v-else-if="type !== 'view'">
+          <el-button size="small" @click="close">取消</el-button>
+          <el-button v-if="type !== 'modify'" size="small" @click="submitForm(4)">暂存</el-button>
+          <el-button type="primary" size="small" @click="submitForm(0)">
+            {{ type === 'modify' ? '提交变更审核' : '提交' }}
+          </el-button>
+        </div>
+        <div class="footer" v-else>
+          <el-button size="small" @click="close">关闭</el-button>
+        </div>
+      </template>
     </theme-edit>
 
     <el-dialog
@@ -820,11 +823,10 @@ export default {
       const originalIdentitySet = new Set(originalList.map(this.getDetailIdentity).filter(Boolean))
       const currentIdentitySet = new Set(goodsList.map(this.getDetailIdentity).filter(Boolean))
       const dtoList = goodsList.filter(item => !originalIdentitySet.has(this.getDetailIdentity(item)))
-      const editList = goodsList.filter(item => item.id && originalIdentitySet.has(this.getDetailIdentity(item)))
       const deletedList = originalList.filter(item => !currentIdentitySet.has(this.getDetailIdentity(item)))
       return {
         dtoList,
-        editList,
+        editList: [],
         goodIds: this.uniqueJoin(deletedList.map(item => item.id)),
         containerCodes: this.uniqueJoin(deletedList.map(item => item.containerCode)),
       }
@@ -854,6 +856,9 @@ export default {
     },
     getModifyRecordDescList(record = {}) {
       return (record.modifyDescList || []).filter(Boolean)
+    },
+    getModifyRecordAuditRemark(record = {}) {
+      return Number(record.status) === 9 ? (record.auditRemark || record.remark || '') : ''
     },
     getModifyRecordStatusText(status) {
       const value = Number(status)
@@ -888,17 +893,19 @@ export default {
     },
     submitAuditResult(approved, remark) {
       if (this.isAuditedModification()) {
-        return executeAuditedMove({
+        const params = {
           modifyRecordId: this.getModifyRecordId(),
           approved,
           remark,
-        })
+        }
+        return executeAuditedMove(params)
       }
-      return confirmMove({
+      const data = {
         taskNum: this.form.taskNum || this.row.moveTaskNum,
         approved,
         remark,
-      })
+      }
+      return confirmMove(data)
     },
     handleAuditApprove() {
       this.$confirm('确定同意该审核申请？', '审核确认', { type: 'info' }).then(() => {
@@ -988,8 +995,11 @@ export default {
 
     &.danger {
       color: #f56c6c;
-      margin-left: 8px;
     }
+  }
+
+  .btn + .btn {
+    margin-left: 8px;
   }
 }
 

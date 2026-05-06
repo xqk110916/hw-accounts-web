@@ -128,6 +128,7 @@
                 <span>申请时间：{{ record.createTime || '-' }}</span>
                 <span v-if="record.auditUserName">审核人：{{ record.auditUserName }}</span>
                 <span v-if="record.auditTime">审核时间：{{ record.auditTime }}</span>
+                <span v-if="getModifyRecordAuditRemark(record)">驳回原因：{{ getModifyRecordAuditRemark(record) }}</span>
               </div>
               <el-button
                 v-if="Number(record.status) === 7"
@@ -193,21 +194,23 @@
         </div>
       </div>
 
-      <div class="footer" v-if="type === 'audit'">
-        <el-button size="small" @click="close">取消</el-button>
-        <el-button type="danger" size="small" @click="handleAuditReject">不同意</el-button>
-        <el-button type="primary" size="small" @click="handleAuditApprove">同意</el-button>
-      </div>
-      <div class="footer" v-else-if="type !== 'view'">
-        <el-button size="small" @click="close">取消</el-button>
-        <el-button v-if="type !== 'modify'" size="small" @click="submitForm(4)">暂存</el-button>
-        <el-button type="primary" size="small" @click="submitForm(0)">
-          {{ type === 'modify' ? '提交变更审核' : '提交' }}
-        </el-button>
-      </div>
-      <div class="footer" v-else>
-        <el-button size="small" @click="close">关闭</el-button>
-      </div>
+      <template slot="footer">
+        <div class="footer" v-if="type === 'audit'">
+          <el-button size="small" @click="close">取消</el-button>
+          <el-button type="danger" size="small" @click="handleAuditReject">不同意</el-button>
+          <el-button type="primary" size="small" @click="handleAuditApprove">同意</el-button>
+        </div>
+        <div class="footer" v-else-if="type !== 'view'">
+          <el-button size="small" @click="close">取消</el-button>
+          <el-button v-if="type !== 'modify'" size="small" @click="submitForm(4)">暂存</el-button>
+          <el-button type="primary" size="small" @click="submitForm(0)">
+            {{ type === 'modify' ? '提交变更审核' : '提交' }}
+          </el-button>
+        </div>
+        <div class="footer" v-else>
+          <el-button size="small" @click="close">关闭</el-button>
+        </div>
+      </template>
     </theme-edit>
 
     <allocation-basis-list-dialog ref="basisDialog" @success="handleBasisSuccess" />
@@ -612,6 +615,9 @@ export default {
     getModifyRecordDescList(record = {}) {
       return (record.modifyDescList || []).filter(Boolean)
     },
+    getModifyRecordAuditRemark(record = {}) {
+      return Number(record.status) === 9 ? (record.auditRemark || record.remark || '') : ''
+    },
     getModifyRecordStatusText(status) {
       const value = Number(status)
       const map = { 7: '申请变更', 8: '变更通过', 9: '变更驳回' }
@@ -645,17 +651,19 @@ export default {
     },
     submitAuditResult(approved, remark) {
       if (this.isAuditedModification()) {
-        return executeAuditedOutboundUpdate({
+        const payload = {
           operationId: this.getAuditOperationId(),
           approved,
           remark,
-        })
+        }
+        return executeAuditedOutboundUpdate(payload)
       }
-      return confirmAuditOutbound({
+      const payload = {
         taskNum: this.form.taskNum || this.row.taskNum,
         approved,
         remark,
-      })
+      }
+      return confirmAuditOutbound(payload)
     },
     handleAuditApprove() {
       this.$confirm('确定同意该审核申请？', '审核确认', { type: 'info' }).then(() => {

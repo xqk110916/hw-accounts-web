@@ -129,6 +129,46 @@
         </div>
       </div>
 
+      <div class="detail-section" v-if="type === 'view' && modifyRecords.length">
+        <div class="detail-header">
+          <span class="detail-title">变更记录</span>
+        </div>
+        <div class="change-record-list">
+          <div v-for="record in modifyRecords" :key="record.id" class="change-record-item">
+            <div class="change-record-head">
+              <div class="change-record-meta">
+                <el-tag size="mini" :type="getModifyRecordTagType(record.status)">
+                  {{ record.statusDesc || getModifyRecordStatusText(record.status) }}
+                </el-tag>
+                <span>申请人：{{ record.createUname || '-' }}</span>
+                <span>申请时间：{{ record.createTime || '-' }}</span>
+                <span v-if="record.auditUserName">审核人：{{ record.auditUserName }}</span>
+                <span v-if="record.auditTime">审核时间：{{ record.auditTime }}</span>
+                <span v-if="getModifyRecordAuditRemark(record)">驳回原因：{{ getModifyRecordAuditRemark(record) }}</span>
+              </div>
+              <el-button
+                v-if="Number(record.status) === 7"
+                type="text"
+                size="mini"
+                @click="cancelModifyRecord(record)"
+              >
+                撤回
+              </el-button>
+            </div>
+            <div class="change-record-desc">
+              <div
+                v-for="(desc, descIndex) in getModifyRecordDescList(record)"
+                :key="descIndex"
+                class="change-record-desc-item"
+              >
+                {{ descIndex + 1 }}. {{ desc }}
+              </div>
+              <span v-if="!getModifyRecordDescList(record).length" class="empty-desc">暂无变更说明</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 明细表格 -->
       <div class="detail-section">
         <div class="detail-header">
@@ -176,20 +216,22 @@
         </div>
       </div>
 
-      <div class="footer" v-if="type === 'audit'">
-        <el-button size="small" @click="close">取消</el-button>
-        <el-button type="danger" size="small" @click="handleAuditReject">不同意</el-button>
-        <el-button type="primary" size="small" @click="handleAuditApprove">同意</el-button>
-      </div>
-      <div class="footer" v-else-if="type !== 'view'">
-        <el-button size="small" @click="close">取消</el-button>
-        <el-button type="primary" size="small" @click="submitForm">
-          {{ type === 'modify' ? '提交变更审核' : '确定' }}
-        </el-button>
-      </div>
-      <div class="footer" v-else>
-        <el-button size="small" @click="close">关闭</el-button>
-      </div>
+      <template slot="footer">
+        <div class="footer" v-if="type === 'audit'">
+          <el-button size="small" @click="close">取消</el-button>
+          <el-button type="danger" size="small" @click="handleAuditReject">不同意</el-button>
+          <el-button type="primary" size="small" @click="handleAuditApprove">同意</el-button>
+        </div>
+        <div class="footer" v-else-if="type !== 'view'">
+          <el-button size="small" @click="close">取消</el-button>
+          <el-button type="primary" size="small" @click="submitForm">
+            {{ type === 'modify' ? '提交变更审核' : '确定' }}
+          </el-button>
+        </div>
+        <div class="footer" v-else>
+          <el-button size="small" @click="close">关闭</el-button>
+        </div>
+      </template>
     </theme-edit>
 
     <allocation-basis-list-dialog ref="basisDialog" @success="handleBasisSuccess" />
@@ -303,7 +345,7 @@ import AllocationBasisListDialog from './AllocationBasisListDialog.vue'
 import ImportDialog from './ImportDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
-import { getLocationHierarchy, getPositionMap, executeAuditedUpdate, getMaterialCodeListAll } from './api.js'
+import { getLocationHierarchy, getPositionMap, executeAuditedUpdate, getMaterialCodeListAll, cancelInboundApply } from './api.js'
 
 function formatDefaultDate(value, type) {
   if (!(value instanceof Date)) return value
@@ -935,6 +977,33 @@ export default {
       }
       return value !== undefined && value !== null ? String(value) : ''
     },
+    getModifyRecordDescList(record = {}) {
+      return (record.modifyDescList || []).filter(Boolean)
+    },
+    getModifyRecordAuditRemark(record = {}) {
+      return Number(record.status) === 9 ? (record.auditRemark || record.remark || '') : ''
+    },
+    getModifyRecordStatusText(status) {
+      const value = Number(status)
+      const map = { 7: '申请变更', 8: '变更通过', 9: '变更驳回' }
+      return map[value] || '-'
+    },
+    getModifyRecordTagType(status) {
+      const value = Number(status)
+      const map = { 7: 'warning', 8: 'success', 9: 'danger' }
+      return map[value] || 'info'
+    },
+    cancelModifyRecord(record) {
+      this.$confirm('确定撤回该变更申请？', '撤回确认', { type: 'warning' }).then(() => {
+        cancelInboundApply({ modifyId: record.id }).then(res => {
+          if (res.code === 1) {
+            this.$message.success('撤回成功')
+            this.getDetails(this.row.id)
+            this.$emit('query')
+          }
+        })
+      }).catch(() => {})
+    },
     // 审核 - 同意
     handleAuditApprove() {
       if (!this.modifyRecords || this.modifyRecords.length === 0) {
@@ -975,7 +1044,7 @@ export default {
         executeAuditedUpdate({
           operationId: record.operationId,
           approved: false,
-          auditRemark: value,
+          remark: value,
         }).then(res => {
           if (res.code === 1) {
             this.$message.success('已驳回')
@@ -1116,6 +1185,53 @@ export default {
       margin-bottom: 0;
     }
   }
+}
+
+.change-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.change-record-item {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.change-record-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f7f9fc;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.change-record-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: #606266;
+  font-size: 12px;
+}
+
+.change-record-desc {
+  padding: 10px 14px;
+  color: #303133;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.change-record-desc-item + .change-record-desc-item {
+  margin-top: 4px;
+}
+
+.empty-desc {
+  color: #909399;
 }
 
 // 修改标记 badge（内联显示，不撑高行）

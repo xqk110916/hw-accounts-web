@@ -63,6 +63,14 @@ export const executeAuditedUpdate = params => {
   })
 }
 
+export const cancelInboundApply = params => {
+  return request({
+    url: '/busin/inbound/cancelApply',
+    method: 'get',
+    params,
+  })
+}
+
 // 8. 导入 Excel 文件
 export const importExcel = data => {
   return request({
@@ -204,6 +212,7 @@ export const inbound = {
   confirm: confirmInbound,
   downloadTemplate,
   executeAuditedUpdate,
+  cancelInboundApply,
   getLocationHierarchy,
   getPositionMap,
   getMaterialCodeListAll,
