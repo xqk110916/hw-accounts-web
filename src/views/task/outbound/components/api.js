@@ -55,6 +55,14 @@ export const confirmAuditOutbound = data => {
   })
 }
 
+export const cancelOutboundApply = params => {
+  return request({
+    url: '/busin/outbound/cancelApply',
+    method: 'get',
+    params,
+  })
+}
+
 export const autoWeightPickPlan = data => {
   return request({
     url: '/busin/pick/auto-weight',

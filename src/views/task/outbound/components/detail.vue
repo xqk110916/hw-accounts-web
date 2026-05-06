@@ -113,6 +113,45 @@
         </div>
       </div>
 
+      <div class="detail-section" v-if="type === 'view' && modifyRecords.length">
+        <div class="detail-header">
+          <span class="detail-title">变更记录</span>
+        </div>
+        <div class="change-record-list">
+          <div v-for="record in modifyRecords" :key="record.id" class="change-record-item">
+            <div class="change-record-head">
+              <div class="change-record-meta">
+                <el-tag size="mini" :type="getModifyRecordTagType(record.status)">
+                  {{ record.statusDesc || getModifyRecordStatusText(record.status) }}
+                </el-tag>
+                <span>申请人：{{ record.createUname || '-' }}</span>
+                <span>申请时间：{{ record.createTime || '-' }}</span>
+                <span v-if="record.auditUserName">审核人：{{ record.auditUserName }}</span>
+                <span v-if="record.auditTime">审核时间：{{ record.auditTime }}</span>
+              </div>
+              <el-button
+                v-if="Number(record.status) === 7"
+                type="text"
+                size="mini"
+                @click="cancelModifyRecord(record)"
+              >
+                撤回
+              </el-button>
+            </div>
+            <div class="change-record-desc">
+              <div
+                v-for="(desc, descIndex) in getModifyRecordDescList(record)"
+                :key="descIndex"
+                class="change-record-desc-item"
+              >
+                {{ descIndex + 1 }}. {{ desc }}
+              </div>
+              <span v-if="!getModifyRecordDescList(record).length" class="empty-desc">暂无变更说明</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="detail-section">
         <div class="detail-header">
           <span class="detail-title">明细信息</span>
@@ -185,7 +224,7 @@ import SelectContainerDialog from './SelectContainerDialog.vue'
 import AutoPickPlanDialog from './AutoPickPlanDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
-import { confirmAuditOutbound, executeAuditedOutboundUpdate } from './api.js'
+import { cancelOutboundApply, confirmAuditOutbound, executeAuditedOutboundUpdate } from './api.js'
 
 function formatDefaultDate(value) {
   if (!(value instanceof Date)) return value
@@ -220,6 +259,7 @@ export default {
       rules: {},
       options: {},
       detailList: [],
+      originalDetailList: [],
       modifyRecords: [],
       deletedGoodIds: [],
       deletedContainerCodes: [],
@@ -288,6 +328,7 @@ export default {
       this.deletedGoodIds = []
       this.deletedContainerCodes = []
       this.modifyRecords = []
+      this.originalDetailList = []
       this.resetFormValues()
       if (this.row.id) {
         this.type = mode || 'edit'
@@ -307,6 +348,7 @@ export default {
         const transferItem = this.formKeys.find(i => i.prop === '_transferSelected')
         if (transferItem) this.$set(transferItem, 'disabled', false)
         this.detailList = []
+        this.originalDetailList = []
         this.refreshOptions()
         this.show = true
         generateBatchNo({ batchType: 1 }).then(res => {
@@ -332,6 +374,7 @@ export default {
         if (data.goodCodes) this.$set(this.form, 'goodCodes', data.goodCodes)
         if (data.securityLevel) this.$set(this.form, 'securityLevel', String(data.securityLevel))
         this.detailList = ((res.data && res.data.goodsList) || data.goodsList || data.details || []).map(this.normalizeGoods)
+        this.originalDetailList = deepClone(this.detailList)
         this.modifyRecords = (res.data && res.data.modifyRecords) || data.modifyRecords || []
         return data
       })
@@ -359,13 +402,14 @@ export default {
       const payload = deepClone(this.form)
       const goodsList = this.detailList.map(this.normalizeGoods)
       if (this.row.id) {
+        const { dtoList, goodIds, containerCodes } = this.buildUpdateDetailPayload(goodsList)
         payload.id = this.row.id
         payload.updateType = this.updateType
         payload.submitType = submitType
-        payload.dtoList = goodsList.filter(item => !item.id)
-        payload.editList = goodsList.filter(item => item.id)
-        payload.goodIds = this.deletedGoodIds.join(',')
-        payload.containerCodes = this.deletedContainerCodes.join(',')
+        payload.dtoList = dtoList
+        payload.editList = []
+        payload.goodIds = goodIds
+        payload.containerCodes = containerCodes
       } else {
         payload.submitType = submitType
         payload.goodsList = goodsList
@@ -381,6 +425,7 @@ export default {
       this.row = {}
       this.resetFormValues()
       this.detailList = []
+      this.originalDetailList = []
       this.modifyRecords = []
       this.deletedGoodIds = []
       this.deletedContainerCodes = []
@@ -512,6 +557,29 @@ export default {
         sealType2: row.sealType2 || '',
       }
     },
+    getDetailIdentity(row = {}) {
+      if (row.containerCode) return `container:${row.containerCode}`
+      if (row.id) return `id:${row.id}`
+      return ''
+    },
+    buildDetailIdentitySet(list) {
+      return new Set((list || []).map(this.getDetailIdentity).filter(Boolean))
+    },
+    uniqueJoin(list) {
+      return Array.from(new Set((list || []).filter(value => value !== undefined && value !== null && value !== ''))).join(',')
+    },
+    buildUpdateDetailPayload(goodsList) {
+      const originalList = (this.originalDetailList || []).map(this.normalizeGoods)
+      const originalIdentitySet = this.buildDetailIdentitySet(originalList)
+      const currentIdentitySet = this.buildDetailIdentitySet(goodsList)
+      const dtoList = goodsList.filter(item => !originalIdentitySet.has(this.getDetailIdentity(item)))
+      const deletedList = originalList.filter(item => !currentIdentitySet.has(this.getDetailIdentity(item)))
+      return {
+        dtoList,
+        goodIds: this.uniqueJoin(deletedList.map(item => item.id)),
+        containerCodes: this.uniqueJoin(deletedList.map(item => item.containerCode)),
+      }
+    },
     getPositionText(row) {
       const values = [row.shelfCode, row.rowCode, row.columnCode].filter(Boolean)
       return values.length ? values.join('-') : '-'
@@ -541,12 +609,39 @@ export default {
       }
       return value === undefined || value === null || value === '' ? '-' : String(value)
     },
+    getModifyRecordDescList(record = {}) {
+      return (record.modifyDescList || []).filter(Boolean)
+    },
+    getModifyRecordStatusText(status) {
+      const value = Number(status)
+      const map = { 7: '申请变更', 8: '变更通过', 9: '变更驳回' }
+      return map[value] || '-'
+    },
+    getModifyRecordTagType(status) {
+      const value = Number(status)
+      const map = { 7: 'warning', 8: 'success', 9: 'danger' }
+      return map[value] || 'info'
+    },
+    cancelModifyRecord(record) {
+      this.$confirm('确定撤回该变更申请？', '撤回确认', { type: 'warning' }).then(() => {
+        cancelOutboundApply({ modifyId: record.id }).then(res => {
+          if (res.code === 1) {
+            this.$message.success('撤回成功')
+            this.getDetails(this.row.id)
+            this.$emit('query')
+          }
+        })
+      }).catch(() => {})
+    },
     getAuditOperationId() {
       const record = (this.modifyRecords && this.modifyRecords[0]) || {}
-      return record.operationId || record.id || this.row.operationId || this.row.id
+      return this.row.id || this.row.operationId || record.operationId || record.id
     },
     isAuditedModification() {
-      return Array.isArray(this.modifyRecords) && this.modifyRecords.length > 0
+      if (Array.isArray(this.modifyRecords) && this.modifyRecords.length > 0) return true
+      const dataStatus = Number(this.row.dataStatus)
+      const auditStatus = Number(this.row.auditStatus)
+      return dataStatus === 1 && (auditStatus === 0 || auditStatus === 7)
     },
     submitAuditResult(approved, remark) {
       if (this.isAuditedModification()) {
@@ -727,6 +822,53 @@ export default {
       margin-bottom: 0;
     }
   }
+}
+
+.change-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.change-record-item {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.change-record-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f7f9fc;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.change-record-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: #606266;
+  font-size: 12px;
+}
+
+.change-record-desc {
+  padding: 10px 14px;
+  color: #303133;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.change-record-desc-item + .change-record-desc-item {
+  margin-top: 4px;
+}
+
+.empty-desc {
+  color: #909399;
 }
 
 .modify-badge {

@@ -25,6 +25,7 @@ import { getAllTransferBasisList, getLocationHierarchy } from './api.js'
 export const statusOptions = [
   { label: '待确认', value: 'pending' },
   { label: '已确认', value: 'confirmed' },
+  { label: '已拒绝', value: 2 },
   { label: '变更审核中', value: 'auditing' },
   { label: '变更审核通过', value: 'approved' },
   { label: '变更审核拒绝', value: 'rejected' },

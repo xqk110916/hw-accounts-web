@@ -242,12 +242,12 @@ export default {
     },
     getDataStatusText(status) {
       const value = Number(status)
-      const map = { 0: '待审核', 1: '已确认', 4: '暂存' }
+      const map = { 0: '待审核', 1: '已确认', 2: '已拒绝', 4: '暂存' }
       return map[value] !== undefined ? map[value] : '-'
     },
     getDataStatusClass(status) {
       const value = Number(status)
-      const map = { 0: 'status-auditing', 1: 'status-confirmed', 4: 'status-draft' }
+      const map = { 0: 'status-auditing', 1: 'status-confirmed', 2: 'status-rejected', 4: 'status-draft' }
       return map[value] || ''
     },
     getAuditStatusText(status) {
@@ -268,17 +268,23 @@ export default {
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
       const dataStatus = Number(row.dataStatus)
-      const auditStatus = Number(row.auditStatus)
+      const hasAuditStatus = row.auditStatus !== undefined && row.auditStatus !== null && row.auditStatus !== ''
+      const auditStatus = hasAuditStatus ? Number(row.auditStatus) : NaN
+      const isPendingAudit = auditStatus === 0 || auditStatus === 7
 
-      if (dataStatus === 4) {
+      if (dataStatus === 4 || dataStatus === 2) {
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 1) {
+        if (isPendingAudit) {
+          btns.push({ label: '审核', type: 'text', execute: 'audit' })
+          return btns
+        }
         btns.push({ label: '修改', type: 'text', execute: 'modify' })
         return btns
       }
 
-      if (dataStatus !== 4 && (auditStatus === 0 || auditStatus === 7 || dataStatus === 0)) {
+      if (dataStatus !== 4 && dataStatus !== 2 && (isPendingAudit || dataStatus === 0)) {
         btns.push({ label: '审核', type: 'text', execute: 'audit' })
       }
 

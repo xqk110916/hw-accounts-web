@@ -299,12 +299,14 @@ export default {
     },
     // dataStatus 显示文本
     getDataStatusText(status) {
-      const map = { 0: '待确认', 1: '已确认' }
-      return map[status] !== undefined ? map[status] : ('-')
+      const value = Number(status)
+      const map = { 0: '待确认', 1: '已确认', 2: '已拒绝' }
+      return map[value] !== undefined ? map[value] : ('-')
     },
     getDataStatusClass(status) {
-      const map = { 0: 'status-pending', 1: 'status-confirmed' }
-      return map[status] || ''
+      const value = Number(status)
+      const map = { 0: 'status-pending', 1: 'status-confirmed', 2: 'status-rejected' }
+      return map[value] || ''
     },
     // auditStatus 显示文本
     getAuditStatusText(status) {
@@ -318,13 +320,16 @@ export default {
     // 根据状态显示不同按钮
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
-      const dataStatus = row.dataStatus
+      const dataStatus = Number(row.dataStatus)
       const auditStatus = row.auditStatus
 
       if (dataStatus === 0) {
         // 未确认：显示 编辑、确认、删除
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '确认', type: 'text', execute: 'confirm' })
+        btns.push({ label: '删除', type: 'text', execute: 'delete' })
+      } else if (dataStatus === 2) {
+        btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 1) {
         // 已确认且非待审核：显示 修改（待审核时隐藏修改按钮）
@@ -334,7 +339,7 @@ export default {
       }
 
       // 待审核：显示 审核
-      if (auditStatus === 7) {
+      if (dataStatus !== 2 && auditStatus === 7) {
         btns.push({ label: '审核', type: 'text', execute: 'audit' })
       }
 

@@ -4,7 +4,7 @@ import { getLocationHierarchy } from './api.js'
 export const statusOptions = [
   { label: '待审核', value: 0 },
   { label: '审核通过', value: 1 },
-  { label: '审核拒绝', value: 2 },
+  { label: '已拒绝', value: 2 },
   { label: '暂存', value: 4 },
   { label: '变更审核中', value: 7 },
   { label: '变更审核通过', value: 8 },

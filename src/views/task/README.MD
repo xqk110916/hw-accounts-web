@@ -34,12 +34,13 @@
 
 页面状态展示由两个字段共同决定：
 
-- `dataStatus`：入库数据确认状态，当前前端映射为 `0=待确认`、`1=已确认`。
+- `dataStatus`：入库数据确认状态，当前前端映射为 `0=待确认`、`1=已确认`、`2=已拒绝`。
 - `auditStatus`：变更审核状态，当前前端映射为 `7=待审核`、`8=审核通过`、`9=审核驳回`。
 
 列表行操作根据状态动态生成：
 
 - 待确认：可查看、编辑、确认、删除。
+- 已拒绝：可查看、编辑、删除。
 - 已确认：可查看；非待审核时可发起修改。
 - 待审核：可查看并进入审核操作。
 
@@ -124,8 +125,9 @@
 页面状态由 `dataStatus` 和 `auditStatus` 共同决定：
 
 - `dataStatus=0`：待审核，提交后直接进入审核链路，不再提供前端确认操作。
+- `dataStatus=2`：已拒绝，可编辑、删除。
 - `dataStatus=4`：暂存，可编辑、删除。
-- `dataStatus=1`：已确认，非待审核时可发起修改。
+- `dataStatus=1`：已确认；若 `auditStatus=0/7` 表示修改申请待审核，只允许进入审核，不允许再次修改；若 `auditStatus` 为空或非待审核状态，则可发起修改。
 - `auditStatus=0/7`：待审核，显示审核入口。
 
 ### 2. 新增、暂存与提交
@@ -137,7 +139,7 @@
 - 暂存传 `submitType=4`。
 - 提交传 `submitType=0`。
 
-新增时明细通过 `goodsList` 提交；编辑和修改时通过 `dtoList`、`editList`、`goodIds`、`containerCodes` 区分新增、编辑和删除，修改模式保留 `updateType=1` 进入审核链路。
+新增时明细通过 `goodsList` 提交；编辑和修改时以打开详情时的原始明细和提交时的当前明细进行对比：新增明细放入 `dtoList`，当前版本暂不支持修改材料信息所以 `editList` 固定传空数组，删除明细的 `id` 和 `containerCode` 分别汇总到 `goodIds`、`containerCodes`，修改模式保留 `updateType=1` 进入审核链路。
 
 ### 3. 手工选择容器
 
@@ -163,6 +165,8 @@
 - 变更审核：若详情接口返回 `modifyRecords`，则展示修改内容列表，并高亮有变更的表单字段。
 - 初次审核同意或驳回调用 `POST /busin/outbound/confirmAudit`，参数包含 `taskNum`、`approved` 和 `remark`。
 - 已审核数据再次修改产生的变更审核调用 `POST /busin/outbound/executeAudited`，参数包含 `operationId`、`approved` 和 `remark`。
+
+详情模式通过详情接口返回的 `modifyRecords` 展示“变更记录”。该区域仅在点击列表“详情”打开弹窗时显示；记录 `status=7` 时在记录后提供“撤回”按钮，调用 `GET /busin/outbound/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）。
 
 ## 四、开发与修改注意事项
 
