@@ -420,7 +420,7 @@ export default {
         this.originalDetailList = []
         this.ensureWarehouseOptions()
         this.show = true
-        generateBatchNo({ batchType: 3 }).then(res => {
+        generateBatchNo({ batchType: 2 }).then(res => {
           if (res.code === 1) this.$set(this.form, 'taskNum', res.data)
         })
       }

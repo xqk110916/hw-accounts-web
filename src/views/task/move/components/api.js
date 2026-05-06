@@ -31,6 +31,14 @@ export const updateMove = data => {
   })
 }
 
+export const deleteMove = params => {
+  return request({
+    url: '/busin/move/deleteByIds',
+    method: 'get',
+    params,
+  })
+}
+
 export const confirmMove = data => {
   return request({
     url: '/busin/move/confirm',
@@ -75,4 +83,5 @@ export const move = {
   detail: getMoveDetail,
   submit: submitMove,
   update: updateMove,
+  delete: deleteMove,
 }

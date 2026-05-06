@@ -33,8 +33,8 @@ export const updateOutbound = data => {
 
 export const deleteOutbound = params => {
   return request({
-    url: '/busin/outbound/delete',
-    method: 'post',
+    url: '/busin/outbound/deleteByIds',
+    method: 'get',
     params,
   })
 }

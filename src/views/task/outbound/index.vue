@@ -213,7 +213,7 @@ export default {
             this.$message.warning('当前接口文档未提供删除接口')
             return
           }
-          requestFun.delete({ ids: row.id, id: row.id }).then(res => {
+          requestFun.delete({ ids: row.id }).then(res => {
             if (res.code === 1) {
               this.$message({ message: '删除成功', type: 'success' })
               this.getTableList()

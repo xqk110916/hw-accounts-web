@@ -149,6 +149,9 @@ export default {
           case 'modify':
             this.$refs.detail.open(payload, 1, 'modify')
             break
+          case 'delete':
+            this.remove(payload)
+            break
           case 'audit':
             this.$refs.detail.open(payload, 0, 'audit')
             break
@@ -184,6 +187,22 @@ export default {
     },
     open() {
       this.$refs.detail.open()
+    },
+    remove(row) {
+      this.$confirm('确定要删除该任务?', '提示', { type: 'warning' })
+        .then(() => {
+          if (!requestFun.delete) {
+            this.$message.warning('当前接口文档未提供删除接口')
+            return
+          }
+          requestFun.delete({ ids: row.id }).then(res => {
+            if (res.code === 1) {
+              this.$message({ message: '删除成功', type: 'success' })
+              this.getTableList()
+            }
+          })
+        })
+        .catch(() => {})
     },
     handleSizeChange(value) {
       this.search.params.pageSize = value
@@ -234,6 +253,7 @@ export default {
 
       if (dataStatus === 4 || dataStatus === 2) {
         rowBtns.push({ label: '编辑', type: 'text', execute: 'update' })
+        rowBtns.push({ label: '删除', type: 'text', execute: 'delete' })
         return rowBtns
       }
       if (dataStatus === 1) {
