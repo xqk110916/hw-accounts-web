@@ -262,7 +262,7 @@ export default {
       this.$confirm('确定要删除该任务?', '提示', { type: 'warning' })
         .then(() => {
           if (requestFun.delete) {
-            requestFun.delete({ id: row.id }).then(res => {
+            requestFun.delete({ ids: row.id }).then(res => {
               if (res.code === 1) {
                 this.$message({ message: '删除成功', type: 'success' })
                 this.getTableList()

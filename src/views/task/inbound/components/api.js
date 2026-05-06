@@ -44,7 +44,16 @@ export const confirmInbound = params => {
   })
 }
 
-// 6. 下载导入模板
+// 6. 删除入库任务
+export const deleteInbound = params => {
+  return request({
+    url: '/busin/inbound/deleteByIds',
+    method: 'get',
+    params,
+  })
+}
+
+// 7. 下载导入模板
 export const downloadTemplate = params => {
   return request({
     url: '/busin/inbound/downTemplate',
@@ -209,6 +218,7 @@ export const inbound = {
   detail: getInboundDetail,
   submit: submitInbound,
   update: updateInbound,
+  delete: deleteInbound,
   confirm: confirmInbound,
   downloadTemplate,
   executeAuditedUpdate,
