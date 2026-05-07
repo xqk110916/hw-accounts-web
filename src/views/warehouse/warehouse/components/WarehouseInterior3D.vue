@@ -279,27 +279,82 @@ export default {
       group.position.set(x, 0, z);
       group.userData = { type: 'shelf', shelf };
 
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, metalness: 0.5, roughness: 0.5 });
       const layerCount = shelf.layers ? shelf.layers.length : 3;
-      const layerH = h / layerCount;
+      const isOldWarehouse = shelf.shelfType && shelf.shelfType.includes('-1-') && shelf.shelfType.endsWith('-2-10');
+      const displayH = isOldWarehouse ? 0.5 : h;
 
-      // 四根立柱
-      const pillarGeo = new THREE.BoxGeometry(0.1, h, 0.1);
-      [[-w / 2, h / 2, -d / 2], [w / 2, h / 2, -d / 2], [-w / 2, h / 2, d / 2], [w / 2, h / 2, d / 2]].forEach(([px, py, pz]) => {
-        const p = new THREE.Mesh(pillarGeo, frameMat);
-        p.position.set(px, py, pz);
-        p.castShadow = true;
-        group.add(p);
-      });
+      if (isOldWarehouse) {
+        // 老库：只渲染底座
+        const baseGeo = new THREE.BoxGeometry(w, 0.2, d);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.8 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.set(0, 0.1, 0);
+        base.receiveShadow = true;
+        group.add(base);
+      } else {
+        // 新库：渲染完整货架（立柱+层板）
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, metalness: 0.5, roughness: 0.5 });
+        const layerH = h / layerCount;
 
-      // 层板（含底板）
-      const boardGeo = new THREE.BoxGeometry(w - 0.05, 0.06, d - 0.05);
-      const boardMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.7 });
-      for (let li = 0; li <= layerCount; li++) {
-        const board = new THREE.Mesh(boardGeo, boardMat);
-        board.position.set(0, li * layerH, 0);
-        board.receiveShadow = true;
-        group.add(board);
+        // 四根立柱
+        const pillarGeo = new THREE.BoxGeometry(0.1, h, 0.1);
+        [[-w / 2, h / 2, -d / 2], [w / 2, h / 2, -d / 2], [-w / 2, h / 2, d / 2], [w / 2, h / 2, d / 2]].forEach(([px, py, pz]) => {
+          const p = new THREE.Mesh(pillarGeo, frameMat);
+          p.position.set(px, py, pz);
+          p.castShadow = true;
+          group.add(p);
+        });
+
+        // 层板（含底板）
+        const boardGeo = new THREE.BoxGeometry(w - 0.05, 0.06, d - 0.05);
+        const boardMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.7 });
+        for (let li = 0; li <= layerCount; li++) {
+          const board = new THREE.Mesh(boardGeo, boardMat);
+          board.position.set(0, li * layerH, 0);
+          board.receiveShadow = true;
+          group.add(board);
+        }
+
+        // 在每层货架上渲染物料容器
+        if (shelf.layers) {
+          shelf.layers.forEach((layer, layerIdx) => {
+            const baseY = layerIdx * layerH + 0.06;
+            const containers = layer.containers || [];
+            const containerCount = containers.length;
+            if (containerCount === 0) return;
+
+            const spacing = (w - 0.2) / containerCount;
+            const startCX = -(w - 0.2) / 2 + spacing / 2;
+
+            containers.forEach((container, cIdx) => {
+              if (!container.materialCode) return;
+
+              const cx = startCX + cIdx * spacing;
+              const radius = Math.min(spacing * 0.35, d * 0.3, 0.28);
+              const cylH = layerH * 0.65;
+
+              let color = 0xe0e0e0;
+              if (container.storageDate) {
+                const hexColor = getColorByDate(container.storageDate);
+                color = parseInt(hexColor.replace('#', ''), 16);
+              }
+
+              const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 12);
+              const cylMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
+              const cyl = new THREE.Mesh(cylGeo, cylMat);
+              cyl.position.set(cx, baseY + cylH / 2, 0);
+              cyl.castShadow = true;
+              cyl.receiveShadow = true;
+              group.add(cyl);
+
+              const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 12);
+              const lidMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
+              const lid = new THREE.Mesh(lidGeo, lidMat);
+              lid.position.set(cx, baseY + cylH + 0.02, 0);
+              group.add(lid);
+            });
+          });
+        }
       }
 
       // 透明框体（可点击区域）
@@ -308,62 +363,17 @@ export default {
       const rate = total > 0 ? filled / total : 0;
       const hue = (1 - rate) * 0.33 * 0.8 + 0.15;
       const bodyColor = new THREE.Color().setHSL(hue, 0.7, 0.35);
-      const bodyGeo = new THREE.BoxGeometry(w, h, d);
+      const bodyGeo = new THREE.BoxGeometry(w, displayH, d);
       const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, transparent: true, opacity: 0.15, depthWrite: false });
       const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-      bodyMesh.position.set(0, h / 2, 0);
+      bodyMesh.position.set(0, displayH / 2, 0);
       bodyMesh.userData = { type: 'shelf', shelf };
       group.add(bodyMesh);
       this.shelfClickMeshes.push(bodyMesh);
 
-      // ====== 在每层货架上渲染物料容器 ======
-      if (shelf.layers) {
-        shelf.layers.forEach((layer, layerIdx) => {
-          const baseY = layerIdx * layerH + 0.06; // 层板顶面
-          const containers = layer.containers || [];
-          const containerCount = containers.length;
-          if (containerCount === 0) return;
-          
-          // 容器在层板上均匀排列
-          const spacing = (w - 0.2) / containerCount;
-          const startCX = -(w - 0.2) / 2 + spacing / 2;
-
-          containers.forEach((container, cIdx) => {
-            if (!container.materialCode) return; // 空位不渲染
-
-            const cx = startCX + cIdx * spacing;
-            const radius = Math.min(spacing * 0.35, d * 0.3, 0.28);
-            const cylH = layerH * 0.65;
-
-            // 获取物料颜色
-            let color = 0xe0e0e0;
-            if (container.storageDate) {
-              const hexColor = getColorByDate(container.storageDate);
-              color = parseInt(hexColor.replace('#', ''), 16);
-            }
-
-            // 圆柱容器（储存罐）
-            const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 12);
-            const cylMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
-            const cyl = new THREE.Mesh(cylGeo, cylMat);
-            cyl.position.set(cx, baseY + cylH / 2, 0);
-            cyl.castShadow = true;
-            cyl.receiveShadow = true;
-            group.add(cyl);
-
-            // 顶盖
-            const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 12);
-            const lidMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
-            const lid = new THREE.Mesh(lidGeo, lidMat);
-            lid.position.set(cx, baseY + cylH + 0.02, 0);
-            group.add(lid);
-          });
-        });
-      }
-
       // 名称标签
       const label = this.createShelfLabel(shelf.name, `${filled}/${total}`);
-      label.position.set(0, h + 0.7, 0);
+      label.position.set(0, displayH + 0.7, 0);
       group.add(label);
 
       // 底部光圈

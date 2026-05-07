@@ -80,74 +80,53 @@
         </el-col>
       </el-row>
 
-      <!-- 新库特定配置 -->
-      <template v-if="form.warehouseType === '0'">
-        <el-divider content-position="left">货架配置</el-divider>
-        <div class="config-section shelf-config">
-          <div class="header-actions">
-            <span>货架列表</span>
-            <el-button v-if="!isReadonly" type="primary" size="mini" icon="el-icon-plus" plain @click="addColumn">添加列</el-button>
-          </div>
-          <el-table :data="form.columns" border style="width: 100%" size="mini">
-            <el-table-column label="列" width="80" align="center">
-              <template slot-scope="scope">
-                <span>第 {{ scope.$index + 1 }} 列</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="类型" prop="type" min-width="150">
-              <template slot-scope="scope">
-                <el-select v-model="scope.row.type" placeholder="请选择类型" size="mini" style="width: 100%" :disabled="isReadonly">
-                  <el-option
-                    v-for="item in shelfTypeOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  ></el-option>
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column label="排" width="80" align="center">
-              <template slot-scope="scope">
-                <span>{{ getShelfInfo(scope.row.type, 'row') }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="层" width="80" align="center">
-              <template slot-scope="scope">
-                <span>{{ getShelfInfo(scope.row.type, 'level') }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column v-if="!isReadonly" label="操作" width="60" align="center">
-              <template slot-scope="scope">
-                <el-button
-                  type="text"
-                  icon="el-icon-delete"
-                  style="color: #f56c6c"
-                  @click="removeColumn(scope.$index)"
-                ></el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+      <!-- 货架配置（新库/老库通用） -->
+      <el-divider content-position="left">货架配置</el-divider>
+      <div class="config-section shelf-config">
+        <div class="header-actions">
+          <span>货架列表</span>
+          <el-button v-if="!isReadonly" type="primary" size="mini" icon="el-icon-plus" plain @click="addColumn">添加列</el-button>
         </div>
-      </template>
-
-      <!-- 老库特定配置 -->
-      <template v-else>
-        <el-divider content-position="left">规格配置</el-divider>
-        <div class="config-section old-config">
-          <div class="old-config-manual">
-            <div class="config-item">
-              <span class="label">自定义列数</span>
-              <el-input-number v-model="form.columnCount" :min="1" size="small" :disabled="isReadonly"></el-input-number>
-            </div>
-            <div class="config-split">×</div>
-            <div class="config-item">
-              <span class="label">自定义排数</span>
-              <el-input-number v-model="form.rowCount" :min="1" size="small" :disabled="isReadonly"></el-input-number>
-            </div>
-          </div>
-          <div class="old-config-tip">注：老库环境下将根据上述规格自动生成相应数量的库位单元。</div>
-        </div>
-      </template>
+        <el-table :data="form.columns" border style="width: 100%" size="mini">
+          <el-table-column label="列" width="80" align="center">
+            <template slot-scope="scope">
+              <span>第 {{ scope.$index + 1 }} 列</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="类型" prop="type" min-width="150">
+            <template slot-scope="scope">
+              <el-select v-model="scope.row.type" placeholder="请选择类型" size="mini" style="width: 100%" :disabled="isReadonly">
+                <el-option
+                  v-for="item in currentShelfTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                ></el-option>
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="排" width="80" align="center">
+            <template slot-scope="scope">
+              <span>{{ getShelfInfo(scope.row.type, 'row') }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="层" width="80" align="center">
+            <template slot-scope="scope">
+              <span>{{ getShelfInfo(scope.row.type, 'level') }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isReadonly" label="操作" width="60" align="center">
+            <template slot-scope="scope">
+              <el-button
+                type="text"
+                icon="el-icon-delete"
+                style="color: #f56c6c"
+                @click="removeColumn(scope.$index)"
+              ></el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       
     </el-form>
@@ -165,7 +144,8 @@ import { normalizeShelfTypeOptions } from '../../warehouse/utils/locationLayoutS
 
 const DICT_PARENT_IDS = {
   materialType: '2046471902119919617',
-  shelfType: '2046473482554638338'
+  shelfType: '2046473482554638338',
+  oldShelfType: '2051955496598659073'
 };
 
 export default {
@@ -183,12 +163,8 @@ export default {
         warehouseType: '0',
         materialType: '',
         remark: '',
-        // 新库配置
         columns: [],
-        rawNode: null,
-        // 老库配置
-        columnCount: 1,
-        rowCount: 1
+        rawNode: null
       },
       rules: {
         balanceArea: [{ required: true, message: '请选择平衡区', trigger: 'change' }],
@@ -199,13 +175,15 @@ export default {
       },
       balanceAreaOptions: [],
       materialTypeOptions: [],
-      shelfTypeOptions: []
+      shelfTypeOptions: [],
+      oldShelfTypeOptions: []
     };
   },
   created() {
     this.fetchBalanceAreas();
     this.fetchDictOptions(DICT_PARENT_IDS.materialType, 'materialTypeOptions');
     this.fetchDictOptions(DICT_PARENT_IDS.shelfType, 'shelfTypeOptions');
+    this.fetchDictOptions(DICT_PARENT_IDS.oldShelfType, 'oldShelfTypeOptions');
   },
   computed: {
     isReadonly() {
@@ -226,6 +204,21 @@ export default {
         };
       }
       return this.rules;
+    },
+    currentShelfTypeOptions() {
+      return this.form.warehouseType === '2' ? this.oldShelfTypeOptions : this.shelfTypeOptions;
+    }
+  },
+  watch: {
+    'form.warehouseType'(val) {
+      const defaultType = val === '2' ? '5-1-2-10' : '5-3-2-10';
+      this.form.columns.forEach(col => {
+        if (val === '2' && !col.type.includes('-0-')) {
+          col.type = defaultType;
+        } else if (val === '0' && col.type.includes('-0-')) {
+          col.type = defaultType;
+        }
+      });
     }
   },
   methods: {
@@ -273,17 +266,16 @@ export default {
       this.visible = true;
     },
     resetForm() {
+      const defaultType = this.form.warehouseType === '2' ? '5-1-2-10' : '5-3-2-10';
       this.form = {
         balanceArea: '',
         warehouseName: '',
         warehouseCode: '',
-        warehouseType: '0',
+        warehouseType: this.form.warehouseType || '0',
         materialType: '',
         remark: '',
-        columns: Array.from({ length: 6 }, () => ({ type: '5-3-2-10' })),
-        rawNode: null,
-        columnCount: 1,
-        rowCount: 1
+        columns: Array.from({ length: 6 }, () => ({ type: defaultType })),
+        rawNode: null
       };
       this.$nextTick(() => {
         if (this.$refs.form) {
@@ -292,7 +284,8 @@ export default {
       });
     },
     addColumn() {
-      this.form.columns.push({ type: '5-3-2-10' });
+      const defaultType = this.form.warehouseType === '2' ? '5-1-2-10' : '5-3-2-10';
+      this.form.columns.push({ type: defaultType });
     },
     removeColumn(index) {
       if (this.form.columns.length > 1) {
@@ -309,14 +302,12 @@ export default {
         if (valid) {
           const result = JSON.parse(JSON.stringify(this.form));
           result.mode = this.mode;
-          // 处理新库的每列详细数据
-          if (this.form.warehouseType === '0') {
-            result.columns = result.columns.map(col => ({
-              ...col,
-              rows: this.getShelfInfo(col.type, 'row'),
-              levels: this.getShelfInfo(col.type, 'level')
-            }));
-          }
+          // 处理每列详细数据（新库/老库通用）
+          result.columns = result.columns.map(col => ({
+            ...col,
+            rows: this.getShelfInfo(col.type, 'row'),
+            levels: this.getShelfInfo(col.type, 'level')
+          }));
           this.$emit('submit', result);
           this.visible = false;
         } else {
@@ -327,7 +318,7 @@ export default {
     },
     getShelfInfo(typeValue, key) {
       if (!typeValue) return '-';
-      const option = this.shelfTypeOptions.find(item => item.value === typeValue || item.bizCode === typeValue);
+      const option = this.currentShelfTypeOptions.find(item => item.value === typeValue || item.bizCode === typeValue);
       const parts = String((option && option.bizCode) || typeValue).split('-'); // 5-3-2-10
       if (key === 'row') return parts[0] ? `${parts[0]}排` : '-';
       if (key === 'level') return parts[1] ? `${parts[1]}层` : '-';
@@ -354,38 +345,6 @@ export default {
     font-size: 14px;
     font-weight: bold;
     color: #606266;
-  }
-}
-.old-config {
-  background: #f8f9fb;
-  padding: 20px;
-  border-radius: 4px;
-  .old-config-manual {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    .config-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      .label {
-        font-size: 12px;
-        color: #909399;
-      }
-    }
-    .config-split {
-      font-size: 20px;
-      color: #dcdfe6;
-      padding-top: 20px;
-    }
-  }
-  .old-config-tip {
-    margin-top: 15px;
-    text-align: center;
-    font-size: 12px;
-    color: #c0c4cc;
   }
 }
 .el-divider--horizontal {

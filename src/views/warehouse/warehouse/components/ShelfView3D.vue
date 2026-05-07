@@ -81,6 +81,10 @@ export default {
       type: String,
       default: ''
     },
+    shelfType: {
+      type: String,
+      default: ''
+    },
     layers: {
       type: Array,
       default: () => []
@@ -185,15 +189,23 @@ export default {
       canvas.addEventListener('click', this.onMouseClick);
     },
 
+    isOldWarehouse() {
+      return this.shelfType && this.shelfType.includes('-1-') && this.shelfType.endsWith('-2-10');
+    },
     buildShelf() {
       // 清除旧的货架
       this.clearShelf();
 
-      if (!this.layers || this.layers.length === 0) return;
-
-      // 货架框架尺寸
       const shelfWidth = 6;
       const shelfDepth = 2;
+
+      // 老库：只有底座
+      if (this.isOldWarehouse()) {
+        this.createBase(shelfWidth, shelfDepth);
+        return;
+      }
+
+      // 新库：完整货架框架
       const layerHeight = 1.5;
       const layerCount = this.layers.length;
       const totalHeight = layerCount * layerHeight + 0.5;

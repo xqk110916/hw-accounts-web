@@ -131,6 +131,7 @@
         <div class="content-3d">
           <ShelfView3D
             :shelf-name="selectedShelf ? selectedShelf.name : ''"
+            :shelf-type="selectedShelf ? selectedShelf.shelfType : ''"
             :layers="selectedShelfLayers"
             :date-color-map="dateColorMap"
             @container-click="handleContainerClick"

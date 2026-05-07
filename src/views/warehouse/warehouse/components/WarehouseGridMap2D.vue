@@ -75,7 +75,10 @@
             <span class="shelf-count">{{ getFilledCount(shelf) }}/{{ getTotalCount(shelf) }}</span>
           </div>
           <div class="shelf-meta">{{ shelf.columnCode }} / {{ shelf.rowCode }} · {{ shelf.width }}m×{{ shelf.height }}m</div>
-          <div class="layer-strip">
+          <div v-if="isOldWarehouse(shelf)" class="layer-strip">
+            <span class="base-label">底座</span>
+          </div>
+          <div v-else class="layer-strip">
             <button
               v-for="layer in shelf.layers"
               :key="layer.id"
@@ -183,6 +186,9 @@ export default {
     this.removePaintListeners();
   },
   methods: {
+    isOldWarehouse(shelf) {
+      return shelf.shelfType && shelf.shelfType.includes('-1-') && shelf.shelfType.endsWith('-2-10');
+    },
     syncGridInputs() {
       this.gridColsInput = this.currentLayout.grid.cols;
       this.gridRowsInput = this.currentLayout.grid.rows;
@@ -535,6 +541,12 @@ export default {
       &.free { background: #f8fbff; }
       &.used { background: #f2b84b; }
       &.locked { background: #d94f4f; }
+    }
+
+    .base-label {
+      font-size: 10px;
+      color: rgba(255,255,255,.65);
+      font-style: italic;
     }
   }
 

@@ -222,26 +222,14 @@ export default {
         shelvesList: []
       };
 
-      if (formData.warehouseType === '0') {
-        apiData.shelvesList = formData.columns.map((col, index) => ({
-          shelfCode: `S${index + 1}`,
-          shelfRowNum: parseInt(col.rows) || 1,
-          shelfColNum: parseInt(col.levels) || 1,
-          shelfType: col.type,
-          sortOrder: index + 1
-        }));
-      } else {
-        // 老库
-        apiData.shelvesList = [
-          {
-            shelfCode: 'S1',
-            shelfRowNum: parseInt(formData.rowCount) || 1,
-            shelfColNum: parseInt(formData.columnCount) || 1,
-            shelfType: 'old',
-            sortOrder: 1
-          }
-        ];
-      }
+      // 新库/老库统一使用列配置格式
+      apiData.shelvesList = formData.columns.map((col, index) => ({
+        shelfCode: `S${index + 1}`,
+        shelfRowNum: parseInt(col.rows) || 1,
+        shelfColNum: parseInt(col.levels) || 1,
+        shelfType: col.type,
+        sortOrder: index + 1
+      }));
 
       if (formData.rawNode && formData.rawNode.id) apiData.id = formData.rawNode.id;
 
@@ -280,9 +268,7 @@ export default {
         warehouseType: this.normalizeWarehouseType(data.warehouseType, columns),
         materialType: data.materialTypes || (data.extra && data.extra.materialTypes) || '',
         remark: data.remark || (data.extra && data.extra.remark) || '',
-        columns: columns.length ? columns : [{ type: '5-3-2-10' }],
-        columnCount: columns.length || 1,
-        rowCount: columns[0] ? parseInt(columns[0].type, 10) || 1 : 1
+        columns: columns.length ? columns : [{ type: '5-3-2-10' }]
       };
     },
     getShelfTypeValue(column, rowCount, levelCount) {
