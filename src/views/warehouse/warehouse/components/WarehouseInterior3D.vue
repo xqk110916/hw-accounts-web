@@ -9,7 +9,7 @@
       <div class="toolbar-actions">
         <el-button-group v-if="showModeSwitch" size="mini">
           <el-button :type="viewMode === '3d' ? 'primary' : 'default'" @click="switchMode('3d')">3D视图</el-button>
-          <el-button :type="viewMode === '2d' ? 'primary' : 'default'" @click="switchMode('2d')">2D视图</el-button>
+          <!-- <el-button :type="viewMode === '2d' ? 'primary' : 'default'" @click="switchMode('2d')">2D视图</el-button> -->
         </el-button-group>
       </div>
     </div>
