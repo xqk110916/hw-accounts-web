@@ -94,6 +94,7 @@
           :shelf-layout="currentWarehouse ? (currentWarehouse.shelfLayout || { rows: 2, cols: 3 }) : { rows: 2, cols: 3 }"
           :shelves="shelves"
           :layout="layout2d"
+          :date-color-map="dateColorMap"
           @select-shelf="handleShelfEnter"
         />
       </div>

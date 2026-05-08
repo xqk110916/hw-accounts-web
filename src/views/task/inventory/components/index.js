@@ -1,62 +1,53 @@
+import { inventory } from './api.js'
+import { getLocationHierarchy } from '@/views/task/outbound/components/api.js'
+
 export const statusOptions = [
-  { label: '未开始', value: 'notStarted' },
-  { label: '盘存中', value: 'inProgress' },
-  { label: '已完成', value: 'completed' },
+  { label: '待提交', value: 4 },
+  { label: '待审核', value: 0 },
+  { label: '审核通过', value: 1 },
+  { label: '审核拒绝', value: 2 },
 ]
 
-export const inventoryStatusOptions = [
-  { label: '正常', value: 'normal' },
-  { label: '不正常', value: 'abnormal' },
+export const selectTypeOptions = [
+  { label: '全部库房', value: 'all' },
+  { label: '指定库房', value: 'selected' },
+]
+
+export const resultOptions = [
+  { label: '正常', value: '0' },
+  { label: '盘亏', value: '1' },
+  { label: '盘盈', value: '2' },
 ]
 
 export const config = {
   table: [
-    { label: '任务编号', prop: 'taskNo', isTitle: true },
-    { label: '库房', prop: 'warehouseName' },
-    { label: '状态', prop: 'status', type: 'slot' },
+    { label: '任务编号', prop: 'taskNum', isTitle: true },
+    { label: '盘存时间', prop: 'inventoryTime' },
+    { label: '库房数量', prop: 'warehouseCount' },
+    { label: '库房名称', prop: 'warehouseNames' },
+    { label: '状态', prop: 'dataStatus', type: 'slot' },
     { label: '创建时间', prop: 'createTime' },
   ],
   search: [
-    { label: '任务编号', prop: 'taskNo', type: 'text', col: 5 },
-    { label: '库房', prop: 'warehouseName', type: 'text', col: 5 },
-    {
-      label: '状态',
-      prop: 'status',
-      type: 'select',
-      col: 5,
-      option: statusOptions,
-    },
-    { label: '创建时间', prop: 'createTime', type: 'daterange', col: 5 },
+    { label: '任务编号', prop: 'taskNum', type: 'text', col: 5 },
+    { label: '库房名称', prop: 'warehouseName', type: 'text', col: 5 },
+    { label: '盘存时间', prop: 'inventoryTime', type: 'daterange', col: 5 },
   ],
   detail: [
     {
       label: '任务编号',
-      prop: 'taskNo',
+      prop: 'taskNum',
       type: 'text',
       disabled: true,
       required: true,
     },
     {
-      label: '库房',
-      prop: 'warehouseName',
-      type: 'text',
+      label: '盘存方式',
+      prop: 'selectType',
+      type: 'select',
+      option: selectTypeOptions,
       required: true,
-    },
-    {
-      label: '创建人',
-      prop: 'creator',
-      type: 'text',
-      isAdd: false,
-      isUpdate: false,
-      required: false,
-    },
-    {
-      label: '创建时间',
-      prop: 'createTime',
-      type: 'text',
-      isAdd: false,
-      isUpdate: false,
-      required: false,
+      defaultValue: 'all',
     },
     {
       label: '备注',
@@ -69,28 +60,31 @@ export const config = {
 
 export const btns = {
   operation: [
-    { label: '添加', type: 'primary', execute: 'add' },
-    { label: '导出', type: 'primary', fn: null },
+    { label: '添加任务', type: 'primary', execute: 'add' },
   ],
-  table: [
-    { label: '详情', type: 'text', execute: 'view' },
-    { label: '修改', type: 'text', execute: 'update' },
-    { label: '审核', type: 'text', execute: 'audit' },
-  ],
+  table: [],
 }
 
-import { inventory } from './api.js'
 export const requestFun = inventory
 
 export const getDefaultOptions = async () => {}
 
 export const beforeSubmit = async data => {
-  console.log('beforeSubmit', data)
   return data
 }
 
 export const beforeRecurrence = (data, that) => {
   return data
+}
+
+export const handleSearchParams = params => {
+  const p = { ...params }
+  if (p.inventoryTime && p.inventoryTime.length === 2) {
+    p.startTime = p.inventoryTime[0]
+    p.endTime = p.inventoryTime[1]
+  }
+  delete p.inventoryTime
+  return p
 }
 
 export const handleTbaleMap = data => {

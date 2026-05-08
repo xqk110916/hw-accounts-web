@@ -32,18 +32,23 @@
             >
               <template slot-scope="scope">
                 <div v-if="item.type === 'slot'">
-                  <span :class="['status-tag', getStatusClass(scope.row.status)]">
-                    {{ getStatusText(scope.row.status) }}
+                  <span v-if="item.prop === 'dataStatus'">
+                    <span :class="['status-tag', getDataStatusClass(scope.row.dataStatus)]">
+                      {{ getDataStatusText(scope.row.dataStatus) }}
+                    </span>
+                    <span v-if="shouldShowAuditTag(scope.row)" :class="['status-tag', 'audit-tag', getAuditStatusClass(scope.row.auditStatus)]" style="margin-left: 4px;">
+                      {{ getAuditStatusText(scope.row.auditStatus) }}
+                    </span>
                   </span>
                 </div>
                 <div v-else>{{ scope.row[item.prop] }}</div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right">
+            <el-table-column label="操作" width="280" fixed="right">
               <template slot-scope="scope">
                 <div class="table_operation">
                   <div
-                    v-for="item in btns.table"
+                    v-for="item in getRowBtns(scope.row)"
                     :key="item.label"
                     :class="['btn', 'text']"
                     @click="e => handleBtnClick(item, scope.row)"
@@ -69,18 +74,22 @@
         </div>
       </div>
     </div>
+
     <detail ref="detail" @query="resetSearchParams" />
 
     <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
       <el-form :model="auditForm" label-width="100px">
         <el-form-item label="任务编号">
-          <span>{{ auditForm.taskNo }}</span>
+          <span>{{ auditForm.taskNum }}</span>
         </el-form-item>
         <el-form-item label="审核结果">
-          <el-radio-group v-model="auditForm.result">
-            <el-radio label="pass">审核通过</el-radio>
-            <el-radio label="reject">审核拒绝</el-radio>
+          <el-radio-group v-model="auditForm.auditStatus">
+            <el-radio :label="1">审核通过</el-radio>
+            <el-radio :label="2">审核拒绝</el-radio>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item label="审核备注">
+          <el-input v-model="auditForm.auditRemark" type="textarea" :rows="3" placeholder="请输入审核备注" />
         </el-form-item>
       </el-form>
       <div slot="footer">
@@ -88,13 +97,32 @@
         <el-button type="primary" size="small" @click="submitAudit">确定</el-button>
       </div>
     </el-dialog>
+
+    <el-dialog :close-on-click-modal="false" title="标记异常" :visible.sync="markErrorDialogVisible" width="500px" append-to-body>
+      <el-form :model="markErrorForm" label-width="100px">
+        <el-form-item label="标记结果">
+          <el-radio-group v-model="markErrorForm.result">
+            <el-radio label="0">正常</el-radio>
+            <el-radio label="1">盘亏</el-radio>
+            <el-radio label="2">盘盈</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="markErrorForm.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+        </el-form-item>
+      </el-form>
+      <div slot="footer">
+        <el-button size="small" @click="markErrorDialogVisible = false">取消</el-button>
+        <el-button type="primary" size="small" @click="submitMarkError">确定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import detail from './components/detail.vue'
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
-import { auditInventory } from './components/api.js'
+import { config, requestFun, btns, handleTbaleMap, getDefaultOptions, handleSearchParams } from './components/index.js'
+import { exportInventory, exportToPad, markError } from './components/api.js'
 
 export default {
   name: 'InventoryManage',
@@ -110,7 +138,9 @@ export default {
       tableKeys: [],
       btns,
       auditDialogVisible: false,
-      auditForm: { id: '', taskNo: '', result: 'pass' },
+      auditForm: { id: '', taskNum: '', auditStatus: 1, auditRemark: '' },
+      markErrorDialogVisible: false,
+      markErrorForm: { ids: '', result: '0', remark: '' },
     }
   },
   async created() {
@@ -137,7 +167,7 @@ export default {
       this.tableKeys = config.table
       config.search.forEach(item => {
         this.search.options.push(item)
-        this.$set(this.search.params, item.prop, '')
+        this.$set(this.search.params, item.prop, item.defaultValue !== undefined ? item.defaultValue : '')
         if (item.option) this.getOptions(item)
       })
       this.addSearchBtn()
@@ -154,19 +184,41 @@ export default {
             this.open()
             break
           case 'view':
-            this.$refs.detail.open(payload)
+            this.$refs.detail.open(payload, 'view')
             break
           case 'update':
-            this.$refs.detail.open(payload)
+            this.$refs.detail.open(payload, 'edit')
             break
           case 'audit':
             this.openAudit(payload)
+            break
+          case 'delete':
+            this.remove(payload)
+            break
+          case 'exportList':
+            this.exportList(payload)
+            break
+          case 'exportToPad':
+            this.exportToPadAction(payload)
+            break
+          case 'inputResult':
+            this.openInputResult(payload)
+            break
+          case 'markError':
+            this.openMarkError(payload)
             break
         }
       }
     },
     getOptions(item) {
-      if (!Array.isArray(item.option)) {
+      if (typeof item.option === 'function') {
+        const result = item.option()
+        if (result && typeof result.then === 'function') {
+          result.then(data => {
+            item.option = Array.isArray(data) ? data : (data.data ? (Array.isArray(data.data) ? data.data : data.data.list) : [])
+          })
+        }
+      } else if (!Array.isArray(item.option) && item.option && typeof item.option.then === 'function') {
         item.option.then(res => {
           item.option = Array.isArray(res.data) ? res.data : res.data.list
         })
@@ -174,7 +226,8 @@ export default {
     },
     getTableList() {
       this.tableData = []
-      return requestFun.list(this.search.params).then(res => {
+      const params = handleSearchParams ? handleSearchParams(this.search.params) : this.search.params
+      return requestFun.list(params).then(res => {
         if (res.code === 1) {
           let data = res.data.list || []
           let page = res.data.pagination || {}
@@ -187,6 +240,18 @@ export default {
     open() {
       this.$refs.detail.open()
     },
+    remove(row) {
+      this.$confirm('确定要删除该盘存任务?', '提示', { type: 'warning' })
+        .then(() => {
+          requestFun.delete({ taskNum: row.taskNum }).then(res => {
+            if (res.code === 1) {
+              this.$message.success('删除成功')
+              this.getTableList()
+            }
+          })
+        })
+        .catch(() => {})
+    },
     handleSizeChange(value) {
       this.search.params.pageSize = value
       this.getTableList()
@@ -197,14 +262,22 @@ export default {
     },
     resetSearchParams() {
       this.search.params = this.$options.data().search.params
+      config.search.forEach(item => {
+        this.$set(this.search.params, item.prop, item.defaultValue !== undefined ? item.defaultValue : '')
+      })
       this.getTableList()
     },
     openAudit(row) {
-      this.auditForm = { id: row.id, taskNo: row.taskNo, result: 'pass' }
+      this.auditForm = { id: row.id, taskNum: row.taskNum, auditStatus: 1, auditRemark: '' }
       this.auditDialogVisible = true
     },
     submitAudit() {
-      auditInventory(this.auditForm).then(res => {
+      const { id, auditStatus, auditRemark } = this.auditForm
+      if (auditStatus === 2 && !auditRemark) {
+        this.$message.warning('驳回时请输入审核备注')
+        return
+      }
+      requestFun.audit({ id, auditStatus, auditRemark }).then(res => {
         if (res.code === 1) {
           this.$message.success('审核成功')
           this.auditDialogVisible = false
@@ -212,17 +285,92 @@ export default {
         }
       })
     },
-    getStatusText(status) {
-      const map = { notStarted: '未开始', inProgress: '盘存中', completed: '已完成' }
-      return map[status] || status
+    exportList(row) {
+      exportInventory({ taskNum: row.taskNum }).then(res => {
+        const blob = new Blob([res], { type: 'application/vnd.ms-excel' })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', `盘存清单_${row.taskNum}.xlsx`)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+      })
     },
-    getStatusClass(status) {
-      const map = {
-        notStarted: 'status-pending',
-        inProgress: 'status-auditing',
-        completed: 'status-approved',
+    exportToPadAction(row) {
+      exportToPad({ taskNum: row.taskNum }).then(res => {
+        if (res.code === 1) {
+          this.$message.success(res.data || '导出成功')
+        }
+      })
+    },
+    openInputResult(row) {
+      this.$refs.detail.open(row, 'inputResult')
+    },
+    openMarkError(row) {
+      this.markErrorForm = { ids: String(row.id), result: '0', remark: '' }
+      this.markErrorDialogVisible = true
+    },
+    submitMarkError() {
+      const { ids, result, remark } = this.markErrorForm
+      if (result !== '0' && !remark) {
+        this.$message.warning('非正常状态时请输入备注')
+        return
       }
-      return map[status] || ''
+      markError({ ids, result, remark }).then(res => {
+        if (res.code === 1) {
+          this.$message.success('标记成功')
+          this.markErrorDialogVisible = false
+          this.getTableList()
+        }
+      })
+    },
+    getDataStatusText(status) {
+      const value = Number(status)
+      const map = { 0: '待审核', 1: '审核通过', 2: '审核拒绝', 4: '待提交' }
+      return map[value] !== undefined ? map[value] : '-'
+    },
+    getDataStatusClass(status) {
+      const value = Number(status)
+      const map = { 0: 'status-auditing', 1: 'status-approved', 2: 'status-rejected', 4: 'status-draft' }
+      return map[value] || ''
+    },
+    getAuditStatusText(status) {
+      const value = Number(status)
+      const map = { 1: '审核通过', 2: '审核驳回' }
+      return map[value] !== undefined ? map[value] : ''
+    },
+    getAuditStatusClass(status) {
+      const value = Number(status)
+      const map = { 1: 'status-approved', 2: 'status-rejected' }
+      return map[value] || ''
+    },
+    shouldShowAuditTag(row) {
+      const auditStatus = row.auditStatus
+      if (auditStatus === undefined || auditStatus === null || auditStatus === '') return false
+      return true
+    },
+    getRowBtns(row) {
+      const btns = [{ label: '详情', type: 'text', execute: 'view' }]
+      const dataStatus = Number(row.dataStatus)
+
+      if (dataStatus === 4) {
+        btns.push({ label: '编辑', type: 'text', execute: 'update' })
+        btns.push({ label: '删除', type: 'text', execute: 'delete' })
+      } else if (dataStatus === 0) {
+        btns.push({ label: '审核', type: 'text', execute: 'audit' })
+      } else if (dataStatus === 1) {
+        btns.push({ label: '导出清单', type: 'text', execute: 'exportList' })
+        btns.push({ label: '导出到PAD', type: 'text', execute: 'exportToPad' })
+        btns.push({ label: '录入结果', type: 'text', execute: 'inputResult' })
+        btns.push({ label: '标记异常', type: 'text', execute: 'markError' })
+      } else if (dataStatus === 2) {
+        btns.push({ label: '编辑', type: 'text', execute: 'update' })
+        btns.push({ label: '删除', type: 'text', execute: 'delete' })
+      }
+
+      return btns
     },
   },
 }
@@ -315,14 +463,15 @@ export default {
     margin-left: 10px;
   }
 }
+
 .status-tag {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 3px;
   font-size: 12px;
-  &.status-pending {
-    background: #fff0cc;
-    color: #e68600;
+  &.status-draft {
+    background: #f4f4f5;
+    color: #606266;
   }
   &.status-auditing {
     background: #e3f2fd;
@@ -331,6 +480,15 @@ export default {
   &.status-approved {
     background: #e8f5e9;
     color: #2e7d32;
+  }
+  &.status-rejected {
+    background: #ffebee;
+    color: #c62828;
+  }
+  &.audit-tag {
+    font-size: 11px;
+    padding: 1px 6px;
+    opacity: 0.9;
   }
 }
 </style>

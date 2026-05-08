@@ -228,7 +228,82 @@
 
 详情模式展示 `modifyRecords` 变更记录，记录 `status=7` 时提供“撤回”按钮，调用 `GET /busin/move/cancelApply`，参数为该变更记录的 `id`（作为 `modifyId`）。记录 `status=9` 且返回 `auditRemark` 时，在申请人、申请时间同一行展示驳回原因；驳回审核提交参数仍使用 `remark`。审核模式解析 `beforeData`、`afterData` 和 `modifyDescList`，高亮有变更的主表字段并展示修改内容。
 
-## 五、开发与修改注意事项
+## 五、已完成界面：实物盘存
+
+入口文件：
+
+- `src/views/task/inventory/index.vue`
+- `src/views/task/inventory/components/detail.vue`
+- `src/views/task/inventory/components/index.js`
+- `src/views/task/inventory/components/api.js`
+
+接口参考：
+
+- `md/任务管理接口.md`
+
+实物盘存用于管理仓库的实物盘存任务，支持创建盘存任务、审核、导出清单、录入盘存结果和标记异常。
+
+### 1. 列表查询与状态
+
+列表页通过 `POST /busin/inventory/page/list` 查询盘存任务，筛选项包括任务编号、库房名称和盘存时间。盘存时间在前端转换为 `startTime/endTime`。
+
+页面状态由 `dataStatus` 决定：
+
+- `dataStatus=4`：待提交，可编辑、删除。
+- `dataStatus=0`：待审核，显示审核入口。
+- `dataStatus=1`：审核通过，可导出清单、导出到PAD、录入结果、标记异常。
+- `dataStatus=2`：审核拒绝，可编辑、删除。
+
+行操作按钮通过 `getRowBtns(row)` 根据 `dataStatus` 动态生成。
+
+### 2. 新增盘存任务
+
+新增时由 `generateBatchNo({ batchType: 3 })` 自动生成任务编号。表单核心字段包括任务编号、盘存方式（全部库房/指定库房）和备注。
+
+盘存方式选择"指定库房"时，需通过 `GET /busin/locationMap/hierarchy/listByNodeType/2` 获取库房列表进行多选。
+
+货物清单通过 `POST /busin/inventory/goods/list` 获取，参数 `type` 为 `all`（全部库房）或 `selected`（指定库房），`warehouseId` 为库房ID数组。
+
+底部提供"暂存"和"提交"两个动作：
+
+- 暂存传 `submitType=4`。
+- 提交传 `submitType=0`。
+
+### 3. 编辑盘存任务
+
+编辑调用 `POST /busin/inventory/edit`，参数包含 `id`、`taskNum`、`selectType`、`warehouseIds`、`warehouseNames`、`remark`。
+
+### 4. 审核盘存任务
+
+审核通过详情弹窗的 `audit` 模式打开，提供"同意/驳回"操作。审核调用 `POST /busin/inventory/audit`：
+
+- 同意：`auditStatus=1`
+- 驳回：`auditStatus=2`，需填写 `auditRemark`
+
+### 5. 导出功能
+
+- 导出盘存清单：`GET /busin/inventory/export`，参数 `taskNum`，返回文件流（blob 下载）。
+- 导出到PAD：`GET /busin/inventory/exportToPad`，参数 `taskNum`，返回字符串提示。
+
+### 6. 录入盘存结果
+
+审核通过后可录入盘存结果，调用 `POST /busin/inventory/result/submit`。按库房分组展示货物清单，每条货物可标记为：
+
+- `result=0`：正常
+- `result=1`：盘亏
+- `result=2`：盘盈
+
+非正常状态时 `resultRemark` 必填。
+
+### 7. 标记异常
+
+调用 `POST /busin/inventory/markError`，参数包含 `ids`（货物ID，逗号分隔）、`result`（0正常/1盘亏/2盘盈）和 `remark`。
+
+### 8. 删除盘存任务
+
+删除调用 `GET /busin/inventory/delete`，参数为 `taskNum`。
+
+## 六、开发与修改注意事项
 
 - 修改入库管理前，必须先阅读本文档、`docs/PROJECT_ARCHITECTURE.md`、`docs/SYSTEM_MODULES_MAP.md` 和 `md/入库管理接口文档.md`。
 - 入库管理虽然位于 `src/views/task/inbound`，但其数据会影响核算和账务处理，状态流转不能只按普通 CRUD 理解。
@@ -239,3 +314,7 @@
 - Excel 导入的两类模板是互补关系，修改字段时要同时检查导入预览、明细编辑和提交 DTO。
 - 出库管理选择容器时只允许加入有容器号的库存记录，避免把空闲库位作为出库明细提交。
 - 若后续补充移库、盘存或账目管理页面，请在本文档追加独立章节，说明入口文件、业务状态、关键接口、数据来源和修改风险。
+- 盘存模块 API 路径统一使用 `/busin/inventory/` 前缀。
+- 盘存状态使用数字枚举：0=待审核、1=审核通过、2=审核拒绝、4=待提交。
+- 录入盘存结果时，非正常状态（盘亏/盘盈）的结果备注必填。
+- 导出盘存清单使用 blob 下载模式，需设置 `responseType: 'blob'`。

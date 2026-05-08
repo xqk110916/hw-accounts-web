@@ -1,48 +1,109 @@
 import request from '@/utils/request'
 
-export const getInventoryList = params => {
+// 1. 分页查询实物盘存列表
+export const getInventoryPageList = data => {
   return request({
-    url: '/task/inventory/listPage',
-    method: 'post',
-    params,
-  })
-}
-
-export const getInventoryDetail = params => {
-  return request({
-    url: '/task/inventory/getInfoById',
-    method: 'post',
-    params,
-  })
-}
-
-export const saveOrUpdateInventory = data => {
-  return request({
-    url: '/task/inventory/saveOrUpdate',
+    url: '/busin/inventory/page/list',
     method: 'post',
     data,
   })
 }
 
+// 2. 获取货物清单（生成任务）
+export const getGoodsList = data => {
+  return request({
+    url: '/busin/inventory/goods/list',
+    method: 'post',
+    data,
+  })
+}
+
+// 3. 提交/暂存任务
+export const submitInventory = data => {
+  return request({
+    url: '/busin/inventory/submit',
+    method: 'post',
+    data,
+  })
+}
+
+// 4. 录入盘存结果
+export const submitInventoryResult = data => {
+  return request({
+    url: '/busin/inventory/result/submit',
+    method: 'post',
+    data,
+  })
+}
+
+// 5. 查询盘存任务详情
+export const getInventoryDetail = id => {
+  return request({
+    url: `/busin/inventory/detail/${id}`,
+    method: 'get',
+  })
+}
+
+// 6. 编辑盘存任务
+export const editInventory = data => {
+  return request({
+    url: '/busin/inventory/edit',
+    method: 'post',
+    data,
+  })
+}
+
+// 7. 审核盘存任务
+export const auditInventory = data => {
+  return request({
+    url: '/busin/inventory/audit',
+    method: 'post',
+    data,
+  })
+}
+
+// 8. 删除盘存任务
 export const deleteInventory = params => {
   return request({
-    url: '/task/inventory/delete',
-    method: 'post',
+    url: '/busin/inventory/delete',
+    method: 'get',
     params,
   })
 }
 
-export const auditInventory = data => {
+// 9. 导出盘存清单
+export const exportInventory = params => {
   return request({
-    url: '/task/inventory/audit',
+    url: '/busin/inventory/export',
+    method: 'get',
+    params,
+    responseType: 'blob',
+  })
+}
+
+// 10. 导出到PAD
+export const exportToPad = params => {
+  return request({
+    url: '/busin/inventory/exportToPad',
+    method: 'get',
+    params,
+  })
+}
+
+// 11. 标记异常
+export const markError = data => {
+  return request({
+    url: '/busin/inventory/markError',
     method: 'post',
     data,
   })
 }
 
 export const inventory = {
-  list: getInventoryList,
+  list: getInventoryPageList,
   detail: getInventoryDetail,
-  update: saveOrUpdateInventory,
+  submit: submitInventory,
+  edit: editInventory,
   delete: deleteInventory,
+  audit: auditInventory,
 }

@@ -70,24 +70,34 @@
           @mousedown.stop="startDrag($event, shelf)"
           @click.stop="$emit('shelf-select', shelf)"
         >
+          <!-- 货架头部：名称 + 占用比 -->
           <div class="shelf-head">
             <span class="shelf-name">{{ shelf.name }}</span>
-            <span class="shelf-count">{{ getFilledCount(shelf) }}/{{ getTotalCount(shelf) }}</span>
+            <span class="shelf-count" :class="getUsageClass(shelf)">{{ getFilledCount(shelf) }}/{{ getTotalCount(shelf) }}</span>
           </div>
-          <div class="shelf-meta">{{ shelf.columnCode }} / {{ shelf.rowCode }} · {{ shelf.width }}m×{{ shelf.height }}m</div>
+          <!-- 货架元信息 -->
+          <div class="shelf-meta">
+            <span>{{ shelf.columnCode }}-{{ shelf.rowCode }}</span>
+            <span v-if="shelf.layers && shelf.layers.length">{{ shelf.layers.length }}层</span>
+          </div>
+          <!-- 老库：底座标识 -->
           <div v-if="isOldWarehouse(shelf)" class="layer-strip">
             <span class="base-label">底座</span>
           </div>
-          <div v-else class="layer-strip">
-            <button
-              v-for="layer in shelf.layers"
-              :key="layer.id"
-              type="button"
-              class="layer-dot"
-              :class="getLayerStatus(layer)"
-              :title="getLayerTitle(layer)"
-              @click.stop="handleLayerClick(layer)"
-            ></button>
+          <!-- 新库：所有容器色块平铺展示 -->
+          <div v-else class="layers-grid">
+            <template v-for="layer in shelf.layers">
+              <button
+                v-for="(container, ci) in getLayerContainers(layer)"
+                :key="layer.id + '_' + ci"
+                type="button"
+                class="container-dot"
+                :class="getContainerStatus(container)"
+                :style="getContainerStyle(container)"
+                :title="getContainerTitle(container)"
+                @click.stop="handleContainerDotClick(container)"
+              ></button>
+            </template>
           </div>
         </div>
       </div>
@@ -98,6 +108,7 @@
       <span><i class="used"></i>占用</span>
       <span><i class="locked"></i>锁定</span>
       <span><i class="aisle"></i>过道</span>
+      <span class="legend-hint">容器色块颜色代表入库时间</span>
     </div>
   </div>
 </template>
@@ -119,7 +130,8 @@ export default {
     layout: { type: Object, default: null },
     editable: { type: Boolean, default: false },
     showToolbar: { type: Boolean, default: true },
-    selectedShelf: { type: Object, default: null }
+    selectedShelf: { type: Object, default: null },
+    dateColorMap: { type: Object, default: () => ({}) }
   },
   data() {
     return {
@@ -229,8 +241,45 @@ export default {
       return 'free';
     },
     getLayerTitle(layer) {
-      const container = (layer.containers || [])[0] || {};
-      return container.materialName ? `${container.materialName} ${container.code || ''}` : '空位';
+      const containers = (layer.containers || []).filter(c => c.materialCode || String(c.status) === '1');
+      if (!containers.length) return `第${layer.level || ''}层 - 空`;
+      return containers.map(c => c.materialName || c.materialCode || c.code || '').filter(Boolean).join(', ');
+    },
+    getLayerContainers(layer) {
+      return layer.containers && layer.containers.length ? layer.containers : [{}];
+    },
+    getContainerStatus(container) {
+      if (!container || (!container.materialCode && String(container.status) !== '1' && String(container.status) !== '2')) return 'free';
+      if (String(container.status) === '2') return 'locked';
+      return 'used';
+    },
+    getContainerStyle(container) {
+      if (!container || !container.materialCode) return {};
+      const date = container.storageDate;
+      if (!date) return {};
+      const color = this.dateColorMap[date];
+      if (!color) return {};
+      return { background: color, borderColor: color };
+    },
+    getContainerTitle(container) {
+      if (!container || !container.materialCode) return '空位';
+      const parts = [container.materialName || container.materialCode];
+      if (container.code) parts.push(container.code);
+      if (container.storageDate) parts.push(container.storageDate);
+      return parts.join(' | ');
+    },
+    getUsageClass(shelf) {
+      const total = this.getTotalCount(shelf);
+      if (total === 0) return '';
+      const rate = this.getFilledCount(shelf) / total;
+      if (rate >= 0.9) return 'usage-high';
+      if (rate >= 0.5) return 'usage-mid';
+      return 'usage-low';
+    },
+    handleContainerDotClick(container) {
+      if (container && (container.materialCode || String(container.status) === '1')) {
+        this.$emit('container-click', container);
+      }
     },
     handleLayerClick(layer) {
       const container = (layer.containers || [])[0];
@@ -401,12 +450,38 @@ export default {
         ctx.fillRect(item.x * this.cellSize, item.y * this.cellSize, item.w * this.cellSize, item.h * this.cellSize);
       });
       this.viewShelves.forEach(shelf => {
-        const rect = { x: shelf.position.x * this.cellSize, y: shelf.position.y * this.cellSize, w: shelf.width * this.cellSize, h: shelf.height * this.cellSize };
+        if (!shelf.position) return;
+        const rx = shelf.position.x * this.cellSize;
+        const ry = shelf.position.y * this.cellSize;
+        const rw = shelf.width * this.cellSize;
+        const rh = shelf.height * this.cellSize;
         ctx.fillStyle = '#2f6f73';
-        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeStyle = '#174d51';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(rx, ry, rw, rh);
         ctx.fillStyle = '#ffffff';
-        ctx.font = '12px sans-serif';
-        ctx.fillText(shelf.name, rect.x + 8, rect.y + 20);
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(shelf.name, rx + 5, ry + 14);
+        // 绘制容器色块
+        const dotSize = 8;
+        const dotGap = 2;
+        let dotX = rx + 5;
+        let dotY = ry + 20;
+        (shelf.layers || []).forEach(layer => {
+          (layer.containers || []).forEach(container => {
+            if (dotX + dotSize > rx + rw - 2) { dotX = rx + 5; dotY += dotSize + dotGap; }
+            if (dotY + dotSize > ry + rh - 2) return;
+            if (container.materialCode) {
+              const color = (container.storageDate && this.dateColorMap[container.storageDate]) || '#f2b84b';
+              ctx.fillStyle = color;
+            } else {
+              ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            }
+            ctx.fillRect(dotX, dotY, dotSize, dotSize);
+            dotX += dotSize + dotGap;
+          });
+        });
       });
       const link = document.createElement('a');
       link.download = `${this.warehouseName || '位置图'}-2D.png`;
@@ -497,50 +572,88 @@ export default {
 
   .grid-shelf {
     position: absolute;
-    background: #2f6f73;
+    background: linear-gradient(160deg, #1e5c60 0%, #2f6f73 100%);
     border: 2px solid #174d51;
     color: #fff;
-    padding: 6px;
+    padding: 5px 6px;
     box-sizing: border-box;
     cursor: pointer;
     overflow: hidden;
-    transition: box-shadow .15s, border-color .15s;
+    transition: box-shadow .15s, border-color .15s, transform .1s;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 
-    &.selected { border-color: #f2b84b; box-shadow: 0 0 0 3px rgba(242,184,75,.28); }
+    &:hover { box-shadow: 0 0 0 2px rgba(100,210,220,.4); transform: scale(1.01); z-index: 5; }
+    &.selected { border-color: #f2b84b; box-shadow: 0 0 0 3px rgba(242,184,75,.35); }
     &.dragging { opacity: .86; z-index: 8; }
     &.invalid { border-color: #d94f4f; background: #9c3f3f; }
 
     .shelf-head {
       display: flex;
       justify-content: space-between;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 700;
+      align-items: center;
+      gap: 4px;
+
+      .shelf-name {
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .shelf-count {
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        padding: 1px 4px;
+        border-radius: 3px;
+        background: rgba(0,0,0,.2);
+        &.usage-high { color: #ff7875; }
+        &.usage-mid { color: #ffd666; }
+        &.usage-low { color: #95de64; }
+      }
     }
 
     .shelf-meta {
-      margin-top: 3px;
-      font-size: 11px;
-      color: rgba(255,255,255,.78);
+      font-size: 10px;
+      color: rgba(255,255,255,.65);
+      display: flex;
+      gap: 6px;
       white-space: nowrap;
+    }
+
+    .layers-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      margin-top: 2px;
+      overflow: hidden;
+      align-content: flex-start;
+    }
+
+    .container-dot {
+      width: 11px;
+      height: 11px;
+      border: 1px solid rgba(255,255,255,.5);
+      border-radius: 2px;
+      padding: 0;
+      cursor: pointer;
+      transition: transform .1s, box-shadow .1s;
+      flex-shrink: 0;
+
+      &:hover { transform: scale(1.3); box-shadow: 0 0 4px rgba(255,255,255,.5); z-index: 2; }
+      &.free { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.25); cursor: default; }
+      &.used { background: #f2b84b; border-color: #d4a017; }
+      &.locked { background: #d94f4f; border-color: #b03030; }
     }
 
     .layer-strip {
       display: flex;
       flex-wrap: wrap;
       gap: 3px;
-      margin-top: 6px;
-    }
-
-    .layer-dot {
-      width: 12px;
-      height: 12px;
-      border: 1px solid rgba(255,255,255,.65);
-      padding: 0;
-      cursor: pointer;
-      &.free { background: #f8fbff; }
-      &.used { background: #f2b84b; }
-      &.locked { background: #d94f4f; }
+      margin-top: 4px;
     }
 
     .base-label {
@@ -567,11 +680,19 @@ export default {
       height: 10px;
       margin-right: 6px;
       border: 1px solid #aeb8c5;
+      border-radius: 2px;
       vertical-align: -1px;
-      &.free { background: #f8fbff; }
-      &.used { background: #f2b84b; }
-      &.locked { background: #d94f4f; }
+      &.free { background: rgba(255,255,255,.12); border-color: rgba(0,0,0,.15); }
+      &.used { background: #f2b84b; border-color: #d4a017; }
+      &.locked { background: #d94f4f; border-color: #b03030; }
       &.aisle { background: #d9dde6; }
+    }
+
+    .legend-hint {
+      margin-left: auto;
+      color: #aeb8c5;
+      font-size: 11px;
+      font-style: italic;
     }
   }
 }

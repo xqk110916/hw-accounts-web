@@ -17,15 +17,28 @@ function hashCode(str) {
 /**
  * 根据日期字符串生成颜色
  * @param {string} dateString - 日期字符串，格式如 '2026-01-15'
- * @returns {string} HSL颜色值
+ * @returns {string} hex颜色值，如 '#ff6b6b'
  */
 export function getColorByDate(dateString) {
-  if (!dateString) {
-    return 'hsl(0, 0%, 80%)'; // 默认灰色
-  }
+  if (!dateString) return '#c0c0c0';
   const hash = hashCode(dateString);
   const hue = hash % 360;
-  return `hsl(${hue}, 65%, 55%)`;
+  return hslToHex(hue, 65, 55);
+}
+
+/**
+ * HSL 转 hex
+ */
+function hslToHex(h, s, l) {
+  s /= 100;
+  l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 /**

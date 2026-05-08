@@ -59,7 +59,8 @@ export default {
     layout: { type: Object, default: null },
     initialMode: { type: String, default: '3d' },
     showModeSwitch: { type: Boolean, default: true },
-    showShelfEnterHint: { type: Boolean, default: true }
+    showShelfEnterHint: { type: Boolean, default: true },
+    dateColorMap: { type: Object, default: () => ({}) }
   },
   data() {
     return {
@@ -335,7 +336,7 @@ export default {
 
               let color = 0xe0e0e0;
               if (container.storageDate) {
-                const hexColor = getColorByDate(container.storageDate);
+                const hexColor = this.dateColorMap[container.storageDate] || getColorByDate(container.storageDate);
                 color = parseInt(hexColor.replace('#', ''), 16);
               }
 

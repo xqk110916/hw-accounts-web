@@ -5,6 +5,7 @@
     :layout="layout"
     :editable="false"
     :selected-shelf="selectedShelf"
+    :date-color-map="dateColorMap"
     @shelf-select="$emit('shelf-select', $event)"
     @container-click="$emit('container-click', $event)"
   />
