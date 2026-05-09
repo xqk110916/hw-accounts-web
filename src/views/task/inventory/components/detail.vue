@@ -57,81 +57,147 @@
         </div>
       </div>
 
-      <!-- 货物清单 (新增/编辑模式) -->
-      <div class="detail-section" v-if="type === 'add' || type === 'edit'">
-        <div class="detail-header">
-          <span class="detail-title">货物清单</span>
-          <el-button size="small" type="primary" @click="fetchGoodsList" :loading="goodsLoading">
-            获取货物清单
-          </el-button>
-        </div>
-        <el-table :data="goodsList" border size="small" max-height="300" @selection-change="handleGoodsSelectionChange">
-          <el-table-column v-if="form.selectType === 'all'" type="selection" width="50" />
-          <el-table-column type="index" label="序号" width="60" />
-          <el-table-column prop="warehouseName" label="库房" width="120" show-overflow-tooltip />
-          <el-table-column prop="containerCode" label="容器号" width="120" show-overflow-tooltip />
-          <el-table-column prop="goodCode" label="材料编码" width="120" show-overflow-tooltip />
-          <el-table-column prop="goodName" label="材料名称" width="120" show-overflow-tooltip />
-          <el-table-column prop="productionUnit" label="生产单位" width="100" show-overflow-tooltip />
-          <el-table-column prop="location" label="位置" width="120" show-overflow-tooltip />
-          <el-table-column prop="sealCode1" label="封记编号1" width="100" show-overflow-tooltip />
-          <el-table-column prop="sealCode2" label="封记编号2" width="100" show-overflow-tooltip />
-          <el-table-column prop="storageTime" label="入库时间" width="160" show-overflow-tooltip />
-        </el-table>
+      <!-- 生成任务清单 (仅新增模式显示) -->
+      <div v-if="type === 'add'" style="padding: 0 20px 20px; text-align: center;">
+        <el-button type="primary" @click="fetchGoodsList" :loading="goodsLoading">生成任务清单</el-button>
       </div>
 
-      <!-- 库房分组展示 (查看/录入结果模式) -->
-      <div class="detail-section" v-if="type === 'view' || type === 'inputResult'">
-        <div class="detail-header">
-          <span class="detail-title">库房货物清单</span>
-        </div>
-        <el-collapse v-model="activeWarehouses">
-          <el-collapse-item
-            v-for="(warehouse, wIdx) in warehouseList"
-            :key="warehouse.warehouseId"
-            :title="`${warehouse.warehouseName} (${(warehouse.goodsList || []).length}项)`"
-            :name="warehouse.warehouseId"
-          >
-            <el-table :data="warehouse.goodsList" border size="small" max-height="250">
-              <el-table-column type="index" label="序号" width="60" />
-              <el-table-column prop="goodCode" label="材料编码" width="120" show-overflow-tooltip />
-              <el-table-column prop="goodName" label="材料名称" width="120" show-overflow-tooltip />
-              <el-table-column prop="containerCode" label="容器号" width="120" show-overflow-tooltip />
-              <el-table-column prop="productionUnit" label="生产单位" width="100" show-overflow-tooltip />
-              <el-table-column prop="location" label="位置" width="120" show-overflow-tooltip />
-              <el-table-column prop="sealCode1" label="封记编号1" width="100" show-overflow-tooltip />
-              <el-table-column prop="sealCode2" label="封记编号2" width="100" show-overflow-tooltip />
-              <el-table-column prop="storageTime" label="入库时间" width="160" show-overflow-tooltip />
-              <!-- 录入结果模式：结果列 -->
-              <el-table-column prop="result" label="结果" width="120" v-if="type === 'inputResult'">
-                <template slot-scope="scope">
-                  <el-select v-model="scope.row.result" size="mini" placeholder="请选择">
-                    <el-option label="正常" value="0" />
-                    <el-option label="盘亏" value="1" />
-                    <el-option label="盘盈" value="2" />
-                  </el-select>
-                </template>
-              </el-table-column>
-              <el-table-column prop="resultRemark" label="结果备注" width="150" v-if="type === 'inputResult'">
-                <template slot-scope="scope">
-                  <el-input
-                    v-model="scope.row.resultRemark"
-                    size="mini"
-                    placeholder="异常时必填"
-                    :disabled="scope.row.result === '0'"
-                  />
-                </template>
-              </el-table-column>
-              <!-- 查看模式：结果列 -->
-              <el-table-column prop="result" label="结果" width="100" v-if="type === 'view'">
-                <template slot-scope="scope">
-                  <span :class="getResultClass(scope.row.result)">{{ getResultText(scope.row.result) }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="resultRemark" label="结果备注" width="150" v-if="type === 'view'" show-overflow-tooltip />
-            </el-table>
-          </el-collapse-item>
-        </el-collapse>
+      <!-- 实物盘存清单容器 (按库房 Tab 渲染) -->
+      <div class="inventory-container" v-if="type !== 'audit' && tabList.length > 0">
+        <el-tabs v-model="activeTab" type="border-card">
+          <el-tab-pane v-for="tab in tabList" :key="tab.id" :label="tab.name" :name="tab.id">
+            <div class="inventory-header">
+              <span class="inventory-title">({{ tab.name }}) 实物盘存清单</span>
+            </div>
+
+            <!-- 优化后的表单布局 -->
+            <div class="inventory-form" v-if="inventoryFormMap[tab.id]">
+              <!-- 第1行：盘存时间 -->
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <div class="form-item">
+                    <span class="label">盘存时间</span>
+                    <el-date-picker v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].inventoryTime" type="datetime" size="small" placeholder="选择时间" value-format="yyyy-MM-dd HH:mm:ss" />
+                    <span class="text-value" v-else>{{ inventoryFormMap[tab.id].inventoryTime || '-' }}</span>
+                  </div>
+                </el-col>
+              </el-row>
+              <!-- 第2行：盘存人、封记检查人 -->
+              <el-row :gutter="20" class="mt-15">
+                <el-col :span="12">
+                  <div class="form-item">
+                    <span class="label">盘存人</span>
+                    <el-input v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].inventoryUser" size="small" placeholder="请输入" />
+                    <span class="text-value" v-else>{{ inventoryFormMap[tab.id].inventoryUser || '-' }}</span>
+                  </div>
+                </el-col>
+                <el-col :span="12">
+                  <div class="form-item">
+                    <span class="label">封记检查人</span>
+                    <el-input v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].sealChecker" size="small" placeholder="请输入" />
+                    <span class="text-value" v-else>{{ inventoryFormMap[tab.id].sealChecker || '-' }}</span>
+                  </div>
+                </el-col>
+              </el-row>
+              <!-- 第3行：负责人、监盘人 -->
+              <el-row :gutter="20" class="mt-15">
+                <el-col :span="12">
+                  <div class="form-item">
+                    <span class="label">负责人</span>
+                    <el-input v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].responsibleUser" size="small" placeholder="请输入" />
+                    <span class="text-value" v-else>{{ inventoryFormMap[tab.id].responsibleUser || '-' }}</span>
+                  </div>
+                </el-col>
+                <el-col :span="12">
+                  <div class="form-item">
+                    <span class="label">监盘人</span>
+                    <el-input v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].supervisor" size="small" placeholder="请输入" />
+                    <span class="text-value" v-else>{{ inventoryFormMap[tab.id].supervisor || '-' }}</span>
+                  </div>
+                </el-col>
+              </el-row>
+
+              <!-- 盘存结果 -->
+              <div class="result-section mt-15">
+                <div class="result-title">盘存结果</div>
+                <div class="result-content-col">
+                  <!-- checkbox行 -->
+                  <div class="status-checks">
+                    <el-checkbox v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].inventoryResult" true-label="all_normal" false-label="partial_abnormal">全部正常</el-checkbox>
+                    <el-checkbox v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].inventoryResult" true-label="partial_abnormal" false-label="all_normal">部分异常</el-checkbox>
+                    <span class="text-value" v-if="type === 'view'">{{ inventoryFormMap[tab.id].inventoryResult === 'all_normal' ? '全部正常' : '部分异常' }}</span>
+                  </div>
+                  <!-- 输入框行 -->
+                  <div class="stats-inputs mt-15">
+                    <el-row :gutter="20">
+                      <!-- 正常数 -->
+                      <el-col :span="24" class="stat-col">
+                        <div class="stat-item-row">
+                          <span class="stat-label">正常数</span>
+                          <el-input-number v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].normalCount" size="small" :min="0" class="num-input" />
+                          <span class="text-value" v-else>{{ inventoryFormMap[tab.id].normalCount }}</span>
+                        </div>
+                      </el-col>
+                      <!-- 盘盈数 + 备注 -->
+                      <el-col :span="24" class="stat-col mt-15">
+                        <div class="stat-item-row">
+                          <span class="stat-label">盘盈数</span>
+                          <el-input-number v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].excessCount" size="small" :min="0" class="num-input" />
+                          <span class="text-value" v-else>{{ inventoryFormMap[tab.id].excessCount }}</span>
+                          <span class="stat-label ml-15">备注</span>
+                          <el-input v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].excessRemark" size="small" placeholder="盘盈备注" class="remark-input flex-1" />
+                          <span class="text-value flex-1" v-else>{{ inventoryFormMap[tab.id].excessRemark || '-' }}</span>
+                        </div>
+                      </el-col>
+                      <!-- 盘亏数 + 备注 -->
+                      <el-col :span="24" class="stat-col mt-15">
+                        <div class="stat-item-row">
+                          <span class="stat-label">盘亏数</span>
+                          <el-input-number v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].deficitCount" size="small" :min="0" class="num-input" />
+                          <span class="text-value" v-else>{{ inventoryFormMap[tab.id].deficitCount }}</span>
+                          <span class="stat-label ml-15">备注</span>
+                          <el-input v-if="type === 'inputResult'" v-model="inventoryFormMap[tab.id].deficitRemark" size="small" placeholder="盘亏备注" class="remark-input flex-1" />
+                          <span class="text-value flex-1" v-else>{{ inventoryFormMap[tab.id].deficitRemark || '-' }}</span>
+                        </div>
+                      </el-col>
+                    </el-row>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 明细列表 -->
+            <div class="detail-section-wrap mt-15">
+              <div class="detail-section-title">明细</div>
+              <el-table :data="goodsListMap[tab.id] || []" border size="small" max-height="400">
+                <el-table-column type="index" label="序号" width="60" />
+                <el-table-column prop="warehouseName" label="位置" width="120" show-overflow-tooltip />
+                <el-table-column prop="containerCode" label="容器号" width="120" show-overflow-tooltip />
+                <el-table-column prop="inventoryTime" label="盘存时间" width="160" show-overflow-tooltip />
+                <el-table-column prop="productionUnit" label="生产单位" width="100" show-overflow-tooltip />
+                <el-table-column prop="sealCode1" label="封记编号1" width="100" show-overflow-tooltip />
+                <el-table-column prop="sealCode2" label="封记编号2" width="100" show-overflow-tooltip />
+                <el-table-column label="结果" width="220" v-if="type === 'inputResult'">
+                  <template slot-scope="scope">
+                    <div class="result-cell">
+                      <el-radio-group v-model="scope.row.result" size="mini">
+                        <el-radio label="0">正常</el-radio>
+                        <el-radio label="1">不正常</el-radio>
+                      </el-radio-group>
+                      <el-input v-model="scope.row.resultRemark" size="mini" placeholder="备注" class="cell-remark mt-5" />
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="结果" width="220" v-if="type === 'view'">
+                  <template slot-scope="scope">
+                    <span :class="getResultClass(scope.row.result)">{{ getResultText(scope.row.result) }}</span>
+                    <span v-if="scope.row.resultRemark" class="ml-10">({{ scope.row.resultRemark }})</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </div>
 
       <template slot="footer">
@@ -139,8 +205,7 @@
           <el-button size="small" @click="close">取消</el-button>
           <!-- 新增模式 -->
           <template v-if="type === 'add'">
-            <el-button size="small" @click="saveDraft" :loading="submitting">暂存</el-button>
-            <el-button type="primary" size="small" @click="submitTask" :loading="submitting">提交</el-button>
+            <el-button type="primary" size="small" @click="saveDraft" :loading="submitting">提交</el-button>
           </template>
           <!-- 编辑模式 -->
           <template v-if="type === 'edit'">
@@ -183,11 +248,25 @@ export default {
       row: {},
       show: false,
       type: 'add',
-      form: {},
+      form: {
+        inventoryTime: '',
+        inventoryUser: '',
+        sealChecker: '',
+        responsibleUser: '',
+        supervisor: '',
+        inventoryResult: 'all_normal', // all_normal, partial_abnormal
+        normalCount: 0,
+        deficitCount: 0,
+        deficitRemark: '',
+        excessCount: 0,
+        excessRemark: '',
+      },
       rules: {},
       options: {},
-      goodsList: [],
-      selectedGoods: [],
+      goodsListMap: {}, // 存储每个库房的明细列表, 键为 warehouseId
+      inventoryFormMap: {}, // 存储每个库房的盘存表单信息, 键为 warehouseId
+      activeTab: '', // 当前选中的库房 Tab
+      tabList: [], // 库房 Tab 列表
       warehouseList: [],
       activeWarehouses: [],
       statistics: { totalNormalCount: 0, totalDeficitCount: 0, totalExcessCount: 0 },
@@ -275,6 +354,10 @@ export default {
           }
         })
         this.form.id = inventory.id
+        // 单独回填库房名称（config.detail 中未定义此字段）
+        if (inventory.warehouseNames) {
+          this.$set(this.form, 'warehouseNames', inventory.warehouseNames)
+        }
         // 库房分组数据
         this.warehouseList = data.warehouseList || []
         if (this.warehouseList.length > 0) {
@@ -292,16 +375,58 @@ export default {
     },
     fetchGoodsList() {
       const type = this.form.selectType || 'all'
-      const warehouseId = type === 'selected' ? this.form.warehouseIds : undefined
-      if (type === 'selected' && (!warehouseId || warehouseId.length === 0)) {
+      const warehouseIds = type === 'selected' ? this.form.warehouseIds : undefined
+      if (type === 'selected' && (!warehouseIds || warehouseIds.length === 0)) {
         this.$message.warning('请先选择库房')
         return
       }
+      
       this.goodsLoading = true
-      getGoodsList({ type, warehouseId }).then(res => {
+      // 模拟或者根据后端新接口获取数据
+      // 假设后端返回的数据结构为 { code: 1, data: { [warehouseId]: [ goods1, goods2 ] } }
+      getGoodsList({ type, warehouseId: warehouseIds }).then(res => {
         if (res.code === 1) {
-          this.goodsList = res.data || []
-          this.$message.success(`获取到 ${this.goodsList.length} 条货物`)
+          const resData = res.data || {}
+          this.goodsListMap = {}
+          this.inventoryFormMap = {}
+          this.tabList = []
+          
+          let firstTab = ''
+          
+          // 如果是全部库房，或者特定库房，根据返回的键值构建 tabs
+          Object.keys(resData).forEach((wId, index) => {
+            const wName = resData[wId][0]?.warehouseName || `库房 ${wId}` // 尝试从明细中获取库名，或者回退
+            this.tabList.push({ id: wId, name: wName })
+            
+            // 初始化每个库房的表单数据
+            this.$set(this.inventoryFormMap, wId, {
+              inventoryTime: '',
+              inventoryUser: '',
+              sealChecker: '',
+              responsibleUser: '',
+              supervisor: '',
+              inventoryResult: 'all_normal',
+              normalCount: 0,
+              deficitCount: 0,
+              deficitRemark: '',
+              excessCount: 0,
+              excessRemark: '',
+            })
+            
+            // 初始化明细数据
+            this.$set(this.goodsListMap, wId, (resData[wId] || []).map(g => ({
+              ...g,
+              result: g.result || '0',
+              resultRemark: g.resultRemark || ''
+            })))
+            
+            if (index === 0) firstTab = wId
+          })
+          
+          this.activeTab = firstTab
+          
+          let totalCount = Object.values(this.goodsListMap).reduce((sum, list) => sum + list.length, 0)
+          this.$message.success(`获取到 ${totalCount} 条货物`)
         }
       }).finally(() => {
         this.goodsLoading = false
@@ -324,29 +449,47 @@ export default {
     async doSubmit(submitType) {
       this.$refs.form.validate(async valid => {
         if (!valid) return
-        const goodsToSubmit = this.form.selectType === 'all' ? this.selectedGoods : this.goodsList
-        if (!goodsToSubmit || goodsToSubmit.length === 0) {
-          this.$message.warning('请获取并选择货物清单')
+        
+        if (Object.keys(this.goodsListMap).length === 0) {
+          this.$message.warning('请先获取货物清单')
           return
         }
+
+        const wareList = []
+        
+        Object.keys(this.goodsListMap).forEach(wId => {
+          const wForm = this.inventoryFormMap[wId] || {}
+          const wGoods = this.goodsListMap[wId] || []
+          
+          wareList.push({
+            warehouseId: wId,
+            warehouseName: this.tabList.find(t => t.id === wId)?.name || '',
+            ...wForm,
+            goodsList: wGoods.map(g => ({
+              warehouseId: g.warehouseId,
+              warehouseName: g.warehouseName,
+              containerCode: g.containerCode,
+              goodCode: g.goodCode,
+              goodName: g.goodName,
+              productionUnit: g.productionUnit,
+              location: g.location,
+              sealCode1: g.sealCode1,
+              sealCode2: g.sealCode2,
+              storageTime: g.storageTime,
+              result: g.result || '0',
+              resultRemark: g.resultRemark || '',
+            }))
+          })
+        })
+
         let payload = {
           taskNum: this.form.taskNum,
           selectType: this.form.selectType,
           submitType,
           remark: this.form.remark,
-          goodsList: goodsToSubmit.map(g => ({
-            warehouseId: g.warehouseId,
-            warehouseName: g.warehouseName,
-            containerCode: g.containerCode,
-            goodCode: g.goodCode,
-            goodName: g.goodName,
-            productionUnit: g.productionUnit,
-            location: g.location,
-            sealCode1: g.sealCode1,
-            sealCode2: g.sealCode2,
-            storageTime: g.storageTime,
-          })),
+          wareList // 将按库房组织的表单和明细一起提交
         }
+
         if (this.form.selectType === 'selected') {
           const selectedNames = this.warehouseOptions
             .filter(w => (this.form.warehouseIds || []).includes(w.value))
@@ -354,7 +497,9 @@ export default {
           payload.warehouseIds = (this.form.warehouseIds || []).join(',')
           payload.warehouseNames = selectedNames.join(',')
         }
+
         if (beforeSubmit) payload = await beforeSubmit(payload)
+        
         this.submitting = true
         submitInventory(payload).then(res => {
           if (res.code === 1) {
@@ -469,12 +614,25 @@ export default {
     },
     resetForm() {
       this.row = {}
-      this.form = {}
+      this.form = {
+        taskNum: '',
+        selectType: 'all',
+        warehouseIds: [],
+        warehouseNames: '',
+        remark: '',
+        createUname: '',
+        createTime: '',
+      }
       this.goodsList = []
       this.selectedGoods = []
       this.warehouseList = []
       this.activeWarehouses = []
       this.statistics = { totalNormalCount: 0, totalDeficitCount: 0, totalExcessCount: 0 }
+      // 清空实物盘存清单数据
+      this.goodsListMap = {}
+      this.inventoryFormMap = {}
+      this.tabList = []
+      this.activeTab = ''
       this.initForm()
       this.$refs.form && this.$refs.form.resetFields()
     },
@@ -516,6 +674,145 @@ export default {
     }
   }
 }
+.inventory-container {
+  padding: 0 20px 20px;
+
+  // 可滚动的 tab 样式
+  ::v-deep .el-tabs {
+    .el-tabs__header {
+      margin-bottom: 0;
+    }
+    .el-tabs__nav-wrap {
+      overflow-x: auto;
+      overflow-y: hidden;
+      &::-webkit-scrollbar {
+        height: 6px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background-color: #c0c4cc;
+        border-radius: 3px;
+      }
+      &::-webkit-scrollbar-track {
+        background-color: #f5f7fa;
+      }
+    }
+    .el-tabs__nav-scroll {
+      display: inline-block;
+      white-space: nowrap;
+    }
+    .el-tabs__item {
+      display: inline-block;
+      float: none;
+    }
+  }
+  .inventory-header {
+    text-align: center;
+    margin-bottom: 15px;
+    padding: 10px 0;
+    background-color: #f5f7fa;
+    border-radius: 4px;
+    .inventory-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #303133;
+    }
+  }
+  
+  .inventory-form {
+    padding: 15px;
+    border: 1px solid #ebeef5;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    
+    .form-item {
+      display: flex;
+      align-items: center;
+      .label {
+        width: 80px;
+        color: #606266;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+      .text-value {
+        color: #303133;
+        font-size: 14px;
+      }
+      ::v-deep .el-date-editor {
+        width: 100%;
+      }
+    }
+    
+    .result-section {
+      border-top: 1px dashed #ebeef5;
+      padding-top: 15px;
+      
+      .result-title {
+        font-weight: bold;
+        color: #606266;
+        margin-bottom: 10px;
+      }
+      
+      .result-content-col {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+  }
+
+  .stat-col {
+    display: flex;
+    align-items: center;
+  }
+  .stat-item-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    .stat-label {
+      width: 60px;
+      color: #606266;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .flex-1 {
+      flex: 1;
+    }
+  }
+
+  .detail-section-wrap {
+    .detail-section-title {
+      font-weight: bold;
+      color: #303133;
+      margin-bottom: 10px;
+      padding-left: 10px;
+      border-left: 3px solid #409eff;
+    }
+  }
+}
+
+.mt-15 {
+  margin-top: 15px;
+}
+.mt-5 {
+  margin-top: 5px;
+}
+.ml-15 {
+  margin-left: 15px;
+}
+
+
+.result-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  .cell-remark {
+    margin-top: 4px;
+  }
+}
+
+.ml-10 {
+  margin-left: 10px;
+}
+
 .detail-section {
   padding: 0 20px 20px;
   .detail-header {

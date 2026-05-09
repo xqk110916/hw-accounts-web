@@ -70,15 +70,11 @@
           @mousedown.stop="startDrag($event, shelf)"
           @click.stop="$emit('shelf-select', shelf)"
         >
-          <!-- 货架头部：名称 + 占用比 -->
+          <!-- 货架头部：名称 + 占用比 + 元信息全在一行 -->
           <div class="shelf-head">
             <span class="shelf-name">{{ shelf.name }}</span>
+            <span class="shelf-meta-inline" v-if="shelf.layers && shelf.layers.length">{{ shelf.layers.length }}层</span>
             <span class="shelf-count" :class="getUsageClass(shelf)">{{ getFilledCount(shelf) }}/{{ getTotalCount(shelf) }}</span>
-          </div>
-          <!-- 货架元信息 -->
-          <div class="shelf-meta">
-            <span>{{ shelf.columnCode }}-{{ shelf.rowCode }}</span>
-            <span v-if="shelf.layers && shelf.layers.length">{{ shelf.layers.length }}层</span>
           </div>
           <!-- 老库：底座标识 -->
           <div v-if="isOldWarehouse(shelf)" class="layer-strip">
@@ -105,7 +101,7 @@
 
     <div class="grid-legend">
       <span><i class="free"></i>空闲</span>
-      <span><i class="used"></i>占用</span>
+      <!-- <span><i class="used"></i>占用</span> -->
       <span><i class="locked"></i>锁定</span>
       <span><i class="aisle"></i>过道</span>
       <span class="legend-hint">容器色块颜色代表入库时间</span>
@@ -262,7 +258,14 @@ export default {
       return { background: color, borderColor: color };
     },
     getContainerTitle(container) {
-      if (!container || !container.materialCode) return '空位';
+      if (!container) return '空位';
+      if (String(container.status) === '2') {
+        const parts = ['[锁定]'];
+        if (container.materialName || container.materialCode) parts.push(container.materialName || container.materialCode);
+        if (container.code) parts.push(container.code);
+        return parts.join(' ');
+      }
+      if (!container.materialCode) return '空位';
       const parts = [container.materialName || container.materialCode];
       if (container.code) parts.push(container.code);
       if (container.storageDate) parts.push(container.storageDate);
@@ -575,14 +578,14 @@ export default {
     background: linear-gradient(160deg, #1e5c60 0%, #2f6f73 100%);
     border: 2px solid #174d51;
     color: #fff;
-    padding: 5px 6px;
+    padding: 3px 4px;
     box-sizing: border-box;
     cursor: pointer;
     overflow: hidden;
     transition: box-shadow .15s, border-color .15s, transform .1s;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
 
     &:hover { box-shadow: 0 0 0 2px rgba(100,210,220,.4); transform: scale(1.01); z-index: 5; }
     &.selected { border-color: #f2b84b; box-shadow: 0 0 0 3px rgba(242,184,75,.35); }
@@ -591,25 +594,34 @@ export default {
 
     .shelf-head {
       display: flex;
-      justify-content: space-between;
       align-items: center;
       gap: 4px;
+      line-height: 1.3;
 
       .shelf-name {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 700;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        flex: 1;
+      }
+
+      .shelf-meta-inline {
+        font-size: 14px;
+        color: rgba(255,255,255,.65);
+        white-space: nowrap;
+        flex-shrink: 0;
       }
 
       .shelf-count {
-        font-size: 11px;
+        font-size: 14px;
         font-weight: 600;
         white-space: nowrap;
-        padding: 1px 4px;
-        border-radius: 3px;
+        padding: 0 3px;
+        border-radius: 2px;
         background: rgba(0,0,0,.2);
+        flex-shrink: 0;
         &.usage-high { color: #ff7875; }
         &.usage-mid { color: #ffd666; }
         &.usage-low { color: #95de64; }
@@ -617,48 +629,44 @@ export default {
     }
 
     .shelf-meta {
-      font-size: 10px;
-      color: rgba(255,255,255,.65);
-      display: flex;
-      gap: 6px;
-      white-space: nowrap;
+      display: none;
     }
 
     .layers-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 2px;
-      margin-top: 2px;
-      overflow: hidden;
+      gap: 5px;
+      margin-top: 4px;
+      overflow: visible;
       align-content: flex-start;
     }
 
     .container-dot {
-      width: 11px;
-      height: 11px;
+      width: 25px;
+      height: 25px;
       border: 1px solid rgba(255,255,255,.5);
-      border-radius: 2px;
+      border-radius: 3px;
       padding: 0;
       cursor: pointer;
       transition: transform .1s, box-shadow .1s;
       flex-shrink: 0;
 
-      &:hover { transform: scale(1.3); box-shadow: 0 0 4px rgba(255,255,255,.5); z-index: 2; }
-      &.free { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.25); cursor: default; }
+      &:hover { transform: scale(1.15); box-shadow: 0 0 6px rgba(255,255,255,.5); z-index: 2; }
+      &.free { background: #fff; border-color: rgba(255,255,255,.4); cursor: default; }
       &.used { background: #f2b84b; border-color: #d4a017; }
-      &.locked { background: #d94f4f; border-color: #b03030; }
+      &.locked { background: #d94f4f; border-color: #b03030; cursor: pointer; }
     }
 
     .layer-strip {
       display: flex;
       flex-wrap: wrap;
-      gap: 3px;
-      margin-top: 4px;
+      gap: 2px;
+      margin-top: 2px;
     }
 
     .base-label {
-      font-size: 10px;
-      color: rgba(255,255,255,.65);
+      font-size: 9px;
+      color: rgba(255,255,255,.55);
       font-style: italic;
     }
   }

@@ -25,7 +25,7 @@ export const config = {
     { label: '盘存时间', prop: 'inventoryTime' },
     { label: '库房数量', prop: 'warehouseCount' },
     { label: '库房名称', prop: 'warehouseNames' },
-    { label: '状态', prop: 'dataStatus', type: 'slot' },
+    { label: '状态', prop: 'status', type: 'slot' },
     { label: '创建时间', prop: 'createTime' },
   ],
   search: [

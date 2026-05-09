@@ -32,9 +32,9 @@
             >
               <template slot-scope="scope">
                 <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'dataStatus'">
-                    <span :class="['status-tag', getDataStatusClass(scope.row.dataStatus)]">
-                      {{ getDataStatusText(scope.row.dataStatus) }}
+                  <span v-if="item.prop === 'status'">
+                    <span :class="['status-tag', getDataStatusClass(scope.row.status)]">
+                      {{ getDataStatusText(scope.row.status) }}
                     </span>
                     <span v-if="shouldShowAuditTag(scope.row)" :class="['status-tag', 'audit-tag', getAuditStatusClass(scope.row.auditStatus)]" style="margin-left: 4px;">
                       {{ getAuditStatusText(scope.row.auditStatus) }}
@@ -353,18 +353,17 @@ export default {
     },
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
-      const dataStatus = Number(row.dataStatus)
+      const dataStatus = Number(row.status)
 
       if (dataStatus === 4) {
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
+        btns.push({ label: '录入结果', type: 'text', execute: 'inputResult' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 0) {
+        btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '审核', type: 'text', execute: 'audit' })
       } else if (dataStatus === 1) {
-        btns.push({ label: '导出清单', type: 'text', execute: 'exportList' })
-        btns.push({ label: '导出到PAD', type: 'text', execute: 'exportToPad' })
-        btns.push({ label: '录入结果', type: 'text', execute: 'inputResult' })
-        btns.push({ label: '标记异常', type: 'text', execute: 'markError' })
+        // 审核通过，只显示详情
       } else if (dataStatus === 2) {
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
