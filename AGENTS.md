@@ -25,3 +25,19 @@ When generating a new page, component, or standard List/CRUD interface:
 - **Framework**: Vue 2.7.14 (supports Composition API style)
 - **UI & State**: Element UI 2.15.9, Vuex 3.6.0, Vue Router 3.4.9
 - **Build Tool**: Vue CLI / Webpack 5
+
+## Dialog 组件规范
+
+- **独立文件**：生成页面时，如果需要添加 Dialog（对话框/弹窗），禁止将 Dialog 代码直接写在页面组件内。
+- **组件目录**：Dialog 必须作为独立组件创建在当前模块的 `components` 文件夹下。
+- **命名约定**：Dialog 组件文件名应以 `Dialog` 结尾，如 `EditDialog.vue`、`DetailDialog.vue`。
+- **引入使用**：在页面组件中通过 `import` 引入 Dialog 组件并在模板中使用。
+- **示例结构**：
+  ```
+  src/views/<module>/
+  ├── index.vue              # 页面主组件
+  ├── components/
+  │   ├── EditDialog.vue     # 编辑弹窗
+  │   └── DetailDialog.vue   # 详情弹窗
+  └── ...
+  ```

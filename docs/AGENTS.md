@@ -55,3 +55,19 @@
 - Gemini：读取根目录 `GEMINI.md`，并继续读取本文档。
 
 三类 Agent 的行为应保持一致：先读规则和背景，再分析或修改；如新增架构、路由、菜单或模块边界，必须同步更新文档。
+
+## 五、Dialog 组件规范
+
+- **独立文件**：生成页面时，如果需要添加 Dialog（对话框/弹窗），禁止将 Dialog 代码直接写在页面组件内。
+- **组件目录**：Dialog 必须作为独立组件创建在当前模块的 `components` 文件夹下。
+- **命名约定**：Dialog 组件文件名应以 `Dialog` 结尾，如 `EditDialog.vue`、`DetailDialog.vue`。
+- **引入使用**：在页面组件中通过 `import` 引入 Dialog 组件并在模板中使用。
+- **示例结构**：
+  ```
+  src/views/<module>/
+  ├── index.vue              # 页面主组件
+  ├── components/
+  │   ├── EditDialog.vue     # 编辑弹窗
+  │   └── DetailDialog.vue   # 详情弹窗
+  └── ...
+  ```
