@@ -8,7 +8,7 @@ Before starting any feature development, analysis, debugging, UI generation, rou
 3. `docs/SYSTEM_MODULES_MAP.md`
 4. `.agent/rules/project_rules.md`
 
-If the target page or any parent folder contains `README.md` or `README.MD`, you MUST read it before making changes or conclusions. This is mandatory for business background and page-specific constraints.
+If the task targets a page, first locate the page module by finding its `index.vue` or the nearest page directory under `src/views`. If that page directory, its parent module directory, or another direct child directory under `src/views` that owns the target page contains `README.md` or `README.MD`, you MUST read it before making changes or conclusions. The README that should be updated for page/module behavior changes is the README in that same `src/views` page/module location.
 
 When the user provides no extra context, default to reading `/docs` rules and the target module README before taking action.
 
@@ -16,10 +16,10 @@ Always refer back to these documents and update them if you introduce new archit
 
 ## Menu Registration & Architecture Rule
 
-When generating a new page, component, or standard List/CRUD interface:
+When generating a new page, component, route, menu, or standard List/CRUD interface:
 1. **Understand Context**: Verify existing routing and business scopes in `docs/SYSTEM_MODULES_MAP.md`.
 2. **Synchronize Documentation**: If you add a new route, update `menu.json`, `docs/SYSTEM_MODULES_MAP.md`, and the relevant module README to reflect the new feature's place in the ecosystem.
-3. **Manual Skill Trigger**: Do not automatically use the `Menu Management Skill` (`.agent/skills/menu_management/SKILL.md`). Only run it when the user explicitly asks to register menus/permissions or explicitly requests this skill.
+3. **Manual Skill Trigger Only**: Do not inspect, evaluate, or run the `Menu Management Skill` (`.agent/skills/menu_management/SKILL.md`) as part of the default workflow. Only consider or trigger it when the user mentions menu registration, permission registration, or explicitly names this skill in the current conversation.
 
 ## Tech Stack Reminder
 - **Framework**: Vue 2.7.14 (supports Composition API style)

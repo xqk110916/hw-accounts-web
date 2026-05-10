@@ -9,7 +9,7 @@ Before starting any feature development, analysis, debugging, UI generation, rou
 3. `docs/SYSTEM_MODULES_MAP.md`
 4. `.agent/rules/project_rules.md`
 
-If the target page or any parent folder contains `README.md` or `README.MD`, you MUST read it before making changes or conclusions.
+If the task targets a page, first locate the page module by finding its `index.vue` or the nearest page directory under `src/views`. If that page directory, its parent module directory, or another direct child directory under `src/views` that owns the target page contains `README.md` or `README.MD`, you MUST read it before making changes or conclusions. The README that should be updated for page/module behavior changes is the README in that same `src/views` page/module location.
 
 Always update the related docs when introducing architectural changes, new routes, menus, or module-level behavior.
 
@@ -19,7 +19,7 @@ When generating a new page, component, route, menu, or standard List/CRUD interf
 
 1. Verify the existing routing and business scope in `docs/SYSTEM_MODULES_MAP.md`.
 2. Update `menu.json`, `docs/SYSTEM_MODULES_MAP.md`, and the relevant module README.
-3. Do not automatically use the `Menu Management Skill` located at `.agent/skills/menu_management/SKILL.md`. Only run it when the user explicitly asks to register menus/permissions or explicitly requests this skill.
+3. Do not inspect, evaluate, or run the `Menu Management Skill` located at `.agent/skills/menu_management/SKILL.md` as part of the default workflow. Only consider or trigger it when the user mentions menu registration, permission registration, or explicitly names this skill in the current conversation.
 
 ## Tech Stack Reminder
 
