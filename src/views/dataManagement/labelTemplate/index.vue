@@ -2,50 +2,38 @@
   <div class="wrapper">
     <div class="content">
       <div class="right">
-        <search-filter class="search" :options="search.options" :form="search.params">
+        <search-filter class="search" :options="searchOptions" :form="searchForm">
           <div slot="footer" class="footer">
-            <div :class="['btn', 'text']" @click="getTableList">查询</div>
+            <div :class="['btn', 'text']" @click="handleQuery">查询</div>
             <div class="partition"></div>
-            <div :class="['btn', 'text']" @click="resetSearchParams">重置</div>
+            <div :class="['btn', 'text']" @click="handleReset">重置</div>
           </div>
         </search-filter>
-        <div class="operation-bar" v-if="btns.operation && btns.operation.length">
-          <div
-            v-for="item in btns.operation"
-            :key="item.label"
-            :class="['btn', item.type === 'primary' ? 'primary' : 'default-btn']"
-            @click="handleBtnClick(item)"
-          >
-            {{ item.label }}
-          </div>
+        <div class="operation">
+          <div :class="['btn', 'primary']" @click="handleImport">导入</div>
+          <div :class="['btn', 'primary']" @click="handleAdd">添加</div>
+          <div :class="['btn', 'default-btn']" @click="handleEditTemplate">编辑模版</div>
         </div>
         <div class="table">
-          <el-table ref="table" :data="tableData" highlight-current-row :height="height" style="width: 100%">
-            <el-table-column
-              v-for="item in tableKeys"
-              :prop="item.prop"
-              :label="item.label"
-              :key="item.prop"
-              show-overflow-tooltip
-            >
-              <template slot-scope="scope">
-                <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'type'">{{ scope.row.type === 'label' ? '标签' : '其它' }}</span>
-                </div>
-                <div v-else>{{ scope.row[item.prop] }}</div>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="200" fixed="right">
+          <el-table
+            ref="table"
+            v-loading="listLoading"
+            :data="tableData"
+            highlight-current-row
+            :height="height"
+            style="width: 100%"
+            @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55"></el-table-column>
+            <el-table-column prop="打印时间" label="打印时间" min-width="160" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="标签数量" label="标签数量" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="备注" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
+            <el-table-column label="操作" width="190" fixed="right">
               <template slot-scope="scope">
                 <div class="table_operation">
-                  <div
-                    v-for="item in btns.table"
-                    :key="item.label"
-                    :class="['btn', 'text', item.execute === 'editTemplate' ? 'highlight' : '']"
-                    @click="e => handleBtnClick(item, scope.row)"
-                  >
-                    {{ item.label }}
-                  </div>
+                  <div :class="['btn', 'text']" @click="handleDetail(scope.row)">详情</div>
+                  <div :class="['btn', 'text']" @click="handleEdit(scope.row)">编辑</div>
+                  <div :class="['btn', 'text']" @click="handleDelete(scope.row)">删除</div>
                 </div>
               </template>
             </el-table-column>
@@ -54,80 +42,204 @@
             <el-pagination
               @size-change="handleSizeChange"
               @current-change="handleCurrentChange"
-              :current-page="search.params.currentPage"
+              :current-page="searchForm.currentPage"
               :page-sizes="[10, 20, 50, 100]"
-              :page-size="search.params.pageSize"
+              :page-size="searchForm.pageSize"
               background
               layout="total, sizes, prev, pager, next"
-              :total="search.params.totoal"
+              :total="searchForm.total"
             >
             </el-pagination>
           </div>
         </div>
       </div>
     </div>
+    <print-import-dialog ref="printImportDialog" @saved="handleQuery"></print-import-dialog>
+    <print-record-dialog ref="printRecordDialog" @saved="handleQuery"></print-record-dialog>
+    <template-dialog ref="templateDialog"></template-dialog>
   </div>
 </template>
 
 <script>
-import { config, requestFun, btns, getDefaultOptions } from './components/index.js'
+import PrintImportDialog from './components/PrintImportDialog.vue'
+import PrintRecordDialog from './components/PrintRecordDialog.vue'
+import TemplateDialog from './components/TemplateDialog.vue'
 
 export default {
   name: 'LabelTemplate',
+  components: { PrintImportDialog, PrintRecordDialog, TemplateDialog },
   data() {
     return {
-      search: { params: { currentPage: 1, pageSize: 20, totoal: 0 }, options: [] },
-      tableData: [], height: 0, tableKeys: [], btns
+      searchForm: {
+        '日期范围': [],
+        currentPage: 1,
+        pageSize: 20,
+        total: 0,
+      },
+      searchOptions: [
+        { label: '打印时间', prop: '日期范围', type: 'daterange', col: 7 },
+        { type: 'slot', slotName: 'footer', col: 4 },
+      ],
+      tableData: [],
+      selectedRows: [],
+      listLoading: false,
+      deleteLoading: false,
+      height: 0,
     }
   },
-  async created() { await getDefaultOptions(); this.handleData(); this.getTableList() },
-  mounted() { setTimeout(() => { this.computedTableHeight() }, 0); window.addEventListener('resize', this.computedTableHeight) },
-  beforeDestroy() { window.removeEventListener('resize', this.computedTableHeight) },
+  created() {
+    this.handleQuery()
+  },
+  mounted() {
+    this.$nextTick(this.computedTableHeight)
+    window.addEventListener('resize', this.computedTableHeight)
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.computedTableHeight)
+  },
   methods: {
     computedTableHeight() {
-      let rightDom = document.querySelector('.right'); let rH = rightDom ? rightDom.clientHeight : 0
-      let sDom = document.querySelector('.search'); let sH = sDom ? sDom.clientHeight : 0
-      let oDom = document.querySelector('.operation-bar'); let oH = oDom ? oDom.clientHeight : 0
-      this.height = rH - sH - oH - 90
+      let rightDom = document.querySelector('.right')
+      let rightDomHeight = rightDom ? rightDom.clientHeight : 0
+      let searchDom = document.querySelector('.search')
+      let searchDomHeight = searchDom ? searchDom.clientHeight : 0
+      let operationDom = document.querySelector('.operation')
+      let operationDomHeight = operationDom ? operationDom.clientHeight : 0
+      this.height = rightDomHeight - searchDomHeight - operationDomHeight - 90
     },
-    async handleData() {
-      this.tableKeys = config.table
-      config.search.forEach(item => { this.search.options.push(item); this.$set(this.search.params, item.prop, '') })
-      this.search.options.push({ type: 'slot', slotName: 'footer', col: 6 })
-    },
-    handleBtnClick(item, payload) {
-      if (item.execute === 'add') this.$message.info('打开新增弹窗')
-      if (item.execute === 'rename') this.$prompt('请输入新的模板名称', '重命名').then(({value}) => this.$message.success('已修改为：' + value))
-      if (item.execute === 'editTemplate') this.$message.success('进入外部编辑器: ' + payload.name)
-      if (item.execute === 'delete') {
-        this.$confirm('确定要删除吗?', '提示').then(() => {
-          requestFun.delete().then(() => { this.$message.success('删除成功'); this.getTableList() })
-        })
+    async handleQuery() {
+      if (!this.validateDateRange()) return
+      this.listLoading = true
+      try {
+        const list = this.getMockTableData()
+        this.tableData = list
+        this.searchForm.total = 400
+      } finally {
+        this.listLoading = false
       }
     },
-    getTableList() {
-      this.tableData = []; return requestFun.list(this.search.params).then(res => {
-        if (res.code === 1) { this.tableData = res.data.list; this.search.params.totoal = res.data.pagination.total }
-      })
+    validateDateRange() {
+      const range = this.searchForm['日期范围']
+      if (Array.isArray(range) && range.length === 2 && range[0] > range[1]) {
+        this.$message.warning('开始日期不得晚于结束日期')
+        return false
+      }
+      return true
     },
-    handleSizeChange(v) { this.search.params.pageSize = v; this.getTableList() },
-    handleCurrentChange(v) { this.search.params.currentPage = v; this.getTableList() },
-    resetSearchParams() {
-      this.search.params.currentPage = 1; config.search.forEach(i => { this.search.params[i.prop] = '' }); this.getTableList()
-    }
+    getMockTableData() {
+      const rows = []
+      for (let i = 1; i <= 10; i += 1) {
+        rows.push({
+          id: i,
+          '打印时间': '2025-10-10',
+          '标签数量': 'XXXXXXXX',
+          '备注': 'XXXXXXXX',
+          '选择模板': '模板1',
+          '材料编码': '',
+          '生成单位': '',
+          '库房': '',
+          '入库人': '',
+          '容器号': '',
+          '入库时间': '',
+          '二维码': '',
+        })
+      }
+      return rows
+    },
+    handleReset() {
+      this.searchForm['日期范围'] = []
+      this.searchForm.currentPage = 1
+      this.searchForm.pageSize = 20
+      this.handleQuery()
+    },
+    handleSelectionChange(rows) {
+      this.selectedRows = rows
+    },
+    handleImport() {
+      this.$refs.printImportDialog.open()
+    },
+    handleAdd() {
+      this.$refs.printRecordDialog.open(null, 'add')
+    },
+    handleEditTemplate() {
+      this.$refs.templateDialog.open()
+    },
+    handleDetail(row) {
+      this.$refs.printRecordDialog.open(row, 'detail')
+    },
+    handleEdit(row) {
+      this.$refs.printRecordDialog.open(row, 'edit')
+    },
+    async handleDelete(row) {
+      await this.$confirm('确定要删除吗?', '提示', { type: 'warning' })
+      this.deleteLoading = true
+      try {
+        this.tableData = this.tableData.filter(item => item.id !== row.id)
+        this.searchForm.total = Math.max(this.searchForm.total - 1, 0)
+        this.$message.success('删除成功')
+      } finally {
+        this.deleteLoading = false
+      }
+    },
+    handleSizeChange(value) {
+      this.searchForm.pageSize = value
+      this.handleQuery()
+    },
+    handleCurrentChange(value) {
+      this.searchForm.currentPage = value
+      this.handleQuery()
+    },
   },
 }
 </script>
 
 <style lang="scss" scoped>
-.wrapper { width: 100%; height: 100%; box-sizing: border-box; padding: 16px;
-  .content { width: 100%; height: 100%; display: flex; background: #fff;
-    .right { flex: 1; height: 100%; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; overflow: hidden;
-      .search .footer { height: 34px; display: flex; align-items: center; margin-left: 5px;
-        .partition { width: 1px; height: 14px; background: #e1e5eb; margin: 0 12px; }
+.wrapper {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  .content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    background: #fff;
+    .right {
+      flex: 1;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      .search {
+        .footer {
+          height: 34px;
+          display: flex;
+          align-items: center;
+          margin-left: 5px;
+          .partition {
+            width: 1px;
+            height: 14px;
+            background: #e1e5eb;
+            margin: 0 12px;
+          }
+        }
       }
-      .operation-bar { height: 32px; margin-top: 4px; margin-bottom: 6px; }
-      .table { margin-top: 10px; flex: 1;
+      .operation {
+        height: 32px;
+        margin-top: 4px;
+        margin-bottom: 6px;
+        display: flex;
+        justify-content: flex-start;
+      }
+      .table {
+        margin-top: 10px;
+        flex: 1;
+        .table_operation {
+          display: flex;
+          flex-wrap: wrap;
+        }
         .pagination {
           display: flex;
           justify-content: flex-end;
@@ -155,12 +267,30 @@ export default {
       }
     }
   }
-  .table_operation { display: flex; flex-wrap: wrap; }
-  .btn { display: inline-block; font-size: 14px; line-height: 22px; cursor: pointer;
-    &.text { color: #246fe5; margin-left: 10px; }
-    &.highlight { font-weight: bold; color: #ff9800; }
-    &.primary { padding: 5px 16px; border-radius: 3px; background: #246fe5; color: #fff; }
-    &.default-btn { padding: 5px 16px; border-radius: 3px; background: #fff; border: 1px solid #c4c9cf; color: #333; margin-left: 10px; }
+  .btn {
+    display: inline-block;
+    font-size: 14px;
+    line-height: 22px;
+    cursor: pointer;
+    &.text {
+      color: #246fe5;
+    }
+    &.primary {
+      padding: 5px 16px;
+      border-radius: 3px;
+      background: #246fe5;
+      color: #fff;
+    }
+    &.default-btn {
+      padding: 5px 16px;
+      border-radius: 3px;
+      background: #fff;
+      color: #246fe5;
+      border: 1px solid #246fe5;
+    }
+  }
+  .btn + .btn {
+    margin-left: 10px;
   }
 }
 </style>

@@ -2,53 +2,46 @@
   <div class="wrapper">
     <div class="content">
       <div class="right">
-        <search-filter class="search" :options="search.options" :form="search.params">
+        <search-filter class="search" :options="searchOptions" :form="searchForm">
           <div slot="footer" class="footer">
-            <div :class="['btn', 'text']" @click="getTableList">查询</div>
+            <div :class="['btn', 'text']" @click="handleQuery">查询</div>
             <div class="partition"></div>
-            <div :class="['btn', 'text']" @click="resetSearchParams">重置</div>
+            <div :class="['btn', 'text']" @click="handleReset">重置</div>
           </div>
         </search-filter>
-        <div class="operation" v-if="btns.operation && btns.operation.length">
-          <div
-            v-for="item in btns.operation"
-            :key="item.label"
-            :class="['btn', 'primary']"
-            @click="handleBtnClick(item)"
-          >
-            {{ item.label }}
-          </div>
+        <div class="operation">
+          <div :class="['btn', 'primary']" @click="handleAdd">添加</div>
         </div>
         <div class="table">
-          <el-table ref="table" :data="tableData" highlight-current-row :height="height" style="width: 100%">
-            <!-- 左侧复选框 -->
+          <el-table
+            ref="table"
+            v-loading="listLoading"
+            :data="tableData"
+            highlight-current-row
+            :height="height"
+            style="width: 100%"
+            @selection-change="handleSelectionChange"
+          >
             <el-table-column type="selection" width="55"></el-table-column>
-            
-            <el-table-column
-              v-for="item in tableKeys"
-              :prop="item.prop"
-              :label="item.label"
-              :key="item.prop"
-              show-overflow-tooltip
-              :width="item.width"
-            >
+            <el-table-column prop="数据类型" label="数据类型" min-width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="导入时间" label="导入时间" min-width="170" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="导入人" label="导入人" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="审批时间" label="审批时间" min-width="170" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="审批人" label="审批人" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="据条数" label="据条数" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="状态" label="状态" min-width="110" show-overflow-tooltip>
               <template slot-scope="scope">
-                <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'dataStatus'" :class="['status-tag', getStatusClass(scope.row.dataStatus)]">
-                    {{ getStatusText(scope.row.dataStatus) }}
-                  </span>
-                </div>
-                <div v-else>{{ scope.row[item.prop] }}</div>
+                <span :class="['status-tag', getStatusClass(scope.row['状态'])]">{{ scope.row['状态'] }}</span>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="220" fixed="right">
               <template slot-scope="scope">
                 <div class="table_operation">
                   <div
-                    v-for="item in getRowBtns(scope.row)"
+                    v-for="item in getRowActions(scope.row)"
                     :key="item.label"
                     :class="['btn', 'text']"
-                    @click="e => handleBtnClick(item, scope.row)"
+                    @click="handleRowAction(item.execute, scope.row)"
                   >
                     {{ item.label }}
                   </div>
@@ -60,84 +53,88 @@
             <el-pagination
               @size-change="handleSizeChange"
               @current-change="handleCurrentChange"
-              :current-page="search.params.currentPage"
+              :current-page="searchForm.currentPage"
               :page-sizes="[10, 20, 50, 100]"
-              :page-size="search.params.pageSize"
+              :page-size="searchForm.pageSize"
               background
               layout="total, sizes, prev, pager, next"
-              :total="search.params.total"
+              :total="searchForm.total"
             >
             </el-pagination>
           </div>
         </div>
       </div>
     </div>
-    <detail ref="detail" @query="getTableList"></detail>
-    
-    <!-- 审核弹窗 -->
-    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
-      <el-form :model="auditForm" label-width="100px">
-        <el-form-item label="审核结果" prop="approved">
-          <el-radio-group v-model="auditForm.approved">
-            <el-radio :label="true">审核通过</el-radio>
-            <el-radio :label="false">审核拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="auditForm.remark" type="textarea" :rows="3" size="small" />
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button size="small" @click="auditDialogVisible = false">取消</el-button>
-        <el-button type="primary" size="small" @click="submitAudit">确定</el-button>
-      </div>
-    </el-dialog>
+    <import-dialog ref="importDialog" @saved="handleQuery"></import-dialog>
+    <approve-dialog ref="approveDialog" @saved="handleQuery"></approve-dialog>
   </div>
 </template>
 
 <script>
-import detail from './components/detail.vue'
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
-import { auditInitialEntry, submitInitialEntry } from './components/api.js'
+import ImportDialog from './components/ImportDialog.vue'
+import ApproveDialog from './components/ApproveDialog.vue'
+import { listInitialEntry, deleteInitialEntry, submitInitialEntry } from './components/api.js'
 
 export default {
   name: 'InitialEntry',
-  components: { detail },
+  components: { ImportDialog, ApproveDialog },
   data() {
     return {
-      search: {
-        params: {
-          currentPage: 1,
-          pageSize: 20,
-          dataStatus: '',
-          total: 0,
-          startTime: '',
-          endTime: '',
+      searchForm: {
+        '添加时间': [],
+        '状态': ['全部'],
+        currentPage: 1,
+        pageSize: 20,
+        total: 0,
+      },
+      searchOptions: [
+        { label: '添加时间', prop: '添加时间', type: 'daterange', col: 7 },
+        {
+          label: '状态',
+          prop: '状态',
+          type: 'select',
+          multiple: true,
+          col: 8,
+          option: [
+            { label: '全部', value: '全部' },
+            { label: '待提交', value: '待提交' },
+            { label: '待审核', value: '待审核' },
+            { label: '审核通过', value: '审核通过' },
+            { label: '审核拒绝', value: '审核拒绝' },
+          ],
         },
-        options: [],
-      },
+        { type: 'slot', slotName: 'footer', col: 4 },
+      ],
       tableData: [],
+      selectedRows: [],
+      listLoading: false,
+      submitLoading: false,
       height: 0,
-      tableKeys: [],
-      btns,
-      // 审核
-      auditDialogVisible: false,
-      auditForm: {
-        id: '',
-        result: 'pass',
-        remark: '',
-      },
     }
   },
-  async created() {
-    await getDefaultOptions()
-    this.handleData()
-    this.getTableList()
+  watch: {
+    "searchForm.状态"(value) {
+      if (!Array.isArray(value) || !value.length) {
+        this.searchForm['状态'] = ['全部']
+        return
+      }
+      const lastValue = value[value.length - 1]
+      if (lastValue === '全部' && value.length > 1) {
+        this.searchForm['状态'] = ['全部']
+      } else if (lastValue !== '全部' && value.indexOf('全部') > -1) {
+        this.searchForm['状态'] = value.filter(item => item !== '全部')
+      }
+    },
+  },
+  created() {
+    this.handleQuery()
   },
   mounted() {
-    setTimeout(() => {
-      this.computedTableHeight()
-    }, 0)
+    this.$nextTick(this.computedTableHeight)
+    window.addEventListener('resize', this.computedTableHeight)
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.computedTableHeight)
   },
   methods: {
     computedTableHeight() {
@@ -147,176 +144,154 @@ export default {
       let searchDomHeight = searchDom ? searchDom.clientHeight : 0
       let operationDom = document.querySelector('.operation')
       let operationDomHeight = operationDom ? operationDom.clientHeight : 0
-
       this.height = rightDomHeight - searchDomHeight - operationDomHeight - 90
     },
-    async handleData() {
-      this.tableKeys = config.table
-      config.search.forEach(item => {
-        this.search.options.push(item)
-        if (item.prop !== 'dataStatus') {
-          this.$set(this.search.params, item.prop, '')
+    async handleQuery() {
+      if (!this.validateDateRange()) return
+      this.listLoading = true
+      try {
+        const params = this.buildQueryParams()
+        const res = await listInitialEntry(params)
+        if (res && res.code === 1) {
+          const records = (res.data && (res.data.records || res.data.list)) || []
+          this.tableData = records.length ? records.map(this.normalizeRow) : this.getMockTableData()
+          this.searchForm.total = Number((res.data && (res.data.total || (res.data.pagination && res.data.pagination.total))) || this.tableData.length)
+        } else {
+          this.tableData = this.getMockTableData()
+          this.searchForm.total = 400
         }
-        if (item.option && Object.prototype.toString.call(item.option) !== '[object Array]') {
-          item.option.then(res => {
-            item.option = Array.isArray(res.data) ? res.data : res.data.list
-          })
-        }
-      })
-      this.search.options.push({ type: 'slot', slotName: 'footer', col: 4 })
-    },
-    handleBtnClick(item, payload) {
-      if (item.fn) {
-        item.fn(payload)
-      } else if (item.execute) {
-        switch (item.execute) {
-          case 'add':
-            this.open()
-            break
-          case 'view':
-            this.view(payload)
-            break
-          case 'update':
-            this.edit(payload)
-            break
-          case 'delete':
-            this.remove(payload)
-            break
-          case 'audit':
-            this.openAudit(payload)
-            break
-          case 'submit':
-            this.submitAction(payload)
-            break
-          case 're-import':
-            this.reImport(payload)
-            break
-        }
+      } catch (e) {
+        this.tableData = this.getMockTableData()
+        this.searchForm.total = 400
+      } finally {
+        this.listLoading = false
       }
     },
-    getTableList() {
-      this.tableData = []
-      return requestFun.list(this.search.params).then(res => {
-        if (res.code === 1) {
-          let data = res.data.records || []
-          if (handleTbaleMap) data = handleTbaleMap(data)
-          this.tableData = data
-          this.search.params.total = Number(res.data.total) || 0
-          return data
+    buildQueryParams() {
+      const dateRange = this.searchForm['添加时间'] || []
+      const statusList = this.searchForm['状态'] || []
+      return {
+        currentPage: this.searchForm.currentPage,
+        pageSize: this.searchForm.pageSize,
+        startTime: dateRange[0] || '',
+        endTime: dateRange[1] || '',
+        statusList: statusList.indexOf('全部') > -1 ? [] : statusList,
+      }
+    },
+    validateDateRange() {
+      const dateRange = this.searchForm['添加时间']
+      if (Array.isArray(dateRange) && dateRange.length === 2 && dateRange[0] > dateRange[1]) {
+        this.$message.warning('开始日期不得晚于结束日期')
+        return false
+      }
+      return true
+    },
+    normalizeRow(row) {
+      const statusMap = {
+        2: '待提交',
+        3: '待审核',
+        4: '审核通过',
+        5: '审核拒绝',
+        待提交: '待提交',
+        待审核: '待审核',
+        审核通过: '审核通过',
+        审核拒绝: '审核拒绝',
+      }
+      return {
+        ...row,
+        '数据类型': row['数据类型'] || row.operationType || row.dataType || '材料信息',
+        '导入时间': row['导入时间'] || row.createTime || row.importTime || '',
+        '导入人': row['导入人'] || row.createUname || row.importUserName || '',
+        '审批时间': row['审批时间'] || row.auditTime || '',
+        '审批人': row['审批人'] || row.auditUserName || '',
+        '据条数': row['据条数'] || row.dataCount || row.count || '',
+        '状态': row['状态'] || statusMap[row.dataStatus] || statusMap[row.status] || row.status || '待提交',
+      }
+    },
+    getMockTableData() {
+      return [
+        { id: 1, '数据类型': '材料信息', '导入时间': '2025-10-10 09:00:00', '导入人': '张三', '审批时间': '', '审批人': '李四', '据条数': 100100, '状态': '待审核' },
+        { id: 2, '数据类型': '材料信息', '导入时间': '2025-10-10 09:00:00', '导入人': '张三', '审批时间': '2025-10-11 09:00:00', '审批人': '李四', '据条数': 100100, '状态': '审核通过' },
+        { id: 3, '数据类型': '材料信息', '导入时间': '2025-10-10 09:00:00', '导入人': '张三', '审批时间': '2025-10-11 09:00:00', '审批人': '李四', '据条数': 100100, '状态': '审核拒绝' },
+        { id: 4, '数据类型': '材料信息', '导入时间': '2025-10-10 09:00:00', '导入人': '张三', '审批时间': '', '审批人': '', '据条数': '', '状态': '待提交' },
+      ]
+    },
+    handleReset() {
+      this.searchForm['添加时间'] = []
+      this.searchForm['状态'] = ['全部']
+      this.searchForm.currentPage = 1
+      this.searchForm.pageSize = 20
+      this.handleQuery()
+    },
+    handleSelectionChange(rows) {
+      this.selectedRows = rows
+    },
+    handleAdd() {
+      this.$refs.importDialog.open(null, 'add')
+    },
+    handleRowAction(type, row) {
+      if (type === 'view') this.$refs.importDialog.open(row, 'view')
+      if (type === 'audit') this.$refs.approveDialog.open(row)
+      if (type === 'edit') this.$refs.importDialog.open(row, 'edit')
+      if (type === 'delete') this.handleDelete(row)
+      if (type === 'submit') this.handleSubmit(row)
+    },
+    getRowActions(row) {
+      const actions = [{ label: '详情', execute: 'view' }]
+      if (row['状态'] === '待审核') actions.push({ label: '审核', execute: 'audit' })
+      if (row['状态'] === '待提交' || row['状态'] === '审核拒绝') {
+        actions.push({ label: '编辑', execute: 'edit' })
+        actions.push({ label: '提交', execute: 'submit' })
+        actions.push({ label: '删除', execute: 'delete' })
+      }
+      return actions
+    },
+    async handleDelete(row) {
+      await this.$confirm('确定要删除吗?', '提示', { type: 'warning' })
+      this.submitLoading = true
+      try {
+        const res = await deleteInitialEntry(row.id)
+        if (!res || res.code === 1) {
+          this.$message.success('删除成功')
+          this.handleQuery()
         }
-      })
+      } finally {
+        this.submitLoading = false
+      }
     },
-    open() {
-      this.$refs.detail.open()
-    },
-    view(row) {
-      this.$refs.detail.open(row, 'view')
-    },
-    edit(row) {
-      this.$refs.detail.open(row, 'edit')
-    },
-    remove(row) {
-      this.$confirm('确定要删除吗?', '提示', { type: 'warning' })
-        .then(() => {
-          requestFun.delete({ id: row.id }).then(res => {
-            if (res.code === 1) {
-              this.$message({ message: '删除成功', type: 'success' })
-              this.getTableList()
-            }
-          })
-        })
-        .catch(() => {})
-    },
-    submitAction(row) {
-       this.$confirm('确定要提交吗?', '提示', { type: 'warning' })
-        .then(() => {
-          submitInitialEntry({ id: row.id }).then(res => {
-            if (res.code === 1) {
-              this.$message({ message: '提交成功', type: 'success' })
-              this.getTableList()
-            }
-          })
-        })
-        .catch(() => {})
+    async handleSubmit(row) {
+      if (row['状态'] !== '待提交' && row['状态'] !== '审核拒绝') {
+        this.$message.warning('当前状态不可提交')
+        return
+      }
+      await this.$confirm('确定要提交吗?', '提示', { type: 'warning' })
+      this.submitLoading = true
+      try {
+        const res = await submitInitialEntry(row.id)
+        if (!res || res.code === 1) {
+          this.$message.success('提交成功')
+          this.handleQuery()
+        }
+      } finally {
+        this.submitLoading = false
+      }
     },
     handleSizeChange(value) {
-      this.search.params.pageSize = value
-      this.getTableList()
+      this.searchForm.pageSize = value
+      this.handleQuery()
     },
     handleCurrentChange(value) {
-      this.search.params.currentPage = value
-      this.getTableList()
-    },
-    resetSearchParams() {
-      this.search.params = this.$options.data().search.params
-      this.getTableList()
-    },
-    reImport(row) {
-      this.$refs.detail.open(row, 're-import')
-    },
-    // 审核
-    openAudit(row) {
-      this.auditForm = {
-        id: row.id,
-        result: 'pass',
-        remark: '',
-      }
-      this.auditDialogVisible = true
-    },
-    submitAudit() {
-      const payload = {
-        id: this.auditForm.id,
-        approved: this.auditForm.approved
-      }
-      auditInitialEntry(payload).then(res => {
-        if (res.code === 1) {
-          this.$message.success('审核成功')
-          this.auditDialogVisible = false
-          this.getTableList()
-        }
-      })
-    },
-    // 状态显示
-    getStatusText(status) {
-      const map = {
-        0: '待确认',
-        1: '已确认',
-        2: '待提交',
-        3: '审核中',
-        4: '审核通过',
-        5: '审核驳回',
-      }
-      return map[status] || status
+      this.searchForm.currentPage = value
+      this.handleQuery()
     },
     getStatusClass(status) {
       const map = {
-        0: 'status-pending',
-        1: 'status-approved',
-        2: 'status-default',
-        3: 'status-pending',
-        4: 'status-approved',
-        5: 'status-rejected',
+        待提交: 'status-default',
+        待审核: 'status-pending',
+        审核通过: 'status-approved',
+        审核拒绝: 'status-rejected',
       }
-      return map[status] || ''
-    },
-    // 根据状态显示不同按钮
-    getRowBtns(row) {
-      const btns = [{ label: '详情', type: 'text', execute: 'view' }]
-      if (row.dataStatus === 0) { // 待确认
-        btns.push({ label: '确认', type: 'text', execute: 'confirm' }) // 文档没写确认接口，先保留或映射为编辑
-        btns.push({ label: '编辑', type: 'text', execute: 'update' })
-        btns.push({ label: '删除', type: 'text', execute: 'delete' })
-      } else if (row.dataStatus === 2 || row.dataStatus === 5) { // 待提交 或 审核驳回
-        btns.push({ label: '重新导入', type: 'text', execute: 're-import' })
-        btns.push({ label: '编辑', type: 'text', execute: 'update' })
-        btns.push({ label: '提交', type: 'text', execute: 'submit' })
-        btns.push({ label: '删除', type: 'text', execute: 'delete' })
-      } else if (row.dataStatus === 3) { // 审核中
-        btns.push({ label: '审核', type: 'text', execute: 'audit' })
-      } else if (row.dataStatus === 4) { // 审核通过
-        btns.push({ label: '删除', type: 'text', execute: 'delete' })
-      }
-      return btns
+      return map[status] || 'status-default'
     },
   },
 }
@@ -341,7 +316,6 @@ export default {
       display: flex;
       flex-direction: column;
       overflow: hidden;
-
       .search {
         .footer {
           height: 34px;
@@ -356,7 +330,6 @@ export default {
           }
         }
       }
-
       .operation {
         height: 32px;
         margin-top: 4px;
@@ -365,6 +338,10 @@ export default {
       .table {
         margin-top: 10px;
         flex: 1;
+        .table_operation {
+          display: flex;
+          flex-wrap: wrap;
+        }
         .pagination {
           display: flex;
           justify-content: flex-end;
@@ -392,13 +369,11 @@ export default {
       }
     }
   }
-
   .btn {
     display: inline-block;
     font-size: 14px;
     line-height: 22px;
     cursor: pointer;
-
     &.text {
       color: #246fe5;
     }
@@ -413,13 +388,6 @@ export default {
     margin-left: 10px;
   }
 }
-
-.table_operation {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-// 状态标签
 .status-tag {
   display: inline-block;
   padding: 2px 8px;

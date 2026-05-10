@@ -25,7 +25,7 @@
 | 存量报表 | `inventoryReport` | `inventoryReport` | 反映库房在特定时点的结余物资库存统计 |
 | 封记台账 | `sealLedger` | `sealLedger` | 核心物资或特定容器的封签、启封生命周期记录 |
 | 材料管理 | `materialManagement`| `materialManagement`| 系统底层物资（材料）主数据字典信息的维护 |
-| 标签模板管理| `labelTemplate` | `labelTemplate` | 实物管理所需的条码/二维码等标签打印模板配置 |
+| 标签模板管理| `labelTemplate` | `labelTemplate` | 实物管理所需的标签打印记录管理、标签新增/打印及条码/二维码等标签打印模板配置 |
 | 综合查询 | `comprehensiveQuery`| `comprehensiveQuery`| 提供跨业务流水的全局综合检索与快照查询能力 |
 | 账目管理 | `accountManagement` | `accountManagement` | 针对实物资产变动产生的关联账务数据处理 |
 
