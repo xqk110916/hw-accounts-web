@@ -24,7 +24,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="库房名称" v-if="type === 'view' && form.warehouseNames">
+        <el-form-item label="库房名称" v-if="(type === 'view' || type === 'audit') && form.warehouseNames">
           <span>{{ form.warehouseNames }}</span>
         </el-form-item>
         <el-form-item label="备注" prop="remark" v-if="type === 'add' || type === 'edit'">
@@ -33,16 +33,16 @@
         <el-form-item label="备注" v-else-if="form.remark">
           <span>{{ form.remark }}</span>
         </el-form-item>
-        <el-form-item label="创建人" v-if="type === 'view' && form.createUname">
+        <el-form-item label="创建人" v-if="(type === 'view' || type === 'audit') && form.createUname">
           <span>{{ form.createUname }}</span>
         </el-form-item>
-        <el-form-item label="创建时间" v-if="type === 'view' && form.createTime">
+        <el-form-item label="创建时间" v-if="(type === 'view' || type === 'audit') && form.createTime">
           <span>{{ form.createTime }}</span>
         </el-form-item>
       </el-form>
 
       <!-- 统计信息 (查看模式) -->
-      <div class="statistics" v-if="type === 'view'">
+      <div class="statistics" v-if="type === 'view' || type === 'audit'">
         <div class="stat-item">
           <span class="stat-label">总正常数：</span>
           <span class="stat-value stat-normal">{{ statistics.totalNormalCount || 0 }}</span>
@@ -112,8 +112,7 @@
 </template>
 
 <script>
-import { deepClone } from '@/utils'
-import { config, requestFun, beforeSubmit, beforeRecurrence, selectTypeOptions } from './index.js'
+import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
 import { getGoodsList, submitInventory, editInventory, auditInventory, submitInventoryResult, exportInventory, exportToPad } from './api.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
 import { blobSaveExcel } from '@/utils'
@@ -264,7 +263,7 @@ export default {
         this.$set(this.form, 'warehouseIds', wIds);
 
         if (this.warehouseList && this.warehouseList.length > 0) {
-          this.activeWarehouses = [this.warehouseList[0].warehouseId]
+          this.activeWarehouses = [String(this.warehouseList[0].warehouseId)]
         }
         // 统计数据
         this.statistics = {
@@ -272,12 +271,51 @@ export default {
           totalDeficitCount: data.totalDeficitCount || 0,
           totalExcessCount: data.totalExcessCount || 0,
         }
-        // 初始化实物盘存清单表单数据
-        this.initInventoryFormData(this.warehouseList)
-        // 获取货物清单明细数据
-        this.fetchGoodsListForDetail()
+        if (this.warehouseList && this.warehouseList.length > 0) {
+          this.initInventoryFormData(this.warehouseList)
+          this.fillGoodsListFromWarehouseList(this.warehouseList)
+        } else {
+          this.fetchGoodsListForDetail()
+        }
         if (beforeRecurrence) beforeRecurrence(this.form, this)
         return data
+      })
+    },
+    normalizeResultStatus(value) {
+      const str = value === undefined || value === null || value === '' ? '' : String(value)
+      const map = { '1': 'all_normal', '2': 'partial_abnormal', all_normal: 'all_normal', partial_abnormal: 'partial_abnormal' }
+      return map[str] || 'all_normal'
+    },
+    toResultStatus(value) {
+      return this.normalizeResultStatus(value) === 'partial_abnormal' ? '2' : '1'
+    },
+    buildInventoryFormFromWarehouse(warehouse = {}) {
+      return {
+        inventoryTime: warehouse.inventoryTime || '',
+        inventoryUser: warehouse.inventoryUser || warehouse.inventoryMan || '',
+        sealChecker: warehouse.sealChecker || warehouse.statusInspector || '',
+        responsibleUser: warehouse.responsibleUser || warehouse.responsiblePerson || '',
+        supervisor: warehouse.supervisor || warehouse.superviseMan || '',
+        inventoryResult: this.normalizeResultStatus(warehouse.inventoryResult || warehouse.resultStatus),
+        normalCount: warehouse.normalCount || 0,
+        deficitCount: warehouse.deficitCount || 0,
+        deficitRemark: warehouse.deficitRemark || '',
+        excessCount: warehouse.excessCount || 0,
+        excessRemark: warehouse.excessRemark || '',
+      }
+    },
+    normalizeGoodsList(goodsList) {
+      return (goodsList || []).map(g => ({
+        ...g,
+        result: g.result === undefined || g.result === null || g.result === '' ? '0' : String(g.result),
+        resultRemark: g.resultRemark || g.remark || '',
+      }))
+    },
+    fillGoodsListFromWarehouseList(warehouseList) {
+      this.goodsListMap = {}
+      warehouseList.forEach(warehouse => {
+        const wId = String(warehouse.warehouseId)
+        this.$set(this.goodsListMap, wId, this.normalizeGoodsList(warehouse.goodsList))
       })
     },
     initInventoryFormData(warehouseList) {
@@ -285,23 +323,11 @@ export default {
       this.inventoryFormMap = {}
       if (!warehouseList || warehouseList.length === 0) return
       warehouseList.forEach((warehouse, index) => {
-        const wId = warehouse.warehouseId
+        const wId = String(warehouse.warehouseId)
         const wName = warehouse.warehouseName || `库房 ${wId}`
         this.tabList.push({ id: wId, name: wName })
         // 初始化盘存表单数据
-        this.$set(this.inventoryFormMap, wId, {
-          inventoryTime: warehouse.inventoryTime || '',
-          inventoryUser: warehouse.inventoryUser || '',
-          sealChecker: warehouse.sealChecker || '',
-          responsibleUser: warehouse.responsibleUser || '',
-          supervisor: warehouse.supervisor || '',
-          inventoryResult: warehouse.inventoryResult || 'all_normal',
-          normalCount: warehouse.normalCount || 0,
-          deficitCount: warehouse.deficitCount || 0,
-          deficitRemark: warehouse.deficitRemark || '',
-          excessCount: warehouse.excessCount || 0,
-          excessRemark: warehouse.excessRemark || '',
-        })
+        this.$set(this.inventoryFormMap, wId, this.buildInventoryFormFromWarehouse(warehouse))
         if (index === 0) this.activeTab = wId
       })
     },
@@ -352,11 +378,7 @@ export default {
           }
 
           Object.keys(resData).forEach(wId => {
-            this.$set(this.goodsListMap, wId, (resData[wId] || []).map(g => ({
-              ...g,
-              result: g.result || '0',
-              resultRemark: g.resultRemark || '',
-            })))
+            this.$set(this.goodsListMap, wId, this.normalizeGoodsList(resData[wId]))
           })
         }
       })
@@ -402,11 +424,7 @@ export default {
             })
             
             // 初始化明细数据
-            this.$set(this.goodsListMap, wId, (resData[wId] || []).map(g => ({
-              ...g,
-              result: g.result || '0',
-              resultRemark: g.resultRemark || ''
-            })))
+            this.$set(this.goodsListMap, wId, this.normalizeGoodsList(resData[wId]))
             
             if (index === 0) firstTab = wId
           })
@@ -549,10 +567,36 @@ export default {
         })
       })
     },
+    buildWarehouseSubmitData(warehouse, wId) {
+      const wForm = this.inventoryFormMap[wId] || {}
+      return {
+        warehouseId: warehouse.warehouseId || wId,
+        warehouseName: warehouse.warehouseName || this.tabList.find(t => t.id === wId)?.name || '',
+        inventoryMan: wForm.inventoryUser || '',
+        inventoryUser: wForm.inventoryUser || '',
+        inventoryTime: wForm.inventoryTime || '',
+        statusInspector: wForm.sealChecker || '',
+        sealChecker: wForm.sealChecker || '',
+        responsiblePerson: wForm.responsibleUser || '',
+        responsibleUser: wForm.responsibleUser || '',
+        superviseMan: wForm.supervisor || '',
+        supervisor: wForm.supervisor || '',
+        resultStatus: this.toResultStatus(wForm.inventoryResult),
+        inventoryResult: this.normalizeResultStatus(wForm.inventoryResult),
+        normalCount: wForm.normalCount || 0,
+        deficitCount: wForm.deficitCount || 0,
+        deficitRemark: wForm.deficitRemark || '',
+        excessCount: wForm.excessCount || 0,
+        excessRemark: wForm.excessRemark || '',
+      }
+    },
     submitResult() {
       // 校验异常项是否填写备注
-      for (const warehouse of this.warehouseList) {
-        const wId = warehouse.warehouseId
+      const warehouseList = this.warehouseList && this.warehouseList.length
+        ? this.warehouseList
+        : this.tabList.map(tab => ({ warehouseId: tab.id, warehouseName: tab.name }))
+      for (const warehouse of warehouseList) {
+        const wId = String(warehouse.warehouseId)
         const goods = this.goodsListMap[wId] || []
         const abnormalItems = goods.filter(
           g => g.result && g.result !== '0' && !g.resultRemark
@@ -562,12 +606,11 @@ export default {
           return
         }
       }
-      const wareList = this.warehouseList.map(w => {
-        const wId = w.warehouseId
+      const wareList = warehouseList.map(w => {
+        const wId = String(w.warehouseId)
         const goods = this.goodsListMap[wId] || []
         return {
-          warehouseId: w.warehouseId,
-          warehouseName: w.warehouseName,
+          ...this.buildWarehouseSubmitData(w, wId),
           goodsList: goods.map(g => ({
             id: g.id,
             result: g.result || '0',

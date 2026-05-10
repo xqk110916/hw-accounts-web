@@ -77,27 +77,6 @@
 
     <detail ref="detail" @query="resetSearchParams" />
 
-    <el-dialog :close-on-click-modal="false" title="审核" :visible.sync="auditDialogVisible" width="500px" append-to-body>
-      <el-form :model="auditForm" label-width="100px">
-        <el-form-item label="任务编号">
-          <span>{{ auditForm.taskNum }}</span>
-        </el-form-item>
-        <el-form-item label="审核结果">
-          <el-radio-group v-model="auditForm.auditStatus">
-            <el-radio :label="1">审核通过</el-radio>
-            <el-radio :label="2">审核拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="审核备注">
-          <el-input v-model="auditForm.auditRemark" type="textarea" :rows="3" placeholder="请输入审核备注" />
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button size="small" @click="auditDialogVisible = false">取消</el-button>
-        <el-button type="primary" size="small" @click="submitAudit">确定</el-button>
-      </div>
-    </el-dialog>
-
     <el-dialog :close-on-click-modal="false" title="标记异常" :visible.sync="markErrorDialogVisible" width="500px" append-to-body>
       <el-form :model="markErrorForm" label-width="100px">
         <el-form-item label="标记结果">
@@ -137,8 +116,6 @@ export default {
       height: 0,
       tableKeys: [],
       btns,
-      auditDialogVisible: false,
-      auditForm: { id: '', taskNum: '', auditStatus: 1, auditRemark: '' },
       markErrorDialogVisible: false,
       markErrorForm: { ids: '', result: '0', remark: '' },
     }
@@ -190,7 +167,7 @@ export default {
             this.$refs.detail.open(payload, 'edit')
             break
           case 'audit':
-            this.openAudit(payload)
+            this.$refs.detail.open(payload, 'audit')
             break
           case 'delete':
             this.remove(payload)
@@ -267,24 +244,6 @@ export default {
       })
       this.getTableList()
     },
-    openAudit(row) {
-      this.auditForm = { id: row.id, taskNum: row.taskNum, auditStatus: 1, auditRemark: '' }
-      this.auditDialogVisible = true
-    },
-    submitAudit() {
-      const { id, auditStatus, auditRemark } = this.auditForm
-      if (auditStatus === 2 && !auditRemark) {
-        this.$message.warning('驳回时请输入审核备注')
-        return
-      }
-      requestFun.audit({ id, auditStatus, auditRemark }).then(res => {
-        if (res.code === 1) {
-          this.$message.success('审核成功')
-          this.auditDialogVisible = false
-          this.getTableList()
-        }
-      })
-    },
     exportList(row) {
       exportInventory({ taskNum: row.taskNum }).then(res => {
         const blob = new Blob([res], { type: 'application/vnd.ms-excel' })
@@ -360,7 +319,6 @@ export default {
         btns.push({ label: '录入结果', type: 'text', execute: 'inputResult' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 0) {
-        btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '审核', type: 'text', execute: 'audit' })
       } else if (dataStatus === 1) {
         // 审核通过，只显示详情

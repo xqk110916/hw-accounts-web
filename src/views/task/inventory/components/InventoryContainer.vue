@@ -1,5 +1,5 @@
 <template>
-  <div class="inventory-container" v-if="type !== 'audit' && tabList.length > 0">
+  <div class="inventory-container" v-if="tabList.length > 0">
     <el-tabs :value="activeTab" @input="$emit('update:activeTab', $event)" type="border-card">
       <el-tab-pane v-for="tab in tabList" :key="tab.id" :label="tab.name" :name="tab.id">
         <div class="inventory-header">
@@ -61,7 +61,7 @@
               <div class="status-checks">
                 <el-checkbox v-if="type === 'inputResult'" :checked="inventoryFormMap[tab.id].inventoryResult === 'all_normal'" @change="updateForm(tab.id, 'inventoryResult', $event ? 'all_normal' : 'partial_abnormal')">全部正常</el-checkbox>
                 <el-checkbox v-if="type === 'inputResult'" :checked="inventoryFormMap[tab.id].inventoryResult === 'partial_abnormal'" @change="updateForm(tab.id, 'inventoryResult', $event ? 'partial_abnormal' : 'all_normal')">部分异常</el-checkbox>
-                <span class="text-value" v-if="type === 'view'">{{ inventoryFormMap[tab.id].inventoryResult === 'all_normal' ? '全部正常' : '部分异常' }}</span>
+                <span class="text-value" v-if="isReadonlyResultMode">{{ getInventoryResultText(inventoryFormMap[tab.id].inventoryResult) }}</span>
               </div>
               <!-- 输入框行 -->
               <div class="stats-inputs mt-15">
@@ -124,7 +124,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="结果" width="220" v-if="type === 'view'">
+            <el-table-column label="结果" width="220" v-if="isReadonlyResultMode">
               <template slot-scope="scope">
                 <span :class="getResultClass(scope.row.result)">{{ getResultText(scope.row.result) }}</span>
                 <span v-if="scope.row.resultRemark" class="ml-10">({{ scope.row.resultRemark }})</span>
@@ -162,6 +162,11 @@ export default {
       default: () => ({}),
     },
   },
+  computed: {
+    isReadonlyResultMode() {
+      return this.type === 'view' || this.type === 'audit'
+    },
+  },
   methods: {
     updateForm(warehouseId, field, value) {
       this.$emit('update:inventoryFormMap', {
@@ -169,6 +174,10 @@ export default {
         field,
         value,
       })
+    },
+    getInventoryResultText(result) {
+      const map = { all_normal: '全部正常', partial_abnormal: '部分异常', '1': '全部正常', '2': '部分异常' }
+      return map[result] || '-'
     },
     getResultText(result) {
       const map = { '0': '正常', '1': '盘亏', '2': '盘盈' }
