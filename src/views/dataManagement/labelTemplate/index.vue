@@ -64,6 +64,7 @@
 import PrintImportDialog from './components/PrintImportDialog.vue'
 import PrintRecordDialog from './components/PrintRecordDialog.vue'
 import TemplateDialog from './components/TemplateDialog.vue'
+import { deleteRecord, getRecords } from './components/storage'
 
 export default {
   name: 'LabelTemplate',
@@ -111,9 +112,11 @@ export default {
       if (!this.validateDateRange()) return
       this.listLoading = true
       try {
-        const list = this.getMockTableData()
-        this.tableData = list
-        this.searchForm.total = 400
+        const records = this.getFilteredRecords()
+        const start = (this.searchForm.currentPage - 1) * this.searchForm.pageSize
+        const end = start + this.searchForm.pageSize
+        this.tableData = records.slice(start, end).map(this.mapRecordToRow)
+        this.searchForm.total = records.length
       } finally {
         this.listLoading = false
       }
@@ -126,25 +129,32 @@ export default {
       }
       return true
     },
-    getMockTableData() {
-      const rows = []
-      for (let i = 1; i <= 10; i += 1) {
-        rows.push({
-          id: i,
-          '打印时间': '2025-10-10',
-          '标签数量': 'XXXXXXXX',
-          '备注': 'XXXXXXXX',
-          '选择模板': '模板1',
-          '材料编码': '',
-          '生成单位': '',
-          '库房': '',
-          '入库人': '',
-          '容器号': '',
-          '入库时间': '',
-          '二维码': '',
-        })
+    getFilteredRecords() {
+      const range = this.searchForm['日期范围']
+      const records = getRecords()
+      if (!Array.isArray(range) || range.length !== 2) return records
+      const startTime = new Date(range[0]).setHours(0, 0, 0, 0)
+      const endTime = new Date(range[1]).setHours(23, 59, 59, 999)
+      return records.filter(item => {
+        const time = new Date(item.printTime || item.createTime || 0).getTime()
+        return time >= startTime && time <= endTime
+      })
+    },
+    mapRecordToRow(record) {
+      return {
+        ...record,
+        '打印时间': record.printTime || record.createTime || '',
+        '标签数量': record.labelCount || 1,
+        '备注': record.remark || '',
+        '选择模板': record.templateId || record.templateName || '',
+        '材料编码': record.materialCode || '',
+        '生成单位': record.generationUnit || '',
+        '库房': record.warehouse || '',
+        '入库人': record.inboundPerson || '',
+        '容器号': record.containerNo || '',
+        '入库时间': record.inboundTime || '',
+        '二维码': record.qrContent || '',
       }
-      return rows
     },
     handleReset() {
       this.searchForm['日期范围'] = []
@@ -174,8 +184,8 @@ export default {
       await this.$confirm('确定要删除吗?', '提示', { type: 'warning' })
       this.deleteLoading = true
       try {
-        this.tableData = this.tableData.filter(item => item.id !== row.id)
-        this.searchForm.total = Math.max(this.searchForm.total - 1, 0)
+        deleteRecord(row.id)
+        this.handleQuery()
         this.$message.success('删除成功')
       } finally {
         this.deleteLoading = false

@@ -12,4 +12,26 @@ window.globalConfig = {
   // 文件预览基础服务地址，用于文件在预览中的文件加密解析、下载等功能
   SERVER_BASE_URL: 'http://10.10.216.27:8080/api',
   /********文件预览相关全局配置*****end************/
+
+  /********ZPL 标签打印配置*****start************/
+  // serviceIp/servicePort 为本机 JSSDK 服务地址，不是打印机 IP。
+  // interfaceType 支持 USB、NET、COM。NET 模式下通过 netIp/netPort 配置打印机地址。
+  ZPL_PRINTER_CONFIG: {
+    serviceIp: '127.0.0.1',
+    servicePort: 9099,
+    model: 'HT300',
+    interfaceType: 'USB',
+    sn: '',
+    netIp: '',
+    netPort: 9100,
+    comData: {
+      port: 'COM1',
+      baudrate: 115200,
+      party: 'n',
+      databit: 8,
+      stopbit: 1,
+      ctl: 'n',
+    },
+  },
+  /********ZPL 标签打印配置*****end************/
 };

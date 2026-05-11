@@ -92,23 +92,23 @@
           <span>预览</span>
           <i class="el-icon-refresh" @click="refreshPreview"></i>
         </div>
-        <div class="preview-card" v-loading="previewLoading">
+        <div class="preview-card" v-loading="previewLoading" :style="previewMarginStyle">
           <div class="preview-left">
-            <div class="preview-title">{{ templateForm['标题'] }}</div>
+            <div v-if="templateForm['标题显示状态'] === '显示'" class="preview-title">{{ templateForm['标题'] }}</div>
             <div class="preview-grid">
-              <div>{{ fieldConfigList[0] && fieldConfigList[0].value }}</div>
+              <div>{{ getPreviewField(0) }}</div>
               <div></div>
-              <div>{{ fieldConfigList[1] && fieldConfigList[1].value }}</div>
+              <div>{{ getPreviewField(1) }}</div>
               <div></div>
-              <div>{{ fieldConfigList[2] && fieldConfigList[2].value }}</div>
+              <div>{{ getPreviewField(2) }}</div>
               <div></div>
-              <div>{{ fieldConfigList[3] && fieldConfigList[3].value }}</div>
+              <div>{{ getPreviewField(3) }}</div>
               <div></div>
-              <div>{{ fieldConfigList[4] && fieldConfigList[4].value }}</div>
+              <div>{{ getPreviewField(4) }}</div>
               <div></div>
               <div></div>
               <div></div>
-              <div>{{ fieldConfigList[5] && fieldConfigList[5].value }}</div>
+              <div>{{ getPreviewField(5) }}</div>
               <div></div>
               <div></div>
               <div></div>
@@ -129,6 +129,16 @@
 </template>
 
 <script>
+import {
+  createTemplateFrom,
+  formToTemplate,
+  getTemplateByIdOrName,
+  getTemplateOptions,
+  saveTemplate,
+  templateToFields,
+  templateToForm,
+} from './storage'
+
 export default {
   name: 'TemplateDialog',
   data() {
@@ -138,6 +148,7 @@ export default {
       previewLoading: false,
       saveTemplateLoading: false,
       templateOptions: [{ label: '模板1', value: '模板1' }],
+      currentTemplate: null,
       fontSizeOptions: ['12号', '14号', '16号', '18号'],
       titleStatusOptions: ['正常', '加粗', '禁用'],
       fieldStatusOptions: ['正常', '隐藏', '禁用'],
@@ -159,11 +170,39 @@ export default {
       fieldConfigList: [],
     }
   },
+  computed: {
+    previewMarginStyle() {
+      const scale = 3.6
+      const toPx = value => {
+        const size = Number.parseFloat(String(value || '').replace('mm', ''))
+        if (!Number.isFinite(size)) return '0px'
+        return `${Math.min(Math.max(size * scale, 0), 160)}px`
+      }
+      return {
+        paddingTop: toPx(this.templateForm['上边距']),
+        paddingRight: toPx(this.templateForm['右边距']),
+        paddingBottom: toPx(this.templateForm['下边距']),
+        paddingLeft: toPx(this.templateForm['左边距']),
+      }
+    },
+  },
   methods: {
     open() {
-      this.initFieldConfigList()
+      this.loadTemplateOptions()
+      this.loadTemplate(this.templateOptions[0] && this.templateOptions[0].value)
       this.visible = true
       this.refreshPreview()
+    },
+    loadTemplateOptions() {
+      this.templateOptions = getTemplateOptions()
+    },
+    loadTemplate(value) {
+      const template = getTemplateByIdOrName(value)
+      this.currentTemplate = template
+      this.templateForm = templateToForm(template)
+      this.fieldConfigList = templateToFields(template)
+      this.qrWidth = template.qrSize.width
+      this.qrHeight = template.qrSize.height
     },
     initFieldConfigList() {
       this.fieldConfigList = [
@@ -178,7 +217,7 @@ export default {
     handleTemplateChange() {
       this.templateLoading = true
       setTimeout(() => {
-        this.initFieldConfigList()
+        this.loadTemplate(this.templateForm['模板'])
         this.templateLoading = false
         this.refreshPreview()
       }, 200)
@@ -189,13 +228,15 @@ export default {
           this.$message.warning('请输入模板名称')
           return
         }
-        const exists = this.templateOptions.some(item => item.value === value)
+        const exists = this.templateOptions.some(item => item.label === value)
         if (exists) {
           this.$message.warning('模板名称不能重复')
           return
         }
-        this.templateOptions.push({ label: value, value: value })
-        this.templateForm['模板'] = value
+        const template = createTemplateFrom(value, formToTemplate(this.templateForm, this.fieldConfigList, this.currentTemplate))
+        this.loadTemplateOptions()
+        this.templateForm['模板'] = template.id
+        this.loadTemplate(template.id)
         this.refreshPreview()
       }).catch(() => {})
     },
@@ -220,6 +261,11 @@ export default {
       this.previewTimer = setTimeout(() => {
         this.previewLoading = false
       }, 160)
+    },
+    getPreviewField(index) {
+      const field = this.fieldConfigList[index]
+      if (!field || field['状态'] !== '正常') return ''
+      return field.value
     },
     validateTemplate() {
       if (!this.templateForm['模板']) {
@@ -257,6 +303,10 @@ export default {
       if (!this.validateTemplate()) return
       this.saveTemplateLoading = true
       setTimeout(() => {
+        const template = formToTemplate(this.templateForm, this.fieldConfigList, this.currentTemplate)
+        this.currentTemplate = saveTemplate(template)
+        this.loadTemplateOptions()
+        this.templateForm['模板'] = this.currentTemplate.id
         this.saveTemplateLoading = false
         this.$message.success('保存成功')
         this.handleClose()
@@ -384,12 +434,17 @@ export default {
     display: grid;
     grid-template-columns: 1fr 1.15fr;
     border: 2px solid #1b2129;
-    min-height: 610px;
+    height: 610px;
+    box-sizing: border-box;
     .preview-left {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
       border-right: 2px solid #1b2129;
     }
     .preview-title {
       height: 120px;
+      flex: none;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -398,9 +453,11 @@ export default {
       border-bottom: 1px solid #c4c9cf;
     }
     .preview-grid {
+      flex: 1;
+      min-height: 0;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(4, 122px);
+      grid-template-rows: repeat(4, 1fr);
       > div {
         border-right: 1px solid #c4c9cf;
         border-bottom: 1px solid #c4c9cf;

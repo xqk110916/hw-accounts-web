@@ -16,46 +16,46 @@
           </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="备注">
-          <el-input v-model="formData['备注']" :readonly="readonly" placeholder="请输入" maxlength="200"></el-input>
+          <el-input v-model="formData['备注']" :readonly="readonly" placeholder="请输入" maxlength="200" @input="refreshQrCode"></el-input>
         </el-form-item>
       </el-form>
 
       <div class="label-card">
-        <div class="card-title">材料管理卡</div>
+        <div v-if="currentTemplate.titleVisible === '显示'" class="card-title">{{ currentTemplate.title }}</div>
         <div class="grid-row two-cols">
-          <div class="grid-label">材料编码</div>
+          <div class="grid-label">{{ getFieldLabel('materialCode') }}</div>
           <div class="grid-value">
             <el-input v-model="formData['材料编码']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
-          <div class="grid-label">生成单位</div>
+          <div class="grid-label">{{ getFieldLabel('generationUnit') }}</div>
           <div class="grid-value">
             <el-input v-model="formData['生成单位']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
         </div>
         <div class="grid-row two-cols">
-          <div class="grid-label">库房</div>
+          <div class="grid-label">{{ getFieldLabel('warehouse') }}</div>
           <div class="grid-value">
             <el-input v-model="formData['库房']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
-          <div class="grid-label">入库人</div>
+          <div class="grid-label">{{ getFieldLabel('inboundPerson') }}</div>
           <div class="grid-value">
             <el-input v-model="formData['入库人']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
         </div>
         <div class="grid-row full-row">
-          <div class="grid-label">容器号</div>
+          <div class="grid-label">{{ getFieldLabel('containerNo') }}</div>
           <div class="grid-value">
             <el-input v-model="formData['容器号']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
         </div>
         <div class="grid-row full-row">
-          <div class="grid-label">入库时间</div>
+          <div class="grid-label">{{ getFieldLabel('inboundTime') }}</div>
           <div class="grid-value">
             <el-input v-model="formData['入库时间']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
         </div>
-        <div class="qr-title">二维码 <i class="el-icon-refresh" @click="refreshQrCode"></i></div>
-        <div class="qr-wrap">
+        <div v-if="currentTemplate.qrVisible === '显示'" class="qr-title">二维码 <i v-if="!readonly" class="el-icon-refresh" @click="refreshQrCode"></i></div>
+        <div v-if="currentTemplate.qrVisible === '显示'" class="qr-wrap">
           <div class="qr-code" v-loading="qrCodeLoading"></div>
         </div>
       </div>
@@ -69,6 +69,14 @@
 </template>
 
 <script>
+import { buildLabelPrintData, buildQrContent } from './print-builder'
+import {
+  getPrinterConfig,
+  getTemplateByIdOrName,
+  getTemplateOptions,
+  saveRecord,
+} from './storage'
+
 export default {
   name: 'PrintRecordDialog',
   data() {
@@ -79,9 +87,10 @@ export default {
       saveLoading: false,
       printLoading: false,
       qrCodeLoading: false,
-      templateOptions: [{ label: '模板1', value: '模板1' }],
+      templateOptions: [],
+      currentTemplate: getTemplateByIdOrName('模板1'),
       formData: {
-        '选择模板': '模板1',
+        '选择模板': '',
         '备注': '',
         '材料编码': '',
         '生成单位': '',
@@ -115,16 +124,20 @@ export default {
   methods: {
     open(row, mode) {
       this.mode = mode || 'add'
+      this.templateOptions = getTemplateOptions()
       this.resetForm()
       this.visible = true
       if (row) this.fillRow(row)
+      this.loadCurrentTemplate()
+      this.refreshQrCode()
       this.$nextTick(() => {
         if (this.$refs.form) this.$refs.form.clearValidate()
       })
     },
     resetForm() {
       this.formData = {
-        '选择模板': '模板1',
+        id: '',
+        '选择模板': this.templateOptions[0] ? this.templateOptions[0].value : '',
         '备注': '',
         '材料编码': '',
         '生成单位': '',
@@ -136,23 +149,38 @@ export default {
       }
     },
     fillRow(row) {
-      Object.keys(this.formData).forEach(key => {
-        if (Object.prototype.hasOwnProperty.call(row, key)) this.formData[key] = row[key]
-      })
-      this.formData['选择模板'] = row['选择模板'] || '模板1'
-      this.formData['备注'] = row['备注'] || ''
-      this.refreshQrCode()
+      this.formData = {
+        id: row.id,
+        '选择模板': row.templateId || row['选择模板'] || (this.templateOptions[0] && this.templateOptions[0].value),
+        '备注': row.remark || row['备注'] || '',
+        '材料编码': row.materialCode || row['材料编码'] || '',
+        '生成单位': row.generationUnit || row['生成单位'] || '',
+        '库房': row.warehouse || row['库房'] || '',
+        '入库人': row.inboundPerson || row['入库人'] || '',
+        '容器号': row.containerNo || row['容器号'] || '',
+        '入库时间': row.inboundTime || row['入库时间'] || '',
+        '二维码': row.qrContent || row['二维码'] || '',
+      }
+    },
+    loadCurrentTemplate() {
+      this.currentTemplate = getTemplateByIdOrName(this.formData['选择模板'])
     },
     handleTemplateChange() {
+      this.loadCurrentTemplate()
       this.formData['二维码'] = ''
       this.refreshQrCode()
     },
+    getFieldLabel(key) {
+      const field = (this.currentTemplate.fields || []).find(item => item.key === key)
+      return field ? field.name : ''
+    },
     refreshQrCode() {
       this.qrCodeLoading = true
-      setTimeout(() => {
-        this.formData['二维码'] = '已生成'
+      clearTimeout(this.qrTimer)
+      this.qrTimer = setTimeout(() => {
+        this.formData['二维码'] = buildQrContent(this.currentTemplate, this.formData)
         this.qrCodeLoading = false
-      }, 200)
+      }, 120)
     },
     validateCardFields() {
       const requiredFields = ['材料编码', '生成单位', '库房', '入库人', '容器号', '入库时间']
@@ -165,34 +193,104 @@ export default {
       }
       return true
     },
+    validatePrinterConfig(config) {
+      if (!config.serviceIp) {
+        this.$message.warning('请在 public/config.js 中配置打印服务地址')
+        return false
+      }
+      if (!config.servicePort) {
+        this.$message.warning('请在 public/config.js 中配置打印服务端口')
+        return false
+      }
+      if (!config.model) {
+        this.$message.warning('请在 public/config.js 中配置打印机型号')
+        return false
+      }
+      if (config.interfaceType === 'NET' && !config.netIp) {
+        this.$message.warning('请在 public/config.js 中配置打印机 IP')
+        return false
+      }
+      if (config.interfaceType === 'COM' && (!config.comData || !config.comData.port)) {
+        this.$message.warning('请在 public/config.js 中配置串口号')
+        return false
+      }
+      return true
+    },
+    buildRecord(extra = {}) {
+      return {
+        id: this.formData.id,
+        templateId: this.currentTemplate.id,
+        templateName: this.currentTemplate.name,
+        printTime: extra.printTime || '',
+        createTime: extra.createTime || this.formatDate(new Date()),
+        labelCount: extra.labelCount || 1,
+        remark: this.formData['备注'],
+        materialCode: this.formData['材料编码'],
+        generationUnit: this.formData['生成单位'],
+        warehouse: this.formData['库房'],
+        inboundPerson: this.formData['入库人'],
+        containerNo: this.formData['容器号'],
+        inboundTime: this.formData['入库时间'],
+        qrContent: this.formData['二维码'],
+        snapshot: {
+          template: this.currentTemplate,
+          formData: { ...this.formData },
+        },
+      }
+    },
+    persistRecord(extra) {
+      const record = saveRecord(this.buildRecord(extra))
+      this.formData.id = record.id
+      return record
+    },
     handleSave() {
       this.$refs.form.validate(valid => {
         if (!valid || !this.validateCardFields()) return
         if (!this.formData['二维码']) this.refreshQrCode()
         this.saveLoading = true
         setTimeout(() => {
+          this.persistRecord()
           this.saveLoading = false
           this.$message.success('保存成功')
           this.$emit('saved')
           this.handleClose()
-        }, 300)
+        }, 120)
       })
     },
     handlePrint() {
-      this.$refs.form.validate(valid => {
-        if (!valid || !this.validateCardFields()) return
+      this.$refs.form.validate(async valid => {
+        const config = getPrinterConfig()
+        if (!valid || !this.validateCardFields() || !this.validatePrinterConfig(config)) return
         if (!this.formData['二维码']) {
           this.$message.warning('请先生成二维码')
           return
         }
         this.printLoading = true
-        setTimeout(() => {
-          this.printLoading = false
-          this.$message.success('打印成功')
+        try {
+          const sdk = await this.$zplPrinter.getSdk()
+          await this.$zplPrinter.connect(config.serviceIp, config.servicePort)
+          const printData = buildLabelPrintData(sdk, this.currentTemplate, this.formData)
+          this.$zplPrinter.sendData(config.model, printData, {
+            interfaceType: config.interfaceType,
+            sn: config.sn,
+            netIp: config.netIp,
+            netPort: config.netPort,
+            comData: config.comData,
+          })
+          this.persistRecord({ printTime: this.formatDate(new Date()), labelCount: 1 })
+          this.$message.success('打印任务已发送')
           this.$emit('saved')
           this.handleClose()
-        }, 300)
+        } catch (error) {
+          this.$message.error(error && error.message ? error.message : '打印失败')
+        } finally {
+          this.printLoading = false
+        }
       })
+    },
+    formatDate(date) {
+      const pad = value => String(value).padStart(2, '0')
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     },
     handleClose() {
       this.visible = false

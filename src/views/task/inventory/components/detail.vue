@@ -1,6 +1,6 @@
 <template>
   <div>
-    <theme-edit :show="show" showFooterSlot :title="titleMap[type]" :column="1" @cancle="close">
+    <theme-edit :show="show" width="1080px" showFooterSlot :title="titleMap[type]" :column="1" @cancle="close">
       <el-form ref="form" class="form" :model="form" :rules="rules" label-width="130px">
         <el-form-item label="任务编号" prop="taskNum">
           <el-input v-model="form.taskNum" size="small" disabled placeholder="自动生成" />
@@ -74,6 +74,9 @@
         :inventory-form-map="inventoryFormMap"
         :goods-list-map="goodsListMap"
         @update:inventoryFormMap="handleInventoryFormUpdate"
+        @inventory-result-change="handleInventoryResultChange"
+        @abnormal-container-change="handleAbnormalContainerChange"
+        @goods-result-change="handleGoodsResultChange"
       />
 
       <template slot="footer">
@@ -134,8 +137,10 @@ export default {
         sealChecker: '',
         responsibleUser: '',
         supervisor: '',
-        inventoryResult: 'all_normal', // all_normal, partial_abnormal
+        inventoryResult: '', // all_normal, partial_abnormal
         normalCount: 0,
+        excessContainerCodes: [],
+        deficitContainerCodes: [],
         deficitCount: 0,
         deficitRemark: '',
         excessCount: 0,
@@ -284,10 +289,12 @@ export default {
     normalizeResultStatus(value) {
       const str = value === undefined || value === null || value === '' ? '' : String(value)
       const map = { '1': 'all_normal', '2': 'partial_abnormal', all_normal: 'all_normal', partial_abnormal: 'partial_abnormal' }
-      return map[str] || 'all_normal'
+      return map[str] || ''
     },
     toResultStatus(value) {
-      return this.normalizeResultStatus(value) === 'partial_abnormal' ? '2' : '1'
+      const status = this.normalizeResultStatus(value)
+      if (!status) return ''
+      return status === 'partial_abnormal' ? '2' : '1'
     },
     buildInventoryFormFromWarehouse(warehouse = {}) {
       return {
@@ -298,6 +305,8 @@ export default {
         supervisor: warehouse.supervisor || warehouse.superviseMan || '',
         inventoryResult: this.normalizeResultStatus(warehouse.inventoryResult || warehouse.resultStatus),
         normalCount: warehouse.normalCount || 0,
+        excessContainerCodes: [],
+        deficitContainerCodes: [],
         deficitCount: warehouse.deficitCount || 0,
         deficitRemark: warehouse.deficitRemark || '',
         excessCount: warehouse.excessCount || 0,
@@ -307,7 +316,7 @@ export default {
     normalizeGoodsList(goodsList) {
       return (goodsList || []).map(g => ({
         ...g,
-        result: g.result === undefined || g.result === null || g.result === '' ? '0' : String(g.result),
+        result: g.result === undefined || g.result === null || g.result === '' ? '-1' : String(g.result),
         resultRemark: g.resultRemark || g.remark || '',
       }))
     },
@@ -316,6 +325,7 @@ export default {
       warehouseList.forEach(warehouse => {
         const wId = String(warehouse.warehouseId)
         this.$set(this.goodsListMap, wId, this.normalizeGoodsList(warehouse.goodsList))
+        this.syncAbnormalContainerCodes(wId)
       })
     },
     initInventoryFormData(warehouseList) {
@@ -365,8 +375,10 @@ export default {
                 sealChecker: '',
                 responsibleUser: '',
                 supervisor: '',
-                inventoryResult: 'all_normal',
+                inventoryResult: '',
                 normalCount: 0,
+                excessContainerCodes: [],
+                deficitContainerCodes: [],
                 deficitCount: 0,
                 deficitRemark: '',
                 excessCount: 0,
@@ -379,6 +391,7 @@ export default {
 
           Object.keys(resData).forEach(wId => {
             this.$set(this.goodsListMap, wId, this.normalizeGoodsList(resData[wId]))
+            this.syncAbnormalContainerCodes(wId)
           })
         }
       })
@@ -415,8 +428,10 @@ export default {
               sealChecker: '',
               responsibleUser: '',
               supervisor: '',
-              inventoryResult: 'all_normal',
+              inventoryResult: '',
               normalCount: 0,
+              excessContainerCodes: [],
+              deficitContainerCodes: [],
               deficitCount: 0,
               deficitRemark: '',
               excessCount: 0,
@@ -425,6 +440,7 @@ export default {
             
             // 初始化明细数据
             this.$set(this.goodsListMap, wId, this.normalizeGoodsList(resData[wId]))
+            this.syncAbnormalContainerCodes(wId)
             
             if (index === 0) firstTab = wId
           })
@@ -590,30 +606,50 @@ export default {
         excessRemark: wForm.excessRemark || '',
       }
     },
+    validateInventoryResultForm(warehouseList) {
+      const requiredFields = [
+        { prop: 'inventoryTime', label: '盘存时间' },
+        { prop: 'inventoryUser', label: '盘存人' },
+        { prop: 'sealChecker', label: '封记检查人' },
+        { prop: 'responsibleUser', label: '负责人' },
+      ]
+      for (const warehouse of warehouseList) {
+        const wId = String(warehouse.warehouseId)
+        const wForm = this.inventoryFormMap[wId] || {}
+        const missing = requiredFields.filter(item => {
+          const value = wForm[item.prop]
+          return value === undefined || value === null || String(value).trim() === ''
+        })
+        if (missing.length > 0) {
+          this.activeTab = wId
+          this.$message.warning(`库房"${warehouse.warehouseName}"请填写${missing.map(item => item.label).join('、')}`)
+          return false
+        }
+      }
+      return true
+    },
     submitResult() {
-      // 校验异常项是否填写备注
       const warehouseList = this.warehouseList && this.warehouseList.length
         ? this.warehouseList
         : this.tabList.map(tab => ({ warehouseId: tab.id, warehouseName: tab.name }))
-      for (const warehouse of warehouseList) {
-        const wId = String(warehouse.warehouseId)
-        const goods = this.goodsListMap[wId] || []
-        const abnormalItems = goods.filter(
-          g => g.result && g.result !== '0' && !g.resultRemark
-        )
-        if (abnormalItems.length > 0) {
-          this.$message.warning(`库房"${warehouse.warehouseName}"中存在异常项未填写备注`)
-          return
-        }
-      }
+      if (!this.validateInventoryResultForm(warehouseList)) return
       const wareList = warehouseList.map(w => {
         const wId = String(w.warehouseId)
         const goods = this.goodsListMap[wId] || []
         return {
           ...this.buildWarehouseSubmitData(w, wId),
           goodsList: goods.map(g => ({
-            id: g.id,
-            result: g.result || '0',
+            warehouseId: g.warehouseId || w.warehouseId || wId,
+            warehouseName: g.warehouseName || w.warehouseName || this.tabList.find(t => t.id === wId)?.name || '',
+            containerCode: g.containerCode || '',
+            goodCode: g.goodCode || '',
+            goodName: g.goodName || '',
+            productionUnit: g.productionUnit || '',
+            location: g.location || '',
+            sealCode1: g.sealCode1 || '',
+            sealCode2: g.sealCode2 || '',
+            storageTime: g.storageTime || '',
+            result: g.result === '-1' ? '' : (g.result || '0'),
             resultRemark: g.resultRemark || '',
           })),
         }
@@ -706,9 +742,94 @@ export default {
         this.$set(this.inventoryFormMap[warehouseId], field, value)
       }
     },
-    handleChange(value) {
-      console.log(value, this.form.warehouseIds)
+    getGoodsKey(item) {
+      return String(item.id || item.containerCode || '')
     },
+    setGoodsResult(goods, result, clearRemark = false) {
+      this.$set(goods, 'result', result)
+      if (clearRemark) {
+        this.$set(goods, 'resultRemark', '')
+      }
+    },
+    updateInventoryCounts(warehouseId) {
+      const goods = this.goodsListMap[warehouseId] || []
+      this.$set(this.inventoryFormMap[warehouseId], 'normalCount', goods.filter(item => String(item.result) === '0').length)
+      this.$set(this.inventoryFormMap[warehouseId], 'deficitCount', goods.filter(item => String(item.result) === '1').length)
+      this.$set(this.inventoryFormMap[warehouseId], 'excessCount', goods.filter(item => String(item.result) === '2').length)
+    },
+    syncAbnormalContainerCodes(warehouseId, forceUpdateCounts = false) {
+      if (!this.inventoryFormMap[warehouseId]) return
+      const goods = this.goodsListMap[warehouseId] || []
+      const hasResultValue = goods.some(item => ['0', '1', '2'].includes(String(item.result)))
+      const deficitContainerCodes = goods
+        .filter(item => String(item.result) === '1')
+        .map(item => this.getGoodsKey(item))
+      const excessContainerCodes = goods
+        .filter(item => String(item.result) === '2')
+        .map(item => this.getGoodsKey(item))
+      this.$set(this.inventoryFormMap[warehouseId], 'deficitContainerCodes', deficitContainerCodes)
+      this.$set(this.inventoryFormMap[warehouseId], 'excessContainerCodes', excessContainerCodes)
+      if (deficitContainerCodes.length > 0 || excessContainerCodes.length > 0) {
+        this.$set(this.inventoryFormMap[warehouseId], 'inventoryResult', 'partial_abnormal')
+      }
+      if (forceUpdateCounts || hasResultValue) {
+        this.updateInventoryCounts(warehouseId)
+      }
+    },
+    applyAllNormal(warehouseId) {
+      const goods = this.goodsListMap[warehouseId] || []
+      goods.forEach(item => {
+        this.setGoodsResult(item, '0', true)
+      })
+      this.$set(this.inventoryFormMap[warehouseId], 'deficitContainerCodes', [])
+      this.$set(this.inventoryFormMap[warehouseId], 'excessContainerCodes', [])
+      this.$set(this.inventoryFormMap[warehouseId], 'normalCount', goods.length)
+      this.$set(this.inventoryFormMap[warehouseId], 'deficitCount', 0)
+      this.$set(this.inventoryFormMap[warehouseId], 'excessCount', 0)
+    },
+    applyPartialAbnormal(warehouseId, resultType, containerCodes = []) {
+      const field = resultType === 'excess' ? 'excessContainerCodes' : 'deficitContainerCodes'
+      const oppositeField = resultType === 'excess' ? 'deficitContainerCodes' : 'excessContainerCodes'
+      const selectedKeys = containerCodes.map(item => String(item))
+      const selectedSet = new Set(selectedKeys)
+      const oppositeKeys = (this.inventoryFormMap[warehouseId][oppositeField] || [])
+        .map(item => String(item))
+        .filter(item => !selectedSet.has(item))
+      const deficitSet = new Set(resultType === 'deficit' ? selectedKeys : oppositeKeys)
+      const excessSet = new Set(resultType === 'excess' ? selectedKeys : oppositeKeys)
+      const goods = this.goodsListMap[warehouseId] || []
+      goods.forEach(item => {
+        const key = this.getGoodsKey(item)
+        if (deficitSet.has(key)) {
+          this.setGoodsResult(item, '1')
+        } else if (excessSet.has(key)) {
+          this.setGoodsResult(item, '2')
+        } else {
+          this.setGoodsResult(item, '0', true)
+        }
+      })
+      this.$set(this.inventoryFormMap[warehouseId], field, selectedKeys)
+      this.$set(this.inventoryFormMap[warehouseId], oppositeField, oppositeKeys)
+      this.updateInventoryCounts(warehouseId)
+    },
+    handleInventoryResultChange({ warehouseId, value }) {
+      if (!this.inventoryFormMap[warehouseId]) return
+      this.$set(this.inventoryFormMap[warehouseId], 'inventoryResult', value)
+      if (value === 'all_normal') {
+        this.applyAllNormal(warehouseId)
+        return
+      }
+      this.applyPartialAbnormal(warehouseId, 'deficit', this.inventoryFormMap[warehouseId].deficitContainerCodes || [])
+    },
+    handleAbnormalContainerChange({ warehouseId, resultType, value }) {
+      if (!this.inventoryFormMap[warehouseId]) return
+      this.applyPartialAbnormal(warehouseId, resultType, value)
+    },
+    handleGoodsResultChange({ warehouseId }) {
+      if (!this.inventoryFormMap[warehouseId]) return
+      this.syncAbnormalContainerCodes(warehouseId, true)
+    },
+    handleChange() {},
   },
 }
 </script>
@@ -757,7 +878,6 @@ export default {
   padding: 12px 32px 20px;
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid #c4c9cf;
 }
 .result-normal { color: #2e7d32; }
 .result-deficit { color: #c62828; }

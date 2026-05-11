@@ -982,7 +982,6 @@ export default {
   padding: 12px 32px 20px;
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid #c4c9cf;
 }
 
 .table_operation {

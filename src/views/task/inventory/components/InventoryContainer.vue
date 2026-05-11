@@ -12,7 +12,7 @@
           <el-row :gutter="20">
             <el-col :span="12">
               <div class="form-item">
-                <span class="label">盘存时间</span>
+                <span class="label required">盘存时间</span>
                 <el-date-picker v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].inventoryTime" @input="updateForm(tab.id, 'inventoryTime', $event)" type="datetime" size="small" placeholder="选择时间" value-format="yyyy-MM-dd HH:mm:ss" />
                 <span class="text-value" v-else>{{ inventoryFormMap[tab.id].inventoryTime || '-' }}</span>
               </div>
@@ -22,14 +22,14 @@
           <el-row :gutter="20" class="mt-15">
             <el-col :span="12">
               <div class="form-item">
-                <span class="label">盘存人</span>
+                <span class="label required">盘存人</span>
                 <el-input v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].inventoryUser" @input="updateForm(tab.id, 'inventoryUser', $event)" size="small" placeholder="请输入" />
                 <span class="text-value" v-else>{{ inventoryFormMap[tab.id].inventoryUser || '-' }}</span>
               </div>
             </el-col>
             <el-col :span="12">
               <div class="form-item">
-                <span class="label">封记检查人</span>
+                <span class="label required">封记检查人</span>
                 <el-input v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].sealChecker" @input="updateForm(tab.id, 'sealChecker', $event)" size="small" placeholder="请输入" />
                 <span class="text-value" v-else>{{ inventoryFormMap[tab.id].sealChecker || '-' }}</span>
               </div>
@@ -39,7 +39,7 @@
           <el-row :gutter="20" class="mt-15">
             <el-col :span="12">
               <div class="form-item">
-                <span class="label">负责人</span>
+                <span class="label required">负责人</span>
                 <el-input v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].responsibleUser" @input="updateForm(tab.id, 'responsibleUser', $event)" size="small" placeholder="请输入" />
                 <span class="text-value" v-else>{{ inventoryFormMap[tab.id].responsibleUser || '-' }}</span>
               </div>
@@ -59,9 +59,58 @@
             <div class="result-content-col">
               <!-- checkbox行 -->
               <div class="status-checks">
-                <el-checkbox v-if="type === 'inputResult'" :checked="inventoryFormMap[tab.id].inventoryResult === 'all_normal'" @change="updateForm(tab.id, 'inventoryResult', $event ? 'all_normal' : 'partial_abnormal')">全部正常</el-checkbox>
-                <el-checkbox v-if="type === 'inputResult'" :checked="inventoryFormMap[tab.id].inventoryResult === 'partial_abnormal'" @change="updateForm(tab.id, 'inventoryResult', $event ? 'partial_abnormal' : 'all_normal')">部分异常</el-checkbox>
+                <el-radio-group
+                  v-if="type === 'inputResult'"
+                  :value="inventoryFormMap[tab.id].inventoryResult"
+                  size="small"
+                  @input="handleInventoryResultChange(tab.id, $event)"
+                >
+                  <el-radio label="all_normal">全部正常</el-radio>
+                  <el-radio label="partial_abnormal">部分异常</el-radio>
+                </el-radio-group>
                 <span class="text-value" v-if="isReadonlyResultMode">{{ getInventoryResultText(inventoryFormMap[tab.id].inventoryResult) }}</span>
+              </div>
+              <div v-if="type === 'inputResult' && inventoryFormMap[tab.id].inventoryResult === 'partial_abnormal'" class="abnormal-select mt-15">
+                <span class="stat-label">盘盈容器</span>
+                <el-select
+                  :value="inventoryFormMap[tab.id].excessContainerCodes || []"
+                  multiple
+                  filterable
+                  collapse-tags
+                  size="small"
+                  placeholder="请选择盘盈容器"
+                  class="abnormal-select-input"
+                  @input="handleAbnormalContainerChange(tab.id, 'excess', $event)"
+                >
+                  <el-option
+                    v-for="item in goodsListMap[tab.id] || []"
+                    :key="getGoodsKey(item)"
+                    :label="item.containerCode || '-'"
+                    :value="getGoodsKey(item)"
+                    :disabled="isOppositeContainerSelected(tab.id, 'excess', item)"
+                  />
+                </el-select>
+              </div>
+              <div v-if="type === 'inputResult' && inventoryFormMap[tab.id].inventoryResult === 'partial_abnormal'" class="abnormal-select mt-15">
+                <span class="stat-label">盘亏容器</span>
+                <el-select
+                  :value="inventoryFormMap[tab.id].deficitContainerCodes || []"
+                  multiple
+                  filterable
+                  collapse-tags
+                  size="small"
+                  placeholder="请选择盘亏容器"
+                  class="abnormal-select-input"
+                  @input="handleAbnormalContainerChange(tab.id, 'deficit', $event)"
+                >
+                  <el-option
+                    v-for="item in goodsListMap[tab.id] || []"
+                    :key="getGoodsKey(item)"
+                    :label="item.containerCode || '-'"
+                    :value="getGoodsKey(item)"
+                    :disabled="isOppositeContainerSelected(tab.id, 'deficit', item)"
+                  />
+                </el-select>
               </div>
               <!-- 输入框行 -->
               <div class="stats-inputs mt-15">
@@ -108,17 +157,18 @@
           <el-table :data="goodsListMap[tab.id] || []" border size="small" max-height="400">
             <el-table-column type="index" label="序号" width="60" />
             <el-table-column prop="warehouseName" label="位置" width="120" show-overflow-tooltip />
-            <el-table-column prop="containerCode" label="容器号" width="120" show-overflow-tooltip />
-            <el-table-column prop="inventoryTime" label="盘存时间" width="160" show-overflow-tooltip />
+            <el-table-column prop="containerCode" label="容器号" min-width="120" show-overflow-tooltip />
+            <el-table-column prop="storageTime" label="入库时间" min-width="120" show-overflow-tooltip />
             <el-table-column prop="productionUnit" label="生产单位" width="100" show-overflow-tooltip />
             <el-table-column prop="sealCode1" label="封记编号1" width="100" show-overflow-tooltip />
             <el-table-column prop="sealCode2" label="封记编号2" width="100" show-overflow-tooltip />
             <el-table-column label="结果" width="220" v-if="type === 'inputResult'">
               <template slot-scope="scope">
                 <div class="result-cell">
-                  <el-radio-group v-model="scope.row.result" size="mini">
+                  <el-radio-group v-model="scope.row.result" size="mini" @change="handleGoodsResultChange(tab.id)">
                     <el-radio label="0">正常</el-radio>
-                    <el-radio label="1">不正常</el-radio>
+                    <el-radio label="1">盘亏</el-radio>
+                    <el-radio label="2">盘盈</el-radio>
                   </el-radio-group>
                   <el-input v-model="scope.row.resultRemark" size="mini" placeholder="备注" class="cell-remark mt-5" />
                 </div>
@@ -175,12 +225,38 @@ export default {
         value,
       })
     },
+    handleInventoryResultChange(warehouseId, value) {
+      this.$emit('inventory-result-change', {
+        warehouseId,
+        value,
+      })
+    },
+    handleAbnormalContainerChange(warehouseId, resultType, value) {
+      this.$emit('abnormal-container-change', {
+        warehouseId,
+        resultType,
+        value,
+      })
+    },
+    handleGoodsResultChange(warehouseId) {
+      this.$emit('goods-result-change', {
+        warehouseId,
+      })
+    },
+    getGoodsKey(item) {
+      return String(item.id || item.containerCode || '')
+    },
+    isOppositeContainerSelected(warehouseId, resultType, item) {
+      const form = this.inventoryFormMap[warehouseId] || {}
+      const oppositeField = resultType === 'excess' ? 'deficitContainerCodes' : 'excessContainerCodes'
+      return (form[oppositeField] || []).map(value => String(value)).includes(this.getGoodsKey(item))
+    },
     getInventoryResultText(result) {
       const map = { all_normal: '全部正常', partial_abnormal: '部分异常', '1': '全部正常', '2': '部分异常' }
       return map[result] || '-'
     },
     getResultText(result) {
-      const map = { '0': '正常', '1': '盘亏', '2': '盘盈' }
+      const map = { '0': '正常', '1': '盘亏', '2': '盘盈', '-1': '--' }
       return map[result] || result || '-'
     },
     getResultClass(result) {
@@ -250,6 +326,11 @@ export default {
         color: #606266;
         font-size: 14px;
         flex-shrink: 0;
+        &.required::before {
+          content: '*';
+          color: #f56c6c;
+          margin-right: 4px;
+        }
       }
       .text-value {
         color: #303133;
@@ -292,6 +373,20 @@ export default {
       flex-shrink: 0;
     }
     .flex-1 {
+      flex: 1;
+    }
+  }
+
+  .abnormal-select {
+    display: flex;
+    align-items: center;
+    .stat-label {
+      width: 60px;
+      color: #606266;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .abnormal-select-input {
       flex: 1;
     }
   }
