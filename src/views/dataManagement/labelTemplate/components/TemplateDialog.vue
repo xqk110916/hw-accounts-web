@@ -33,7 +33,7 @@
           </el-select>
         </div>
 
-        <div v-for="(item, index) in fieldConfigList" :key="item.label" class="form-row field-row">
+        <div v-for="(item, index) in fieldConfigList" :key="item.id" class="form-row field-row">
           <span class="sort-icons">
             <i v-if="index > 0" class="el-icon-top" @click="moveField(index, -1)"></i>
             <i v-if="index < fieldConfigList.length - 1" class="el-icon-bottom" @click="moveField(index, 1)"></i>
@@ -50,8 +50,8 @@
           <el-select v-model="item['状态']" size="small" class="state-select" @change="refreshPreview">
             <el-option v-for="state in fieldStatusOptions" :key="state" :label="state" :value="state"></el-option>
           </el-select>
-          <el-button size="mini" class="icon-btn">+</el-button>
-          <el-button size="mini" class="icon-btn minus">-</el-button>
+          <el-button size="mini" class="icon-btn" @click="addField(index)">+</el-button>
+          <el-button size="mini" class="icon-btn minus" :disabled="fieldConfigList.length <= 1" @click="removeField(index)">-</el-button>
         </div>
 
         <div class="form-row">
@@ -92,31 +92,23 @@
           <span>预览</span>
           <i class="el-icon-refresh" @click="refreshPreview"></i>
         </div>
-        <div class="preview-card" v-loading="previewLoading" :style="previewMarginStyle">
+        <div class="preview-card" v-loading="previewLoading" :style="previewCardStyle">
           <div class="preview-left">
-            <div v-if="templateForm['标题显示状态'] === '显示'" class="preview-title">{{ templateForm['标题'] }}</div>
+            <div v-if="templateForm['标题显示状态'] === '显示'" class="preview-title" :style="titleStyle">{{ templateForm['标题'] }}</div>
             <div class="preview-grid">
-              <div>{{ getPreviewField(0) }}</div>
-              <div></div>
-              <div>{{ getPreviewField(1) }}</div>
-              <div></div>
-              <div>{{ getPreviewField(2) }}</div>
-              <div></div>
-              <div>{{ getPreviewField(3) }}</div>
-              <div></div>
-              <div>{{ getPreviewField(4) }}</div>
-              <div></div>
-              <div></div>
-              <div></div>
-              <div>{{ getPreviewField(5) }}</div>
-              <div></div>
-              <div></div>
-              <div></div>
+              <div
+                v-for="item in visibleFieldConfigList"
+                :key="item.id"
+                :class="['preview-field', item['排版'] === '双排' ? 'double' : '', item['状态'] === '禁用' ? 'disabled' : '']"
+                :style="fieldStyle(item)"
+              >
+                {{ item.value }}
+              </div>
             </div>
           </div>
           <div class="preview-qr">
-            <div class="qr-label">二维码</div>
-            <div v-if="templateForm['显示状态'] === '显示'" class="qr-code"></div>
+            <div v-if="templateForm['显示状态'] === '显示'" class="qr-label">二维码</div>
+            <div v-if="templateForm['显示状态'] === '显示'" class="qr-code" :style="qrCodeStyle"></div>
           </div>
         </div>
       </div>
@@ -154,6 +146,7 @@ export default {
       fieldStatusOptions: ['正常', '隐藏', '禁用'],
       qrWidth: '50mm',
       qrHeight: '50mm',
+      nextFieldId: 1,
       templateForm: {
         '模板': '模板1',
         '标题': '材料管理卡',
@@ -171,18 +164,28 @@ export default {
     }
   },
   computed: {
-    previewMarginStyle() {
-      const scale = 3.6
-      const toPx = value => {
-        const size = Number.parseFloat(String(value || '').replace('mm', ''))
-        if (!Number.isFinite(size)) return '0px'
-        return `${Math.min(Math.max(size * scale, 0), 160)}px`
-      }
+    visibleFieldConfigList() {
+      return this.fieldConfigList.filter(item => item['状态'] !== '隐藏')
+    },
+    previewCardStyle() {
       return {
-        paddingTop: toPx(this.templateForm['上边距']),
-        paddingRight: toPx(this.templateForm['右边距']),
-        paddingBottom: toPx(this.templateForm['下边距']),
-        paddingLeft: toPx(this.templateForm['左边距']),
+        paddingTop: this.toPx(this.templateForm['上边距']),
+        paddingBottom: this.toPx(this.templateForm['下边距']),
+        paddingLeft: this.toPx(this.templateForm['左边距']),
+        paddingRight: this.toPx(this.templateForm['右边距']),
+      }
+    },
+    titleStyle() {
+      return {
+        fontSize: this.fontSizeToPx(this.templateForm['标题字号']),
+        fontWeight: this.templateForm['标题状态'] === '加粗' ? 700 : 400,
+        opacity: this.templateForm['标题状态'] === '禁用' ? 0.45 : 1,
+      }
+    },
+    qrCodeStyle() {
+      return {
+        width: this.qrSizeToPx(this.qrWidth),
+        height: this.qrSizeToPx(this.qrHeight),
       }
     },
   },
@@ -200,19 +203,24 @@ export default {
       const template = getTemplateByIdOrName(value)
       this.currentTemplate = template
       this.templateForm = templateToForm(template)
-      this.fieldConfigList = templateToFields(template)
+      this.fieldConfigList = templateToFields(template).map((item, index) => ({
+        ...item,
+        id: item.id || index + 1,
+      }))
+      this.nextFieldId = Math.max(...this.fieldConfigList.map(item => item.id), 0) + 1
       this.qrWidth = template.qrSize.width
       this.qrHeight = template.qrSize.height
     },
     initFieldConfigList() {
       this.fieldConfigList = [
-        { label: '字段1', value: '材料编码', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { label: '字段2', value: '生产单位', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { label: '字段3', value: '库房', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { label: '字段4', value: '入库人', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { label: '字段5', value: '容器号', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { label: '字段6', value: '入库时间', '排版': '单排', '字号': '16号', '状态': '正常' },
+        { id: 1, label: '字段1', value: '材料编码', '排版': '单排', '字号': '16号', '状态': '正常' },
+        { id: 2, label: '字段2', value: '生产单位', '排版': '单排', '字号': '16号', '状态': '正常' },
+        { id: 3, label: '字段3', value: '库房', '排版': '单排', '字号': '16号', '状态': '正常' },
+        { id: 4, label: '字段4', value: '入库人', '排版': '单排', '字号': '16号', '状态': '正常' },
+        { id: 5, label: '字段5', value: '容器号', '排版': '单排', '字号': '16号', '状态': '正常' },
+        { id: 6, label: '字段6', value: '入库时间', '排版': '单排', '字号': '16号', '状态': '正常' },
       ]
+      this.nextFieldId = 7
     },
     handleTemplateChange() {
       this.templateLoading = true
@@ -228,17 +236,43 @@ export default {
           this.$message.warning('请输入模板名称')
           return
         }
-        const exists = this.templateOptions.some(item => item.label === value)
+        const templateName = value.trim()
+        const exists = this.templateOptions.some(item => item.label === templateName)
         if (exists) {
           this.$message.warning('模板名称不能重复')
           return
         }
-        const template = createTemplateFrom(value, formToTemplate(this.templateForm, this.fieldConfigList, this.currentTemplate))
+        const template = createTemplateFrom(templateName, formToTemplate(this.templateForm, this.fieldConfigList, this.currentTemplate))
         this.loadTemplateOptions()
         this.templateForm['模板'] = template.id
         this.loadTemplate(template.id)
         this.refreshPreview()
       }).catch(() => {})
+    },
+    relabelFields() {
+      this.fieldConfigList.forEach((item, index) => {
+        item.label = '字段' + (index + 1)
+      })
+    },
+    addField(index) {
+      this.fieldConfigList.splice(index + 1, 0, {
+        id: this.nextFieldId,
+        key: 'customField' + this.nextFieldId,
+        label: '',
+        value: '自定义字段' + this.nextFieldId,
+        '排版': '单排',
+        '字号': '16号',
+        '状态': '正常',
+      })
+      this.nextFieldId += 1
+      this.relabelFields()
+      this.refreshPreview()
+    },
+    removeField(index) {
+      if (this.fieldConfigList.length <= 1) return
+      this.fieldConfigList.splice(index, 1)
+      this.relabelFields()
+      this.refreshPreview()
     },
     moveField(index, step) {
       const target = index + step
@@ -246,6 +280,7 @@ export default {
       const current = this.fieldConfigList[index]
       this.fieldConfigList.splice(index, 1)
       this.fieldConfigList.splice(target, 0, current)
+      this.relabelFields()
       this.refreshPreview()
     },
     handleFieldChange() {
@@ -255,17 +290,31 @@ export default {
       this.templateForm['二维码'] = this.qrWidth + '×' + this.qrHeight
       this.refreshPreview()
     },
+    toPx(value) {
+      const size = Number.parseFloat(String(value || '').replace('mm', ''))
+      if (!Number.isFinite(size)) return '0px'
+      return `${Math.min(Math.max(size * 2.4, 0), 160)}px`
+    },
+    qrSizeToPx(value) {
+      const size = Number.parseFloat(String(value || '').replace('mm', ''))
+      if (!Number.isFinite(size)) return '300px'
+      return `${Math.max(Math.min(size * 6, 460), 80)}px`
+    },
+    fontSizeToPx(value) {
+      const size = Number.parseFloat(String(value || '').replace('号', ''))
+      return `${Number.isFinite(size) ? size + 4 : 20}px`
+    },
+    fieldStyle(item) {
+      return {
+        fontSize: this.fontSizeToPx(item['字号']),
+      }
+    },
     refreshPreview() {
       this.previewLoading = true
       clearTimeout(this.previewTimer)
       this.previewTimer = setTimeout(() => {
         this.previewLoading = false
       }, 160)
-    },
-    getPreviewField(index) {
-      const field = this.fieldConfigList[index]
-      if (!field || field['状态'] !== '正常') return ''
-      return field.value
     },
     validateTemplate() {
       if (!this.templateForm['模板']) {
@@ -291,6 +340,11 @@ export default {
       const invalidMargin = marginKeys.some(key => !/^\d+mm$/.test(this.templateForm[key]))
       if (invalidMargin) {
         this.$message.warning('边距格式应为数字mm')
+        return false
+      }
+      const invalidMarginRange = marginKeys.some(key => Number.parseFloat(String(this.templateForm[key]).replace('mm', '')) > 100)
+      if (invalidMarginRange) {
+        this.$message.warning('边距数值不能超过100mm')
         return false
       }
       if (!/^\d+mm×\d+mm$/.test(this.templateForm['二维码'])) {

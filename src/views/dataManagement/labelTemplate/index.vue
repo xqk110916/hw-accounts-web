@@ -185,6 +185,8 @@ export default {
       this.deleteLoading = true
       try {
         deleteRecord(row.id)
+        const maxPage = Math.max(Math.ceil((this.searchForm.total - 1) / this.searchForm.pageSize), 1)
+        this.searchForm.currentPage = Math.min(this.searchForm.currentPage, maxPage)
         this.handleQuery()
         this.$message.success('删除成功')
       } finally {

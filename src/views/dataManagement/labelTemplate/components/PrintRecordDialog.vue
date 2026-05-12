@@ -90,6 +90,7 @@ export default {
       templateOptions: [],
       currentTemplate: getTemplateByIdOrName('模板1'),
       formData: {
+        id: '',
         '选择模板': '',
         '备注': '',
         '材料编码': '',
@@ -120,6 +121,9 @@ export default {
       if (this.mode === 'edit') return '编辑'
       return '添加'
     },
+  },
+  beforeDestroy() {
+    clearTimeout(this.qrTimer)
   },
   methods: {
     open(row, mode) {
@@ -178,9 +182,13 @@ export default {
       this.qrCodeLoading = true
       clearTimeout(this.qrTimer)
       this.qrTimer = setTimeout(() => {
-        this.formData['二维码'] = buildQrContent(this.currentTemplate, this.formData)
+        this.ensureQrContent()
         this.qrCodeLoading = false
       }, 120)
+    },
+    ensureQrContent() {
+      this.formData['二维码'] = buildQrContent(this.currentTemplate, this.formData)
+      return this.formData['二维码']
     },
     validateCardFields() {
       const requiredFields = ['材料编码', '生成单位', '库房', '入库人', '容器号', '入库时间']
@@ -246,7 +254,7 @@ export default {
     handleSave() {
       this.$refs.form.validate(valid => {
         if (!valid || !this.validateCardFields()) return
-        if (!this.formData['二维码']) this.refreshQrCode()
+        this.ensureQrContent()
         this.saveLoading = true
         setTimeout(() => {
           this.persistRecord()
@@ -261,10 +269,7 @@ export default {
       this.$refs.form.validate(async valid => {
         const config = getPrinterConfig()
         if (!valid || !this.validateCardFields() || !this.validatePrinterConfig(config)) return
-        if (!this.formData['二维码']) {
-          this.$message.warning('请先生成二维码')
-          return
-        }
+        this.ensureQrContent()
         this.printLoading = true
         try {
           const sdk = await this.$zplPrinter.getSdk()

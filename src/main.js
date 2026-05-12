@@ -6,7 +6,7 @@
  * @LastEditTime: 2024-03-13 14:24:20
  */
 import bootstrap from './bootstrap';
-bootstrap();
+bootstrap(() => {});
 import wlGantt from 'wl-gantt';
 
 import 'wl-gantt/lib/wl-gantt.css';
