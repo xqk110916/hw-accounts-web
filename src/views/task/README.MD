@@ -57,7 +57,7 @@
 
 ### 3. 明细维护与库位选择
 
-入库明细包含材料编码、容器号、生产单位、库房、位置、货箱号、封记编码、毛重、皮重、净重等字段。每条明细需要选择库房和库位：
+入库明细包含材料编码、容器号、生产单位、库房、位置、货箱号、封记编码、封记类型、毛重、皮重、净重等字段。封记类型字段为 `sealType1`、`sealType2`，使用字典父级 ID `2052628107427078145`；手工编辑明细时，填写对应封记编码后必须选择对应封记类型。每条明细需要选择库房和库位：
 
 - 库房列表来自 `GET /busin/locationMap/hierarchy/listByNodeType/2`。
 - 库位列表来自 `POST /busin/locationMap/positionMap`，请求体包含 `nodeId` 和 `nodeType: '2'`。
@@ -152,7 +152,7 @@
 - 容器列表：调用 `POST /busin/inbound/goodsPageList`，支持容器号、货物编码和入库时间筛选。
 - 入库单：调用 `POST /busin/inbound/goodsPageList`，按 `taskNum` 查询入库单容器，弃用 `getByTaskNumAndContainerCode`。
 
-确认选择后，前端统一规范化为出库明细字段：`containerCode`、`goodCode`、`warehouseId`、`warehouseName`、`boxNum`、`grossWeight`、`tareWeight`、`netWeight`、`productionUnit`、`shelfCode`、`rowCode`、`columnCode`、`sealCode1`、`sealCode2`。
+确认选择后，前端统一规范化为出库明细字段：`containerCode`、`goodCode`、`warehouseId`、`warehouseName`、`boxNum`、`grossWeight`、`tareWeight`、`netWeight`、`productionUnit`、`shelfCode`、`rowCode`、`columnCode`、`sealCode1`、`sealType1`、`sealCode2`、`sealType2`。
 
 ### 4. 自动配重
 
@@ -216,7 +216,7 @@
 
 - 库房列表来自 `GET /busin/locationMap/hierarchy/listByNodeType/2`。
 - 位置列表来自 `POST /busin/locationMap/positionMap`，请求体包含 `nodeId` 和 `nodeType: '2'`。
-- 原位置只允许选择 `status=1` 且有容器号的位置，选择后自动回填入库任务编号、容器号、材料编码、生产单位、重量、封记和原排/行/列。
+- 原位置只允许选择 `status=1` 且有容器号的位置，选择后自动回填入库任务编号、容器号、材料编码、生产单位、重量、封记编码、封记类型和原排/行/列。
 - 目标位置沿用入库管理规则：下拉展示全部位置，但 `status !== 0` 的位置置灰不可选。
 - 提交前会阻止原位置和目标位置完全相同的明细。
 
@@ -294,6 +294,7 @@
   - `result=0`：正常
   - `result=1`：盘亏
   - `result=2`：盘盈
+- 盘存明细展示并提交封记编码和封记类型字段：`sealCode1`、`sealType1`、`sealCode2`、`sealType2`。
 
 录入结果提交时，`wareList[].goodsList` 按接口文档提交完整 `PhysicalInventoryGoodsDTO` 字段，盘亏或盘盈明细的 `resultRemark` 可为空。
 

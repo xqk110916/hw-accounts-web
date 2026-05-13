@@ -132,7 +132,13 @@
             </template>
           </el-table-column>
           <el-table-column prop="sealCode1" label="封记编码1" width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型1" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType1) }}</template>
+          </el-table-column>
           <el-table-column prop="sealCode2" label="封记编码2" width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型2" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
+          </el-table-column>
           <el-table-column v-if="!isReadonlyMode" label="操作" width="120" fixed="right">
             <template slot-scope="scope">
               <span class="table_operation">
@@ -279,8 +285,14 @@
           <tr>
             <td class="label">重量(毛/皮/净)</td>
             <td>{{ detailEditForm.grossWeight || 0 }} / {{ detailEditForm.tareWeight || 0 }} / {{ detailEditForm.netWeight || 0 }}</td>
-            <td class="label">封记</td>
+            <td class="label">封记编码</td>
             <td>{{ [detailEditForm.sealCode1, detailEditForm.sealCode2].filter(Boolean).join('、') || '-' }}</td>
+          </tr>
+          <tr>
+            <td class="label">封记类型1</td>
+            <td>{{ getSealTypeLabel(detailEditForm.sealType1) }}</td>
+            <td class="label">封记类型2</td>
+            <td>{{ getSealTypeLabel(detailEditForm.sealType2) }}</td>
           </tr>
         </table>
       </el-form>
@@ -297,6 +309,7 @@ import { deepClone } from '@/utils'
 import { config, requestFun, beforeSubmit } from './index.js'
 import { cancelMoveApply, confirmMove, executeAuditedMove, getLocationHierarchy, getPositionMap } from './api.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
 function formatDefaultDate(value) {
   if (!(value instanceof Date)) return value
@@ -349,6 +362,7 @@ export default {
       targetPositionOptions: [],
       sourcePositionLoading: false,
       targetPositionLoading: false,
+      sealTypeOptions: [],
     }
   },
   computed: {
@@ -401,6 +415,7 @@ export default {
   created() {
     this.handleParams()
     this.loadWarehouseOptions()
+    this.loadSealTypeOptions()
   },
   methods: {
     open(row, updateType = 0, mode) {
@@ -562,6 +577,16 @@ export default {
     async loadWarehouseOptions() {
       const res = await getLocationHierarchy(2)
       this.warehouseOptions = res.data || []
+    },
+    loadSealTypeOptions() {
+      getSealTypeOptions().then(options => {
+        this.sealTypeOptions = options
+      }).catch(() => {
+        this.sealTypeOptions = []
+      })
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
     },
     ensureWarehouseOptions() {
       if (this.warehouseOptions.length) return Promise.resolve(this.warehouseOptions)

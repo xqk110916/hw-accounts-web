@@ -45,8 +45,14 @@
           <tr>
             <td class="label">封记编码1</td>
             <td class="value">{{ detailValue('sealCode1') }}</td>
+            <td class="label">封记类型1</td>
+            <td class="value">{{ getSealTypeLabel(detailValueRaw('sealType1')) }}</td>
+          </tr>
+          <tr>
             <td class="label">封记编码2</td>
             <td class="value">{{ detailValue('sealCode2') }}</td>
+            <td class="label">封记类型2</td>
+            <td class="value">{{ getSealTypeLabel(detailValueRaw('sealType2')) }}</td>
           </tr>
           <tr>
             <td class="label">毛重</td>
@@ -207,6 +213,7 @@
 import { getHierarchyListByNodeType, getPositionMap } from '@/api/warehouse/locationMap';
 import { getBalanceAreaList, getWarehouseList, getWarehouseById } from '../config/warehouseConfig';
 import WarehouseGridMap2D from './WarehouseGridMap2D.vue';
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js';
 
 export default {
   name: 'ContainerDetailDialog',
@@ -258,8 +265,12 @@ export default {
       mapSelectedShelf: null,
       mapAreaLoading: false,
       mapWarehouseLoading: false,
-      mapLoading: false
+      mapLoading: false,
+      sealTypeOptions: []
     };
+  },
+  created() {
+    this.loadSealTypeOptions();
   },
   watch: {
     dialogVisible(val) {
@@ -302,6 +313,16 @@ export default {
     }
   },
   methods: {
+    loadSealTypeOptions() {
+      getSealTypeOptions().then(options => {
+        this.sealTypeOptions = options;
+      }).catch(() => {
+        this.sealTypeOptions = [];
+      });
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value);
+    },
     async loadWarehouseOptions() {
       this.warehouseLoading = true;
       try {

@@ -174,7 +174,13 @@
           </el-table-column>
           <el-table-column prop="boxNum" label="货箱号" width="100" show-overflow-tooltip />
           <el-table-column prop="sealCode1" label="封记编码1" width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型1" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType1) }}</template>
+          </el-table-column>
           <el-table-column prop="sealCode2" label="封记编码2" width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型2" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
+          </el-table-column>
           <el-table-column label="重量(毛,皮,净)" width="180" show-overflow-tooltip>
             <template slot-scope="scope">
               {{ scope.row.grossWeight || 0 }}、{{ scope.row.tareWeight || 0 }}、{{ scope.row.netWeight || 0 }}
@@ -228,6 +234,7 @@ import AutoPickPlanDialog from './AutoPickPlanDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
 import { cancelOutboundApply, confirmAuditOutbound, executeAuditedOutboundUpdate } from './api.js'
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
 function formatDefaultDate(value) {
   if (!(value instanceof Date)) return value
@@ -266,6 +273,7 @@ export default {
       modifyRecords: [],
       deletedGoodIds: [],
       deletedContainerCodes: [],
+      sealTypeOptions: [],
     }
   },
   computed: {
@@ -323,6 +331,7 @@ export default {
   },
   created() {
     this.handleParams()
+    this.loadSealTypeOptions()
   },
   methods: {
     open(row, updateType = 0, mode) {
@@ -453,6 +462,16 @@ export default {
       this.formKeys.forEach(item => {
         if (item.option || item.dictParentId) this.getOptions(item)
       })
+    },
+    loadSealTypeOptions() {
+      getSealTypeOptions().then(options => {
+        this.sealTypeOptions = options
+      }).catch(() => {
+        this.sealTypeOptions = []
+      })
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
     },
     getOptions(item) {
       if (item.dictParentId) {

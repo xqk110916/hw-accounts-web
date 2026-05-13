@@ -12,7 +12,7 @@
         <div class="operation">
           <div :class="['btn', 'primary']" @click="handleImport">导入</div>
           <div :class="['btn', 'primary']" @click="handleAdd">添加</div>
-          <div :class="['btn', 'default-btn']" @click="handleEditTemplate">编辑模版</div>
+          <div :class="['btn', 'default-btn']" @click="handleTemplateManage">模板管理</div>
         </div>
         <div class="table">
           <el-table
@@ -56,29 +56,32 @@
     </div>
     <print-import-dialog ref="printImportDialog" @saved="handleQuery"></print-import-dialog>
     <print-record-dialog ref="printRecordDialog" @saved="handleQuery"></print-record-dialog>
-    <template-dialog ref="templateDialog"></template-dialog>
+    <template-manage-dialog ref="templateManageDialog" @saved="handleTemplateChanged"></template-manage-dialog>
   </div>
 </template>
 
 <script>
 import PrintImportDialog from './components/PrintImportDialog.vue'
 import PrintRecordDialog from './components/PrintRecordDialog.vue'
-import TemplateDialog from './components/TemplateDialog.vue'
-import { deleteRecord, getRecords } from './components/storage'
+import TemplateManageDialog from './components/TemplateManageDialog.vue'
+import { labelDataToRow, templateListToOptions } from './components/storage'
+import { deleteLabelData, listAllTemplate, listLabelData } from './components/api'
 
 export default {
   name: 'LabelTemplate',
-  components: { PrintImportDialog, PrintRecordDialog, TemplateDialog },
+  components: { PrintImportDialog, PrintRecordDialog, TemplateManageDialog },
   data() {
     return {
       searchForm: {
         '日期范围': [],
+        templateId: '',
         currentPage: 1,
         pageSize: 20,
         total: 0,
       },
       searchOptions: [
         { label: '打印时间', prop: '日期范围', type: 'daterange', col: 7 },
+        { label: '模板', prop: 'templateId', type: 'select', col: 5, option: [] },
         { type: 'slot', slotName: 'footer', col: 4 },
       ],
       tableData: [],
@@ -88,7 +91,8 @@ export default {
       height: 0,
     }
   },
-  created() {
+  async created() {
+    await this.loadTemplateOptions()
     this.handleQuery()
   },
   mounted() {
@@ -112,14 +116,16 @@ export default {
       if (!this.validateDateRange()) return
       this.listLoading = true
       try {
-        const records = this.getFilteredRecords()
-        const start = (this.searchForm.currentPage - 1) * this.searchForm.pageSize
-        const end = start + this.searchForm.pageSize
-        this.tableData = records.slice(start, end).map(this.mapRecordToRow)
-        this.searchForm.total = records.length
+        const records = await this.getFilteredRecords()
+        this.tableData = records.map(this.mapRecordToRow)
       } finally {
         this.listLoading = false
       }
+    },
+    async loadTemplateOptions() {
+      const res = await listAllTemplate()
+      const templateSearch = this.searchOptions.find(item => item.prop === 'templateId')
+      if (templateSearch) templateSearch.option = templateListToOptions(res.data)
     },
     validateDateRange() {
       const range = this.searchForm['日期范围']
@@ -129,16 +135,16 @@ export default {
       }
       return true
     },
-    getFilteredRecords() {
-      const range = this.searchForm['日期范围']
-      const records = getRecords()
-      if (!Array.isArray(range) || range.length !== 2) return records
-      const startTime = new Date(range[0]).setHours(0, 0, 0, 0)
-      const endTime = new Date(range[1]).setHours(23, 59, 59, 999)
-      return records.filter(item => {
-        const time = new Date(item.printTime || item.createTime || 0).getTime()
-        return time >= startTime && time <= endTime
-      })
+    async getFilteredRecords() {
+      const params = {
+        currentPage: this.searchForm.currentPage,
+        pageSize: this.searchForm.pageSize,
+      }
+      if (this.searchForm.templateId) params.templateId = this.searchForm.templateId
+      const res = await listLabelData(params)
+      const data = res.data || {}
+      this.searchForm.total = data.pagination ? data.pagination.total || 0 : 0
+      return (data.list || []).map(labelDataToRow)
     },
     mapRecordToRow(record) {
       return {
@@ -158,6 +164,7 @@ export default {
     },
     handleReset() {
       this.searchForm['日期范围'] = []
+      this.searchForm.templateId = ''
       this.searchForm.currentPage = 1
       this.searchForm.pageSize = 20
       this.handleQuery()
@@ -171,8 +178,14 @@ export default {
     handleAdd() {
       this.$refs.printRecordDialog.open(null, 'add')
     },
-    handleEditTemplate() {
-      this.$refs.templateDialog.open()
+    handleTemplateManage() {
+      this.$refs.templateManageDialog.open()
+    },
+    async handleTemplateChanged() {
+      await this.loadTemplateOptions()
+      if (this.$refs.printRecordDialog && this.$refs.printRecordDialog.visible) {
+        this.$refs.printRecordDialog.loadTemplateOptions()
+      }
     },
     handleDetail(row) {
       this.$refs.printRecordDialog.open(row, 'detail')
@@ -184,7 +197,7 @@ export default {
       await this.$confirm('确定要删除吗?', '提示', { type: 'warning' })
       this.deleteLoading = true
       try {
-        deleteRecord(row.id)
+        await deleteLabelData(row.id)
         const maxPage = Math.max(Math.ceil((this.searchForm.total - 1) / this.searchForm.pageSize), 1)
         this.searchForm.currentPage = Math.min(this.searchForm.currentPage, maxPage)
         this.handleQuery()

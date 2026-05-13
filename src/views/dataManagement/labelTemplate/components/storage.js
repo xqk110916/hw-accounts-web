@@ -1,6 +1,3 @@
-const TEMPLATE_KEY = 'labelTemplate.templates'
-const RECORD_KEY = 'labelTemplate.records'
-
 export const defaultPrinterConfig = {
   serviceIp: '127.0.0.1',
   servicePort: 9099,
@@ -46,74 +43,144 @@ export const createDefaultTemplate = (name = '模板1') => ({
   },
 })
 
-const readJson = (key, fallback) => {
-  try {
-    const value = window.localStorage.getItem(key)
-    return value ? JSON.parse(value) : fallback
-  } catch (e) {
-    return fallback
-  }
-}
-
-const writeJson = (key, value) => {
-  window.localStorage.setItem(key, JSON.stringify(value))
-}
-
 const clone = data => JSON.parse(JSON.stringify(data))
 
-export const getTemplates = () => {
-  const templates = readJson(TEMPLATE_KEY, null)
-  if (Array.isArray(templates) && templates.length) return templates
-  const defaultTemplate = createDefaultTemplate('模板1')
-  writeJson(TEMPLATE_KEY, [defaultTemplate])
-  return [defaultTemplate]
+const yesValues = ['true', '1', '显示', true, 1]
+
+const toVisibleText = value => (value === undefined || value === null || value === '' || yesValues.includes(value) ? '显示' : '隐藏')
+
+const toBooleanText = value => (value === '显示' || value === '正常' || value === '加粗' ? 'true' : 'false')
+
+const stripUnit = value => {
+  const size = Number.parseFloat(String(value || '').replace(/[^\d.]/g, ''))
+  return Number.isFinite(size) ? String(size) : ''
 }
 
-export const getTemplateByIdOrName = value => {
-  const templates = getTemplates()
-  return templates.find(item => item.id === value || item.name === value) || templates[0]
+const ensureMm = value => {
+  const size = stripUnit(value)
+  return size ? `${size}mm` : '0mm'
 }
 
-export const saveTemplate = template => {
-  const templates = getTemplates()
-  const nextTemplate = { ...clone(template), id: template.id || `tpl_${Date.now()}` }
-  const index = templates.findIndex(item => item.id === nextTemplate.id || item.name === nextTemplate.name)
-  if (index > -1) {
-    templates.splice(index, 1, nextTemplate)
-  } else {
-    templates.push(nextTemplate)
+const ensureFontSize = value => {
+  const size = stripUnit(value)
+  return size ? `${size}号` : '16号'
+}
+
+const readBoolean = value => yesValues.includes(value)
+
+export const backendToTemplate = data => {
+  const source = data || {}
+  const fields = Array.isArray(source.fieldsConfig) ? [...source.fieldsConfig] : []
+  fields.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
+  return {
+    id: source.id,
+    name: source.templateName || source.name || '模板1',
+    title: source.title || '材料管理卡',
+    titleVisible: toVisibleText(source.titleShow),
+    titleFontSize: ensureFontSize(source.titleSize),
+    titleStatus: readBoolean(source.titleBold) ? '加粗' : '正常',
+    fields: (fields.length ? fields : defaultFields).map((item, index) => ({
+      key: item.key || (defaultFields[index] && defaultFields[index].key) || `customField${index + 1}`,
+      label: item.label || `字段${index + 1}`,
+      name: item.fileName || item.name || item.value || '',
+      layout: item.rowSet || item.layout || '单排',
+      fontSize: ensureFontSize(item.fontSize),
+      status: item.status || '正常',
+    })),
+    qrSize: {
+      width: ensureMm(source.codeWidth || 50),
+      height: ensureMm(source.codeHeight || 50),
+    },
+    qrVisible: toVisibleText(source.codeShow),
+    margins: {
+      top: ensureMm(source.marginTop || 10),
+      bottom: ensureMm(source.marginBottom || 10),
+      left: ensureMm(source.marginLeft || 10),
+      right: ensureMm(source.marginRight || 10),
+    },
   }
-  writeJson(TEMPLATE_KEY, templates)
-  return nextTemplate
 }
 
-export const createTemplateFrom = (name, source) => {
-  const template = clone(source || getTemplates()[0])
-  template.id = `tpl_${Date.now()}`
-  template.name = name
-  return saveTemplate(template)
-}
-
-export const getTemplateOptions = () => getTemplates().map(item => ({ label: item.name, value: item.id }))
-
-export const getRecords = () => readJson(RECORD_KEY, [])
-
-export const saveRecord = record => {
-  const records = getRecords()
-  const nextRecord = { ...clone(record), id: record.id || `record_${Date.now()}` }
-  const index = records.findIndex(item => item.id === nextRecord.id)
-  if (index > -1) {
-    records.splice(index, 1, nextRecord)
-  } else {
-    records.unshift(nextRecord)
+export const templateToBackend = template => {
+  const source = template || createDefaultTemplate()
+  return {
+    id: source.id,
+    templateName: source.name,
+    title: source.title,
+    titleShow: toBooleanText(source.titleVisible),
+    titleSize: stripUnit(source.titleFontSize),
+    titleBold: source.titleStatus === '加粗' ? 'true' : 'false',
+    codeShow: toBooleanText(source.qrVisible),
+    codeWidth: stripUnit(source.qrSize && source.qrSize.width),
+    codeHeight: Number(stripUnit(source.qrSize && source.qrSize.height) || 0),
+    marginLeft: Number(stripUnit(source.margins && source.margins.left) || 0),
+    marginTop: Number(stripUnit(source.margins && source.margins.top) || 0),
+    marginRight: Number(stripUnit(source.margins && source.margins.right) || 0),
+    marginBottom: Number(stripUnit(source.margins && source.margins.bottom) || 0),
+    fieldsConfig: (source.fields || []).map((item, index) => ({
+      fileName: item.name,
+      fontSize: stripUnit(item.fontSize),
+      fontBold: item.status === '加粗' ? 'true' : 'false',
+      rowSet: item.layout,
+      sortOrder: index + 1,
+    })),
   }
-  writeJson(RECORD_KEY, records)
-  return nextRecord
 }
 
-export const deleteRecord = id => {
-  const records = getRecords().filter(item => item.id !== id)
-  writeJson(RECORD_KEY, records)
+export const templateListToOptions = list =>
+  (Array.isArray(list) ? list : []).map(item => ({
+    label: item.templateName || item.name,
+    value: item.id,
+  }))
+
+export const labelDataToRow = data => {
+  const source = data || {}
+  const dataJson = Array.isArray(source.dataJson) ? source.dataJson : []
+  const fieldMap = dataJson.reduce((result, item, index) => {
+    const key = (defaultFields[index] && defaultFields[index].key) || `customField${index + 1}`
+    result[key] = item.value || ''
+    return result
+  }, {})
+  return {
+    ...source,
+    printTime: source.printTime || source.createTime || '',
+    labelCount: source.labelCount || 1,
+    materialCode: fieldMap.materialCode || source.materialCode || '',
+    generationUnit: fieldMap.generationUnit || source.generationUnit || '',
+    warehouse: fieldMap.warehouse || source.warehouse || '',
+    inboundPerson: fieldMap.inboundPerson || source.inboundPerson || '',
+    containerNo: fieldMap.containerNo || source.containerNo || '',
+    inboundTime: fieldMap.inboundTime || source.inboundTime || '',
+    qrContent: source.qrcodeBase64 || source.qrContent || '',
+  }
+}
+
+export const buildLabelDataPayload = (template, formData, id) => {
+  const source = template || {}
+  const fieldValueMap = {
+    materialCode: formData['材料编码'],
+    generationUnit: formData['生成单位'],
+    warehouse: formData['库房'],
+    inboundPerson: formData['入库人'],
+    containerNo: formData['容器号'],
+    inboundTime: formData['入库时间'],
+  }
+  const payload = {
+    templateId: source.id,
+    templateName: source.name,
+    qrcodeBase64: formData['二维码'],
+    remark: formData['备注'],
+    dataJson: (source.fields || []).map((item, index) => ({
+      fileName: item.name,
+      value: fieldValueMap[item.key] || '',
+      fontSize: stripUnit(item.fontSize),
+      fontBold: item.status === '加粗' ? 'true' : 'false',
+      rowSet: item.layout,
+      sortOrder: index + 1,
+    })),
+  }
+  if (id) payload.id = id
+  return payload
 }
 
 export const getPrinterConfig = () => ({

@@ -161,7 +161,13 @@
             <el-table-column prop="storageTime" label="入库时间" min-width="120" show-overflow-tooltip />
             <el-table-column prop="productionUnit" label="生产单位" width="100" show-overflow-tooltip />
             <el-table-column prop="sealCode1" label="封记编号1" width="100" show-overflow-tooltip />
+            <el-table-column label="封记类型1" width="110" show-overflow-tooltip>
+              <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType1) }}</template>
+            </el-table-column>
             <el-table-column prop="sealCode2" label="封记编号2" width="100" show-overflow-tooltip />
+            <el-table-column label="封记类型2" width="110" show-overflow-tooltip>
+              <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
+            </el-table-column>
             <el-table-column label="结果" width="220" v-if="type === 'inputResult'">
               <template slot-scope="scope">
                 <div class="result-cell">
@@ -188,6 +194,8 @@
 </template>
 
 <script>
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
+
 export default {
   name: 'InventoryContainer',
   props: {
@@ -212,6 +220,14 @@ export default {
       default: () => ({}),
     },
   },
+  data() {
+    return {
+      sealTypeOptions: [],
+    }
+  },
+  created() {
+    this.loadSealTypeOptions()
+  },
   computed: {
     isReadonlyResultMode() {
       return this.type === 'view' || this.type === 'audit'
@@ -224,6 +240,16 @@ export default {
         field,
         value,
       })
+    },
+    loadSealTypeOptions() {
+      getSealTypeOptions().then(options => {
+        this.sealTypeOptions = options
+      }).catch(() => {
+        this.sealTypeOptions = []
+      })
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
     },
     handleInventoryResultChange(warehouseId, value) {
       this.$emit('inventory-result-change', {

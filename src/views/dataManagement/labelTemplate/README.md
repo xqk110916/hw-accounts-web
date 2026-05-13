@@ -9,9 +9,9 @@
 - 支持 USB、NET、COM 三种连接方式；打印配置统一由 `public/config.js` 中的 `window.globalConfig.ZPL_PRINTER_CONFIG` 控制，界面不展示打印机参数。
 - 打印前会校验标签字段和二维码内容，随后通过 `Vue.prototype.$zplPrinter` 建立 WebSocket 连接并发送 ZPL 指令。
 
-## 本地闭环数据
+## 接口数据
 
-- `localStorage.labelTemplate.templates` 保存模板配置。
-- `localStorage.labelTemplate.records` 保存打印记录。
-- 模板包含标题、字段、二维码显示状态和边距配置；打印记录保存模板快照和字段快照，便于详情回显。
-- 后续接入真实后端时，优先替换 `components/storage.js` 中的数据读写方法，页面交互可保持不变。
+- 模板管理按钮打开 `components/TemplateManageDialog.vue`，通过接口分页查询模板列表，并支持新增、编辑和删除模板。
+- 单个模板配置由 `components/TemplateDialog.vue` 维护，保存时调用标签模板新增/更新接口。
+- 打印记录列表、新增、编辑、详情、删除和导入已接入 `md/数据管理接口.md` 中的 `/busin/label/data/*` 接口。
+- `components/storage.js` 仅保留前端打印模板结构转换、默认打印配置和 ZPL 生成所需的辅助方法，不再作为模板和打印记录的数据源。

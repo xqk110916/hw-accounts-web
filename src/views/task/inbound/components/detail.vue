@@ -191,7 +191,13 @@
           </el-table-column>
           <el-table-column prop="boxNum" label="货箱号" width="100" show-overflow-tooltip />
           <el-table-column prop="sealCode1" label="封记编码1" width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型1" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType1) }}</template>
+          </el-table-column>
           <el-table-column prop="sealCode2" label="封记编码2" width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型2" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
+          </el-table-column>
           <el-table-column label="重量(毛,皮,净)" width="180" show-overflow-tooltip>
             <template slot-scope="scope">
               {{ scope.row.grossWeight || 0 }}、{{ scope.row.tareWeight || 0 }}、{{
@@ -309,8 +315,18 @@
       <el-form-item label="封记编码1" prop="sealCode1">
         <el-input v-model="detailEditForm.sealCode1" size="small" placeholder="请输入封记编码1" />
       </el-form-item>
+      <el-form-item label="封记类型1" prop="sealType1">
+        <el-select v-model="detailEditForm.sealType1" size="small" placeholder="请选择封记类型1" clearable filterable>
+          <el-option v-for="item in sealTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="封记编码2" prop="sealCode2">
         <el-input v-model="detailEditForm.sealCode2" size="small" placeholder="请输入封记编码2" />
+      </el-form-item>
+      <el-form-item label="封记类型2" prop="sealType2">
+        <el-select v-model="detailEditForm.sealType2" size="small" placeholder="请选择封记类型2" clearable filterable>
+          <el-option v-for="item in sealTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
       </el-form-item>
       <el-row :gutter="10">
         <el-col :span="8">
@@ -346,6 +362,7 @@ import ImportDialog from './ImportDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
 import { getLocationHierarchy, getPositionMap, executeAuditedUpdate, getMaterialCodeListAll, cancelInboundApply } from './api.js'
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
 function formatDefaultDate(value, type) {
   if (!(value instanceof Date)) return value
@@ -399,8 +416,23 @@ export default {
         productionUnit: [{ required: true, message: '请输入生产单位', trigger: 'blur' }],
         warehouseId: [{ required: true, message: '请选择库房', trigger: 'change' }],
         positionId: [{ required: true, message: '请选择位置', trigger: 'change' }],
+        sealType1: [{
+          validator: (rule, value, callback) => {
+            if (this.detailEditForm.sealCode1 && !value) callback(new Error('请选择封记类型1'))
+            else callback()
+          },
+          trigger: 'change',
+        }],
+        sealType2: [{
+          validator: (rule, value, callback) => {
+            if (this.detailEditForm.sealCode2 && !value) callback(new Error('请选择封记类型2'))
+            else callback()
+          },
+          trigger: 'change',
+        }],
       },
       materialCodeOptions: [],
+      sealTypeOptions: [],
       warehouseOptions: [], // 库房下拉选项
       positionOptions: [],  // 位置下拉选项
       // 导入
@@ -462,6 +494,7 @@ export default {
     this.handleParams()
     this.resetFormValues()
     this.loadMaterialCodeOptions()
+    this.loadSealTypeOptions()
     this.loadWarehouseOptions()
   },
   methods: {
@@ -753,6 +786,16 @@ export default {
         this.materialCodeOptions = []
       })
     },
+    loadSealTypeOptions() {
+      getSealTypeOptions().then(options => {
+        this.sealTypeOptions = options
+      }).catch(() => {
+        this.sealTypeOptions = []
+      })
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
+    },
     loadWarehouseOptions() {
       getLocationHierarchy(2).then(res => {
         this.warehouseOptions = res.data || []
@@ -798,7 +841,9 @@ export default {
         columnCode: '',
         boxNum: '',
         sealCode1: '',
+        sealType1: '',
         sealCode2: '',
+        sealType2: '',
         grossWeight: 0,
         tareWeight: 0,
         netWeight: 0,

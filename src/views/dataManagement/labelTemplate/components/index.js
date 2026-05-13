@@ -18,8 +18,7 @@ export const btns = {
     { label: '新增', type: 'primary', execute: 'add' },
   ],
   table: [
-    { label: '重命名', type: 'text', execute: 'rename' },
-    { label: '编辑模板', type: 'text', execute: 'editTemplate' },
+    { label: '编辑', type: 'text', execute: 'editTemplate' },
     { label: '删除', type: 'text', execute: 'delete' },
   ]
 }

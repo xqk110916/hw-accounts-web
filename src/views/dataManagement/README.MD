@@ -11,16 +11,20 @@
 - `inventoryReport/`：存量报表，用于展示特定时点的库存结余统计。
 - `sealLedger/`：封记台账，用于记录封签、启封等生命周期信息。
 - `materialManagement/`：材料管理，当前已完成前端界面并对接真实材料代码接口。
-- `labelTemplate/`：标签模版管理，当前前端部分完成，以本地闭环数据和打印 JSSDK 为主。
+- `labelTemplate/`：标签模版管理，已接入标签数据和标签模版后端接口，并保留本机打印 JSSDK 链路。
 - `comprehensiveQuery/`：综合查询，用于跨业务流水的全局检索与快照查询。
 - `accountManagement/`：账目管理，用于处理实物资产变动产生的关联账务数据。
 
 当前维护重点：
 
 - 已完成界面：`materialManagement/` 材料管理。
-- 前端部分完成界面：`labelTemplate/` 标签模版管理。
+- 已接入接口界面：`labelTemplate/` 标签模版管理。
 
 其他界面若发生业务行为、接口、路由或菜单边界变化，应继续在本文档中补充对应说明。
+
+### 初始录入封记字段
+
+`initialEntry/components/ImportDialog.vue` 的导入明细表展示 `sealCode1`、`sealType1`、`sealCode2`、`sealType2`。封记类型使用字典父级 ID `2052628107427078145`，展示时优先映射字典名称，提交 `dataList` 时保留后端返回的原始字段值。
 
 ## 二、材料管理 materialManagement
 
@@ -69,26 +73,26 @@
 
 入口文件：`labelTemplate/index.vue`
 
-标签模版管理用于维护材料管理卡打印记录、编辑标签模版，并通过 `public/js/ZPL_JSSdk0.0.0.3.js` 对接本机 JSSDK 打印服务。该界面当前属于前端部分完成状态：页面交互、模版配置、本地记录和打印链路已具备前端闭环，但数据尚未接入真实后端。
+标签模版管理用于维护材料管理卡打印记录、编辑标签模版，并通过 `public/js/ZPL_JSSdk0.0.0.3.js` 对接本机 JSSDK 打印服务。该界面已接入 `md/数据管理接口.md` 中的标签数据和标签模版接口；本机打印仍由前端 JSSDK 执行。
 
 该页面目录下已存在页面级说明：`labelTemplate/README.md`。修改标签打印、模版配置或本地数据结构时，应同步更新该页面级 README。
 
 核心文件：
 
-- `labelTemplate/index.vue`：打印记录列表入口，支持按打印时间筛选、导入、添加、编辑模版、详情、编辑和删除。
-- `labelTemplate/components/PrintImportDialog.vue`：导入弹窗，目前仅校验 Excel 文件类型并模拟导入成功。
+- `labelTemplate/index.vue`：打印记录列表入口，支持按打印时间筛选、导入、添加、模版管理、详情、编辑和删除。
+- `labelTemplate/components/PrintImportDialog.vue`：导入弹窗，支持选择模版、下载空白 Excel 模版和导入文件。
 - `labelTemplate/components/PrintRecordDialog.vue`：新增、编辑、详情和打印记录弹窗。
-- `labelTemplate/components/TemplateDialog.vue`：标签模版编辑弹窗，支持字段、标题、二维码和边距配置。
-- `labelTemplate/components/storage.js`：本地模版和打印记录读写、默认打印配置合并。
+- `labelTemplate/components/TemplateManageDialog.vue`：标签模版管理弹窗，支持模版列表查询、新增、编辑和删除。
+- `labelTemplate/components/TemplateDialog.vue`：标签模版新增/编辑弹窗，支持字段、标题、二维码和边距配置。
+- `labelTemplate/components/storage.js`：前后端模版结构转换、默认打印配置合并和打印记录字段转换。
 - `labelTemplate/components/print-builder.js`：根据模版和表单数据生成 ZPL 打印数据。
-- `labelTemplate/components/api.js`：早期模拟接口，目前主流程以 `storage.js` 的本地数据为准。
+- `labelTemplate/components/api.js`：标签数据和标签模版接口封装。
 
-本地数据：
+接口数据：
 
-- `localStorage.labelTemplate.templates`：保存标签模版配置。
-- `localStorage.labelTemplate.records`：保存打印记录。
+- 模版列表、详情、新增、更新和删除使用 `/busin/label/template/*` 接口。
+- 打印记录列表、详情、新增、更新、删除、导入和空白 Excel 模版下载使用 `/busin/label/data/*` 接口。
 - 模版包含标题、字段、二维码显示状态和边距配置。
-- 打印记录保存模版快照和字段快照，便于详情回显。
 
 打印接入：
 
@@ -111,16 +115,14 @@
 - 入库时间
 - 二维码内容
 
-当前未完成或需后续对接事项：
+当前注意事项：
 
-- 打印记录和模版配置仍保存在 `localStorage`，尚未接入后端接口。
-- 导入功能当前只做 Excel 后缀校验和成功提示，尚未解析文件内容。
 - 二维码预览当前是前端样式占位，真实打印内容由 `print-builder.js` 生成。
-- 若后续接入真实后端，优先替换 `storage.js` 中的数据读写方法，并保留现有页面交互结构。
+- `storage.js` 当前不再作为数据源，仅负责接口 DTO 与前端打印模版结构之间的转换。
 
 ## 四、修改注意事项
 
 - 修改材料管理字段、接口参数或字典来源时，需要同步检查 `materialManagement/components/index.js`、`materialManagement/components/detail.vue` 和接口封装。
 - 修改标签模版字段时，需要同时检查 `storage.js` 的模版结构、`TemplateDialog.vue` 的编辑表单、`PrintRecordDialog.vue` 的打印表单和 `print-builder.js` 的字段映射。
-- 标签模版管理当前使用本地闭环数据，不要误认为列表数据来自 `components/api.js`。
+- 标签模版管理当前使用真实接口数据，`storage.js` 不再作为列表和表单持久化来源。
 - 新增数据管理下的页面、路由或菜单时，需要同步更新 `docs/SYSTEM_MODULES_MAP.md`、对应模块 README 和菜单配置来源。

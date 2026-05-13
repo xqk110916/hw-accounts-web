@@ -39,7 +39,13 @@
         <el-table-column prop="boxNum" label="货箱号" min-width="100" show-overflow-tooltip></el-table-column>
         <el-table-column prop="containerCode" label="容器号" min-width="110" show-overflow-tooltip></el-table-column>
         <el-table-column prop="sealCode1" label="封记编码1" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column label="封记类型1" min-width="110" show-overflow-tooltip>
+          <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType1) }}</template>
+        </el-table-column>
         <el-table-column prop="sealCode2" label="封记编码2" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column label="封记类型2" min-width="110" show-overflow-tooltip>
+          <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
+        </el-table-column>
         <el-table-column prop="grossWeight" label="毛重" min-width="80" show-overflow-tooltip></el-table-column>
         <el-table-column prop="tareWeight" label="皮重" min-width="80" show-overflow-tooltip></el-table-column>
         <el-table-column prop="netWeight" label="净重" min-width="80" show-overflow-tooltip></el-table-column>
@@ -84,6 +90,7 @@
 
 <script>
 import { detailInitialEntry, downloadInitialTemplate, editInitialEntry, importInitialEntry, submitInitialEntry } from './api.js'
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
 export default {
   name: 'ImportDialog',
@@ -110,12 +117,16 @@ export default {
       imported: false,
       uploadLoading: false,
       submitLoading: false,
+      sealTypeOptions: [],
       detailPagination: {
         currentPage: 1,
         pageSize: 10,
         total: 0,
       },
     }
+  },
+  created() {
+    this.loadSealTypeOptions()
   },
   computed: {
     dialogTitle() {
@@ -174,6 +185,16 @@ export default {
       } finally {
         this.detailLoading = false
       }
+    },
+    loadSealTypeOptions() {
+      getSealTypeOptions().then(options => {
+        this.sealTypeOptions = options
+      }).catch(() => {
+        this.sealTypeOptions = []
+      })
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
     },
     handleDownloadTemplate() {
       downloadInitialTemplate({ tempType: 3 }).then(res => {

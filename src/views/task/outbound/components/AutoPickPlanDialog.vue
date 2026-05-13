@@ -207,7 +207,13 @@
           </el-table-column>
           <el-table-column prop="boxNum" label="货箱号" width="100" show-overflow-tooltip />
           <el-table-column prop="sealCode1" label="封记编码1" width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型1" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType1) }}</template>
+          </el-table-column>
           <el-table-column prop="sealCode2" label="封记编码2" width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型2" width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
+          </el-table-column>
           <el-table-column prop="netWeight" label="净重" width="100" show-overflow-tooltip />
           <el-table-column label="重量(毛,皮,净)" width="170" show-overflow-tooltip>
             <template slot-scope="scope">{{ getWeightText(scope.row) }}</template>
@@ -231,6 +237,7 @@
 
 <script>
 import { autoWeightPickPlan, getInboundGoodsList } from './api.js'
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || []))
@@ -270,10 +277,12 @@ export default {
       plans: [],
       activePlanKey: '',
       currentContainers: [],
+      sealTypeOptions: [],
     }
   },
   created() {
     this.loadMaterialOptions()
+    this.loadSealTypeOptions()
   },
   computed: {
     visiblePlans() {
@@ -347,6 +356,16 @@ export default {
       } catch (error) {
         this.materialOptions = []
       }
+    },
+    loadSealTypeOptions() {
+      getSealTypeOptions().then(options => {
+        this.sealTypeOptions = options
+      }).catch(() => {
+        this.sealTypeOptions = []
+      })
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
     },
     buildOptions(values) {
       return splitText(values).map(value => ({
@@ -549,7 +568,9 @@ export default {
         rowCode: row.rowCode || '',
         columnCode: row.columnCode || '',
         sealCode1: row.sealCode1 || '',
+        sealType1: row.sealType1 || '',
         sealCode2: row.sealCode2 || '',
+        sealType2: row.sealType2 || '',
       }
     },
     resetCurrentContainers() {

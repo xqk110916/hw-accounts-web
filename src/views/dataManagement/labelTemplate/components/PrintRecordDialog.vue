@@ -71,11 +71,14 @@
 <script>
 import { buildLabelPrintData, buildQrContent } from './print-builder'
 import {
+  backendToTemplate,
+  buildLabelDataPayload,
+  createDefaultTemplate,
   getPrinterConfig,
-  getTemplateByIdOrName,
-  getTemplateOptions,
-  saveRecord,
+  labelDataToRow,
+  templateListToOptions,
 } from './storage'
+import { addLabelData, getLabelDataDetail, getTemplateDetail, listAllTemplate, updateLabelData } from './api'
 
 export default {
   name: 'PrintRecordDialog',
@@ -88,7 +91,7 @@ export default {
       printLoading: false,
       qrCodeLoading: false,
       templateOptions: [],
-      currentTemplate: getTemplateByIdOrName('模板1'),
+      currentTemplate: createDefaultTemplate('模板1'),
       formData: {
         id: '',
         '选择模板': '',
@@ -126,17 +129,32 @@ export default {
     clearTimeout(this.qrTimer)
   },
   methods: {
-    open(row, mode) {
+    async open(row, mode) {
       this.mode = mode || 'add'
-      this.templateOptions = getTemplateOptions()
+      this.formLoading = true
       this.resetForm()
       this.visible = true
-      if (row) this.fillRow(row)
-      this.loadCurrentTemplate()
-      this.refreshQrCode()
-      this.$nextTick(() => {
-        if (this.$refs.form) this.$refs.form.clearValidate()
-      })
+      try {
+        await this.loadTemplateOptions()
+        this.resetForm()
+        if (row && row.id) {
+          const res = await getLabelDataDetail(row.id)
+          this.fillRow(labelDataToRow(res.data))
+        } else if (row) {
+          this.fillRow(row)
+        }
+        await this.loadCurrentTemplate()
+        this.refreshQrCode()
+        this.$nextTick(() => {
+          if (this.$refs.form) this.$refs.form.clearValidate()
+        })
+      } finally {
+        this.formLoading = false
+      }
+    },
+    async loadTemplateOptions() {
+      const res = await listAllTemplate()
+      this.templateOptions = templateListToOptions(res.data)
     },
     resetForm() {
       this.formData = {
@@ -166,11 +184,16 @@ export default {
         '二维码': row.qrContent || row['二维码'] || '',
       }
     },
-    loadCurrentTemplate() {
-      this.currentTemplate = getTemplateByIdOrName(this.formData['选择模板'])
+    async loadCurrentTemplate() {
+      if (!this.formData['选择模板']) {
+        this.currentTemplate = createDefaultTemplate('模板1')
+        return
+      }
+      const res = await getTemplateDetail(this.formData['选择模板'])
+      this.currentTemplate = backendToTemplate(res.data)
     },
-    handleTemplateChange() {
-      this.loadCurrentTemplate()
+    async handleTemplateChange() {
+      await this.loadCurrentTemplate()
       this.formData['二维码'] = ''
       this.refreshQrCode()
     },
@@ -224,45 +247,25 @@ export default {
       }
       return true
     },
-    buildRecord(extra = {}) {
-      return {
-        id: this.formData.id,
-        templateId: this.currentTemplate.id,
-        templateName: this.currentTemplate.name,
-        printTime: extra.printTime || '',
-        createTime: extra.createTime || this.formatDate(new Date()),
-        labelCount: extra.labelCount || 1,
-        remark: this.formData['备注'],
-        materialCode: this.formData['材料编码'],
-        generationUnit: this.formData['生成单位'],
-        warehouse: this.formData['库房'],
-        inboundPerson: this.formData['入库人'],
-        containerNo: this.formData['容器号'],
-        inboundTime: this.formData['入库时间'],
-        qrContent: this.formData['二维码'],
-        snapshot: {
-          template: this.currentTemplate,
-          formData: { ...this.formData },
-        },
-      }
-    },
-    persistRecord(extra) {
-      const record = saveRecord(this.buildRecord(extra))
-      this.formData.id = record.id
-      return record
-    },
     handleSave() {
-      this.$refs.form.validate(valid => {
+      this.$refs.form.validate(async valid => {
         if (!valid || !this.validateCardFields()) return
         this.ensureQrContent()
         this.saveLoading = true
-        setTimeout(() => {
-          this.persistRecord()
-          this.saveLoading = false
+        try {
+          const payload = buildLabelDataPayload(this.currentTemplate, this.formData, this.formData.id)
+          if (this.mode === 'edit' && this.formData.id) {
+            await updateLabelData(payload)
+          } else {
+            delete payload.id
+            await addLabelData(payload)
+          }
           this.$message.success('保存成功')
           this.$emit('saved')
           this.handleClose()
-        }, 120)
+        } finally {
+          this.saveLoading = false
+        }
       })
     },
     handlePrint() {
@@ -282,7 +285,13 @@ export default {
             netPort: config.netPort,
             comData: config.comData,
           })
-          this.persistRecord({ printTime: this.formatDate(new Date()), labelCount: 1 })
+          const payload = buildLabelDataPayload(this.currentTemplate, this.formData, this.formData.id)
+          if (this.mode === 'edit' && this.formData.id) {
+            await updateLabelData(payload)
+          } else {
+            delete payload.id
+            await addLabelData(payload)
+          }
           this.$message.success('打印任务已发送')
           this.$emit('saved')
           this.handleClose()
@@ -292,10 +301,6 @@ export default {
           this.printLoading = false
         }
       })
-    },
-    formatDate(date) {
-      const pad = value => String(value).padStart(2, '0')
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     },
     handleClose() {
       this.visible = false

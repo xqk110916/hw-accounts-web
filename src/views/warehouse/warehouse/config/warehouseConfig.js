@@ -753,7 +753,9 @@ function normalizePosition(item = {}) {
     productionUnit: inboundGoods.productionUnit || item.productionUnit || '',
     boxNum: inboundGoods.boxNum || item.boxNum || '',
     sealCode1: inboundGoods.sealCode1 || item.sealCode1 || '',
-    sealCode2: inboundGoods.sealCode2 || item.sealCode2 || ''
+    sealType1: inboundGoods.sealType1 || item.sealType1 || '',
+    sealCode2: inboundGoods.sealCode2 || item.sealCode2 || '',
+    sealType2: inboundGoods.sealType2 || item.sealType2 || ''
   };
   return {
     ...item,

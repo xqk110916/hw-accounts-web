@@ -83,6 +83,7 @@
                 <template slot-scope="scope">
                   <span v-if="item.prop === 'positionText'">{{ getPositionText(scope.row) }}</span>
                   <span v-else-if="item.prop === 'weightText'">{{ getWeightText(scope.row) }}</span>
+                  <span v-else-if="item.prop === 'sealType1' || item.prop === 'sealType2'">{{ getSealTypeLabel(scope.row[item.prop]) }}</span>
                   <span v-else>{{ scope.row[item.prop] }}</span>
                 </template>
               </el-table-column>
@@ -123,6 +124,7 @@
                 <template slot-scope="scope">
                   <span v-if="item.prop === 'positionText'">{{ getPositionText(scope.row) }}</span>
                   <span v-else-if="item.prop === 'weightText'">{{ getWeightText(scope.row) }}</span>
+                  <span v-else-if="item.prop === 'sealType1' || item.prop === 'sealType2'">{{ getSealTypeLabel(scope.row[item.prop]) }}</span>
                   <span v-else>{{ scope.row[item.prop] }}</span>
                 </template>
               </el-table-column>
@@ -199,6 +201,18 @@
           <td class="label">货箱号</td>
           <td>{{ detailContainer.boxNum || '-' }}</td>
         </tr>
+        <tr>
+          <td class="label">封记编码1</td>
+          <td>{{ detailContainer.sealCode1 || '-' }}</td>
+          <td class="label">封记类型1</td>
+          <td>{{ getSealTypeLabel(detailContainer.sealType1) }}</td>
+        </tr>
+        <tr>
+          <td class="label">封记编码2</td>
+          <td>{{ detailContainer.sealCode2 || '-' }}</td>
+          <td class="label">封记类型2</td>
+          <td>{{ getSealTypeLabel(detailContainer.sealType2) }}</td>
+        </tr>
       </table>
       <span slot="footer">
         <el-button size="small" @click="detailVisible = false">关闭</el-button>
@@ -212,6 +226,7 @@
 import WarehouseGridMap2D from '@/views/warehouse/warehouse/components/WarehouseGridMap2D.vue'
 import { generateInitialLayout } from '@/views/warehouse/warehouse/utils/locationLayoutAdapter.js'
 import { getInboundGoodsPageList, getLocationHierarchy, getLocationChildren, getPositionMap, getMaterialCodeListAll } from './api.js'
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || []))
@@ -256,6 +271,7 @@ export default {
       containerCheckedRows: [],
       inboundCheckedRows: [],
       materialCodeOptions: [],
+      sealTypeOptions: [],
       containerSearchOptions: [
         { label: '容器号', prop: 'containerCode', type: 'text', col: 5 },
         { label: '货物编码', prop: 'goodCode', type: 'select', col: 5, option: [] },
@@ -274,7 +290,9 @@ export default {
         { label: '位置(排-行-列)', prop: 'positionText', width: 130 },
         { label: '货箱号', prop: 'boxNum', width: 100 },
         { label: '封记编码1', prop: 'sealCode1', width: 120 },
+        { label: '封记类型1', prop: 'sealType1', width: 120 },
         { label: '封记编码2', prop: 'sealCode2', width: 120 },
+        { label: '封记类型2', prop: 'sealType2', width: 120 },
         { label: '重量(毛,皮,净)', prop: 'weightText', width: 160 },
       ],
     }
@@ -297,6 +315,7 @@ export default {
       this.selectedContainers = clone(list).map(this.normalizeGoods)
       if (!this.balanceAreaOptions.length) this.loadBalanceAreas()
       if (!this.materialCodeOptions.length) this.loadMaterialCodeOptions()
+      if (!this.sealTypeOptions.length) this.loadSealTypeOptions()
     },
     handleClosed() {
       this.activeTab = 'map'
@@ -325,6 +344,16 @@ export default {
       } catch (error) {
         this.materialCodeOptions = []
       }
+    },
+    loadSealTypeOptions() {
+      getSealTypeOptions().then(options => {
+        this.sealTypeOptions = options
+      }).catch(() => {
+        this.sealTypeOptions = []
+      })
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
     },
     async handleBalanceAreaChange(value) {
       this.mapSearch.warehouseId = ''

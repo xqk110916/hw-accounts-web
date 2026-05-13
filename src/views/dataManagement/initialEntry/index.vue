@@ -154,15 +154,15 @@ export default {
         const res = await listInitialEntry(params)
         if (res && res.code === 1) {
           const records = (res.data && (res.data.records || res.data.list)) || []
-          this.tableData = records.length ? records.map(this.normalizeRow) : this.getMockTableData()
-          this.searchForm.total = Number((res.data && (res.data.total || (res.data.pagination && res.data.pagination.total))) || this.tableData.length)
+          this.tableData = records.map(this.normalizeRow)
+          this.searchForm.total = Number((res.data && (res.data.total || (res.data.pagination && res.data.pagination.total))) || 0)
         } else {
-          this.tableData = this.getMockTableData()
-          this.searchForm.total = 400
+          this.tableData = []
+          this.searchForm.total = 0
         }
       } catch (e) {
-        this.tableData = this.getMockTableData()
-        this.searchForm.total = 400
+        this.tableData = []
+        this.searchForm.total = 0
       } finally {
         this.listLoading = false
       }
@@ -207,14 +207,6 @@ export default {
         '据条数': row['据条数'] || row.dataCount || row.count || '',
         '状态': row['状态'] || statusMap[row.dataStatus] || statusMap[row.status] || row.status || '待提交',
       }
-    },
-    getMockTableData() {
-      return [
-        { id: 1, '数据类型': '材料信息', '导入时间': '2025-10-10 09:00:00', '导入人': '张三', '审批时间': '', '审批人': '李四', '据条数': 100100, '状态': '待审核' },
-        { id: 2, '数据类型': '材料信息', '导入时间': '2025-10-10 09:00:00', '导入人': '张三', '审批时间': '2025-10-11 09:00:00', '审批人': '李四', '据条数': 100100, '状态': '审核通过' },
-        { id: 3, '数据类型': '材料信息', '导入时间': '2025-10-10 09:00:00', '导入人': '张三', '审批时间': '2025-10-11 09:00:00', '审批人': '李四', '据条数': 100100, '状态': '审核拒绝' },
-        { id: 4, '数据类型': '材料信息', '导入时间': '2025-10-10 09:00:00', '导入人': '张三', '审批时间': '', '审批人': '', '据条数': '', '状态': '待提交' },
-      ]
     },
     handleReset() {
       this.searchForm['添加时间'] = []

@@ -8,6 +8,14 @@
     :before-close="handleClose"
   >
     <el-form :model="formData" label-width="90px" size="small">
+      <el-form-item label="选择模板" required>
+        <el-select v-model="formData.templateId" class="full-input" placeholder="请选择模板">
+          <el-option v-for="item in templateOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="备注">
+        <el-input v-model="formData.remark" maxlength="200" placeholder="请输入"></el-input>
+      </el-form-item>
       <el-form-item label="选择文件" required>
         <el-upload
           action=""
@@ -17,6 +25,7 @@
           :file-list="fileList"
         >
           <el-button size="small">选择文件</el-button>
+          <el-button size="small" type="text" :disabled="!formData.templateId" @click.stop="handleDownloadTemplate">下载模板</el-button>
           <span class="file-name">{{ formData['选择文件'] || '未选择任何文件' }}</span>
         </el-upload>
       </el-form-item>
@@ -29,23 +38,43 @@
 </template>
 
 <script>
+import { exportLabelDataTemplate, importLabelData, listAllTemplate } from './api'
+import { templateListToOptions } from './storage'
+
 export default {
   name: 'PrintImportDialog',
   data() {
     return {
       visible: false,
       importLoading: false,
+      templateLoading: false,
       fileList: [],
+      templateOptions: [],
       formData: {
         '选择文件': '',
+        templateId: '',
+        remark: '',
       },
     }
   },
   methods: {
-    open() {
+    async open() {
       this.fileList = []
       this.formData['选择文件'] = ''
+      this.formData.templateId = ''
+      this.formData.remark = ''
       this.visible = true
+      await this.loadTemplateOptions()
+    },
+    async loadTemplateOptions() {
+      this.templateLoading = true
+      try {
+        const res = await listAllTemplate()
+        this.templateOptions = templateListToOptions(res.data)
+        this.formData.templateId = this.templateOptions[0] ? this.templateOptions[0].value : ''
+      } finally {
+        this.templateLoading = false
+      }
     },
     handleFileChange(file) {
       const name = file && file.name ? file.name : ''
@@ -59,18 +88,42 @@ export default {
       this.formData['选择文件'] = name
       return false
     },
-    handleImport() {
+    async handleImport() {
+      if (!this.formData.templateId) {
+        this.$message.warning('请选择模板')
+        return
+      }
       if (!this.fileList.length) {
         this.$message.warning('请选择文件')
         return
       }
       this.importLoading = true
-      setTimeout(() => {
+      try {
+        const file = this.fileList[0].raw || this.fileList[0]
+        await importLabelData(file, this.formData.templateId, this.formData.remark)
         this.importLoading = false
         this.$message.success('导入成功')
         this.$emit('saved')
         this.handleClose()
-      }, 300)
+      } finally {
+        this.importLoading = false
+      }
+    },
+    async handleDownloadTemplate() {
+      if (!this.formData.templateId) {
+        this.$message.warning('请选择模板')
+        return
+      }
+      const res = await exportLabelDataTemplate({ templateId: this.formData.templateId })
+      const blob = new Blob([res.data])
+      const link = document.createElement('a')
+      const disposition = res.headers && (res.headers['content-disposition'] || res.headers['Content-Disposition'])
+      const matched = disposition && disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
+      const fileName = matched ? decodeURIComponent(matched[1].replace(/"/g, '')) : '标签数据导入模板.xlsx'
+      link.href = window.URL.createObjectURL(blob)
+      link.download = fileName
+      link.click()
+      window.URL.revokeObjectURL(link.href)
     },
     handleClose() {
       this.visible = false
@@ -80,6 +133,9 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.full-input {
+  width: 100%;
+}
 .file-name {
   margin-left: 8px;
   color: #626c78;

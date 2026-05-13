@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    title="编辑模版"
+    :title="dialogTitle"
     :visible.sync="visible"
     :close-on-click-modal="false"
     width="92%"
@@ -12,10 +12,7 @@
       <div class="config-panel">
         <div class="form-row">
           <span class="row-label">模板名称</span>
-          <el-select v-model="templateForm['模板']" size="small" class="template-select" @change="handleTemplateChange">
-            <el-option v-for="item in templateOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
-          </el-select>
-          <el-button size="small" @click="handleCreateTemplate">新增</el-button>
+          <el-input v-model="templateName" size="small" class="template-select" @input="refreshPreview"></el-input>
         </div>
 
         <div class="form-row">
@@ -122,24 +119,26 @@
 
 <script>
 import {
-  createTemplateFrom,
+  backendToTemplate,
+  createDefaultTemplate,
   formToTemplate,
-  getTemplateByIdOrName,
-  getTemplateOptions,
-  saveTemplate,
+  templateToBackend,
   templateToFields,
   templateToForm,
 } from './storage'
+import { addTemplate, getTemplateDetail, updateTemplate } from './api'
 
 export default {
   name: 'TemplateDialog',
   data() {
     return {
       visible: false,
+      mode: 'add',
       templateLoading: false,
       previewLoading: false,
       saveTemplateLoading: false,
-      templateOptions: [{ label: '模板1', value: '模板1' }],
+      templateId: '',
+      templateName: '',
       currentTemplate: null,
       fontSizeOptions: ['12号', '14号', '16号', '18号'],
       titleStatusOptions: ['正常', '加粗', '禁用'],
@@ -164,6 +163,9 @@ export default {
     }
   },
   computed: {
+    dialogTitle() {
+      return this.mode === 'edit' ? '编辑模板' : '新增模板'
+    },
     visibleFieldConfigList() {
       return this.fieldConfigList.filter(item => item['状态'] !== '隐藏')
     },
@@ -190,64 +192,34 @@ export default {
     },
   },
   methods: {
-    open() {
-      this.loadTemplateOptions()
-      this.loadTemplate(this.templateOptions[0] && this.templateOptions[0].value)
+    async open(templateId, mode) {
+      this.mode = mode || (templateId ? 'edit' : 'add')
+      this.templateId = templateId || ''
       this.visible = true
+      await this.loadTemplate(templateId)
       this.refreshPreview()
     },
-    loadTemplateOptions() {
-      this.templateOptions = getTemplateOptions()
-    },
-    loadTemplate(value) {
-      const template = getTemplateByIdOrName(value)
-      this.currentTemplate = template
-      this.templateForm = templateToForm(template)
-      this.fieldConfigList = templateToFields(template).map((item, index) => ({
-        ...item,
-        id: item.id || index + 1,
-      }))
-      this.nextFieldId = Math.max(...this.fieldConfigList.map(item => item.id), 0) + 1
-      this.qrWidth = template.qrSize.width
-      this.qrHeight = template.qrSize.height
-    },
-    initFieldConfigList() {
-      this.fieldConfigList = [
-        { id: 1, label: '字段1', value: '材料编码', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { id: 2, label: '字段2', value: '生产单位', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { id: 3, label: '字段3', value: '库房', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { id: 4, label: '字段4', value: '入库人', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { id: 5, label: '字段5', value: '容器号', '排版': '单排', '字号': '16号', '状态': '正常' },
-        { id: 6, label: '字段6', value: '入库时间', '排版': '单排', '字号': '16号', '状态': '正常' },
-      ]
-      this.nextFieldId = 7
-    },
-    handleTemplateChange() {
+    async loadTemplate(value) {
       this.templateLoading = true
-      setTimeout(() => {
-        this.loadTemplate(this.templateForm['模板'])
+      try {
+        let template = createDefaultTemplate('新模板')
+        if (value) {
+          const res = await getTemplateDetail(value)
+          template = backendToTemplate(res.data)
+        }
+        this.currentTemplate = template
+        this.templateName = template.name
+        this.templateForm = templateToForm(template)
+        this.fieldConfigList = templateToFields(template).map((item, index) => ({
+          ...item,
+          id: item.id || index + 1,
+        }))
+        this.nextFieldId = Math.max(...this.fieldConfigList.map(item => item.id), 0) + 1
+        this.qrWidth = template.qrSize.width
+        this.qrHeight = template.qrSize.height
+      } finally {
         this.templateLoading = false
-        this.refreshPreview()
-      }, 200)
-    },
-    handleCreateTemplate() {
-      this.$prompt('请输入模板名称', '新增').then(({ value }) => {
-        if (!value || !value.trim()) {
-          this.$message.warning('请输入模板名称')
-          return
-        }
-        const templateName = value.trim()
-        const exists = this.templateOptions.some(item => item.label === templateName)
-        if (exists) {
-          this.$message.warning('模板名称不能重复')
-          return
-        }
-        const template = createTemplateFrom(templateName, formToTemplate(this.templateForm, this.fieldConfigList, this.currentTemplate))
-        this.loadTemplateOptions()
-        this.templateForm['模板'] = template.id
-        this.loadTemplate(template.id)
-        this.refreshPreview()
-      }).catch(() => {})
+      }
     },
     relabelFields() {
       this.fieldConfigList.forEach((item, index) => {
@@ -317,8 +289,8 @@ export default {
       }, 160)
     },
     validateTemplate() {
-      if (!this.templateForm['模板']) {
-        this.$message.warning('请选择模板')
+      if (!this.templateName || !this.templateName.trim()) {
+        this.$message.warning('请输入模板名称')
         return false
       }
       if (!this.templateForm['标题'] || !this.templateForm['标题'].trim()) {
@@ -353,18 +325,29 @@ export default {
       }
       return true
     },
-    handleSaveTemplate() {
+    async handleSaveTemplate() {
       if (!this.validateTemplate()) return
       this.saveTemplateLoading = true
-      setTimeout(() => {
-        const template = formToTemplate(this.templateForm, this.fieldConfigList, this.currentTemplate)
-        this.currentTemplate = saveTemplate(template)
-        this.loadTemplateOptions()
-        this.templateForm['模板'] = this.currentTemplate.id
+      try {
+        const template = {
+          ...formToTemplate(this.templateForm, this.fieldConfigList, this.currentTemplate),
+          id: this.templateId,
+          name: this.templateName.trim(),
+        }
+        const payload = templateToBackend(template)
+        if (this.mode === 'edit' && this.templateId) {
+          await updateTemplate(payload)
+        } else {
+          delete payload.id
+          await addTemplate(payload)
+        }
         this.saveTemplateLoading = false
         this.$message.success('保存成功')
+        this.$emit('saved')
         this.handleClose()
-      }, 300)
+      } finally {
+        this.saveTemplateLoading = false
+      }
     },
     handleClose() {
       this.visible = false
