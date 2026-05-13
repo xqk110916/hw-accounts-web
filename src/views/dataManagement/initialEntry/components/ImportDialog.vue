@@ -1,31 +1,17 @@
 <template>
-  <el-dialog
-    :title="dialogTitle"
-    :visible.sync="visible"
-    :close-on-click-modal="false"
-    width="760px"
-    top="4vh"
-    append-to-body
-    :before-close="handleClose"
-  >
-    <div class="import-dialog">
+  <el-dialog :title="dialogTitle" :visible.sync="visible" :close-on-click-modal="false" width="1080px" top="4vh" append-to-body :before-close="handleClose">
+    <div class="import-dialog" v-loading="detailLoading">
       <el-form ref="form" :model="formData" label-width="90px" size="small" class="import-form">
         <el-form-item label="类型" required>
-          <el-select v-model="formData['类型']" :disabled="readonly" placeholder="请选择类型" class="type-select">
-            <el-option label="封记台账" value="封记台账"></el-option>
+          <el-select v-model="formData.operationType" :disabled="readonly" placeholder="请选择类型" class="type-select">
+            <el-option label="入库" value="入库"></el-option>
           </el-select>
           <el-button type="text" class="template-link" :disabled="readonly" @click="handleDownloadTemplate">下载模板</el-button>
         </el-form-item>
         <el-form-item v-if="!readonly" label="选择文件" required>
-          <el-upload
-            action=""
-            :auto-upload="false"
-            :show-file-list="false"
-            :on-change="handleFileChange"
-            :file-list="fileList"
-          >
+          <el-upload action="" :auto-upload="false" :show-file-list="false" :on-change="handleFileChange" :file-list="fileList">
             <el-button size="small">选择文件</el-button>
-            <span class="file-name">{{ formData['选择文件'] || '未选择任何文件' }}</span>
+            <span class="file-name">{{ formData.fileName || '未选择任何文件' }}</span>
           </el-upload>
         </el-form-item>
         <div v-if="!readonly" class="import-action">
@@ -36,50 +22,68 @@
       <div class="result-head">
         <div>
           <span class="section-title">导入内容</span>
-          <span class="result-text">成功{{ importResult['导入内容'].成功 }}条，失败{{ importResult['导入内容'].失败 }}条</span>
+          <span class="result-text">总{{ importResult.totalNum }}条，成功{{ importResult.successNum }}条，失败{{ importResult.failNum }}条</span>
         </div>
         <div v-if="!readonly" class="result-actions">
-          <el-button size="small" :loading="exportProblemLoading" @click="handleExportProblem">导出问题</el-button>
+          <el-button size="small" :disabled="!failFilePath" @click="handleExportProblem">导出问题</el-button>
           <el-button size="small" @click="handleReImport">重新导入</el-button>
         </div>
       </div>
-      <el-table :data="problemTableData" border size="small" class="problem-table">
-        <el-table-column prop="行号" label="行号" width="64"></el-table-column>
-        <el-table-column prop="字段1" label="字段1"></el-table-column>
-        <el-table-column prop="字段2" label="字段2"></el-table-column>
-        <el-table-column prop="字段3" label="字段3"></el-table-column>
-        <el-table-column prop="字段4" label="字段4"></el-table-column>
-        <el-table-column prop="问题" label="问题"></el-table-column>
+
+      <el-table :data="detailTableData" border size="small" class="detail-table" max-height="330">
+        <el-table-column type="index" label="序号" width="60"></el-table-column>
+        <el-table-column prop="goodCode" label="材料编码" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="productionUnit" label="生产单位" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="taskNum" label="任务号" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="warehouseName" label="库房" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="boxNum" label="货箱号" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="containerCode" label="容器号" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="sealCode1" label="封记编码1" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="sealCode2" label="封记编码2" min-width="110" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="grossWeight" label="毛重" min-width="80" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="tareWeight" label="皮重" min-width="80" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="netWeight" label="净重" min-width="80" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="metalPercentage" label="金属量" min-width="90" show-overflow-tooltip></el-table-column>
+        <el-table-column label="位置" min-width="100" show-overflow-tooltip>
+          <template slot-scope="scope">{{ formatLocation(scope.row) }}</template>
+        </el-table-column>
       </el-table>
 
+      <div class="detail-pagination" v-if="detailPagination.total > 0">
+        <el-pagination
+          @size-change="handleDetailSizeChange"
+          @current-change="handleDetailCurrentChange"
+          :current-page="detailPagination.currentPage"
+          :page-sizes="[10, 20, 50, 100]"
+          :page-size="detailPagination.pageSize"
+          background
+          layout="total, sizes, prev, pager, next"
+          :total="detailPagination.total"
+        ></el-pagination>
+      </div>
+
+      <div v-if="remindList.length" class="remind-section">
+        <div class="remind-title">导入异常提示</div>
+        <div v-for="(item, index) in remindList" :key="index" class="remind-item">
+          第{{ item.num || '-' }}行：{{ item.typeName || '' }} {{ item.remind || '' }}
+        </div>
+      </div>
+
       <div class="remark-label">备注</div>
-      <el-input
-        v-model="formData['备注']"
-        type="textarea"
-        :rows="4"
-        maxlength="500"
-        show-word-limit
-        :readonly="readonly"
-        placeholder="请输入"
-      ></el-input>
+      <el-input v-model="formData.remark" type="textarea" :rows="4" maxlength="500" show-word-limit :readonly="readonly" placeholder="请输入"></el-input>
     </div>
     <div slot="footer" class="dialog-footer">
       <el-button size="small" @click="handleClose">关闭</el-button>
-      <el-button
-        v-if="!readonly"
-        type="primary"
-        size="small"
-        :loading="submitAuditLoading"
-        @click="handleSubmitAudit"
-      >
-        提交审核
-      </el-button>
+      <template v-if="!readonly">
+        <el-button size="small" :loading="submitLoading" @click="handleSaveDraft">暂存</el-button>
+        <el-button type="primary" size="small" :loading="submitLoading" @click="handleSubmitAudit">提交审核</el-button>
+      </template>
     </div>
   </el-dialog>
 </template>
 
 <script>
-import { importInitialEntry, submitInitialEntry } from './api.js'
+import { detailInitialEntry, downloadInitialTemplate, editInitialEntry, importInitialEntry, submitInitialEntry } from './api.js'
 
 export default {
   name: 'ImportDialog',
@@ -88,20 +92,29 @@ export default {
       visible: false,
       mode: 'add',
       currentRow: null,
+      detailLoading: false,
       formData: {
-        '类型': '封记台账',
-        '选择文件': '',
-        '备注': '',
+        operationType: '入库',
+        fileName: '',
+        remark: '',
       },
       importResult: {
-        '导入内容': { 成功: 0, 失败: 0 },
+        totalNum: 0,
+        successNum: 0,
+        failNum: 0,
       },
-      problemTableData: [],
+      detailTableData: [],
+      remindList: [],
+      failFilePath: '',
       fileList: [],
       imported: false,
       uploadLoading: false,
-      submitAuditLoading: false,
-      exportProblemLoading: false,
+      submitLoading: false,
+      detailPagination: {
+        currentPage: 1,
+        pageSize: 10,
+        total: 0,
+      },
     }
   },
   computed: {
@@ -113,69 +126,90 @@ export default {
     readonly() {
       return this.mode === 'view'
     },
-    hasProblem() {
-      return this.problemTableData.length > 0 || this.importResult['导入内容'].失败 > 0
-    },
   },
   methods: {
     open(row, mode) {
       this.mode = mode || 'add'
       this.currentRow = row || null
       this.resetData()
-      if (row) this.fillRow(row)
       this.visible = true
+      if (row && row.id) this.loadDetail()
     },
     resetData() {
       this.formData = {
-        '类型': '封记台账',
-        '选择文件': '',
-        '备注': '',
+        operationType: '入库',
+        fileName: '',
+        remark: '',
       }
-      this.importResult = {
-        '导入内容': { 成功: 0, 失败: 0 },
-      }
-      this.problemTableData = []
+      this.importResult = { totalNum: 0, successNum: 0, failNum: 0 }
+      this.detailTableData = []
+      this.remindList = []
+      this.failFilePath = ''
       this.fileList = []
       this.imported = false
+      this.detailPagination = { currentPage: 1, pageSize: 10, total: 0 }
     },
-    fillRow(row) {
-      this.formData['类型'] = row['数据类型'] || '封记台账'
-      this.formData['备注'] = row['备注'] || ''
-      this.importResult['导入内容'] = {
-        成功: Number(row['据条数']) || 0,
-        失败: 0,
+    async loadDetail() {
+      this.detailLoading = true
+      try {
+        const res = await detailInitialEntry({
+          id: this.currentRow.id,
+          currentPage: this.detailPagination.currentPage,
+          pageSize: this.detailPagination.pageSize,
+        })
+        if (res.code === 1) {
+          const data = res.data || {}
+          this.formData.operationType = data.operationType || this.currentRow.operationType || '入库'
+          this.formData.remark = data.remark || ''
+          const pageData = data.dataList || {}
+          this.detailTableData = pageData.list || []
+          this.detailPagination.total = Number(pageData.pagination && pageData.pagination.total) || 0
+          this.importResult = {
+            totalNum: Number(data.dataTotal) || this.detailPagination.total || 0,
+            successNum: Number(data.dataTotal) || this.detailPagination.total || 0,
+            failNum: 0,
+          }
+          this.imported = this.detailTableData.length > 0
+        }
+      } finally {
+        this.detailLoading = false
       }
-      this.problemTableData = [
-        { '行号': 1, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': 'xxxxxx' },
-        { '行号': 2, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': '' },
-        { '行号': 3, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': '' },
-      ]
-      this.imported = true
     },
     handleDownloadTemplate() {
-      if (!this.formData['类型']) {
-        this.$message.warning('请选择类型')
-        return
-      }
-      this.$message.success('下载模板')
+      downloadInitialTemplate({ tempType: 3 }).then(res => {
+        const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+        const disposition = res.headers && res.headers['content-disposition']
+        let fileName = '初始录入导入模板'
+        if (disposition) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
+          if (match && match[1]) {
+            fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+          }
+        }
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', fileName)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }).catch(() => {
+        this.$message.error('模板下载失败')
+      })
     },
     handleFileChange(file) {
       const name = file && file.name ? file.name : ''
       if (!/\.(xls|xlsx)$/i.test(name)) {
         this.fileList = []
-        this.formData['选择文件'] = ''
+        this.formData.fileName = ''
         this.$message.warning('只能上传 Excel 文件')
         return false
       }
       this.fileList = [file]
-      this.formData['选择文件'] = name
+      this.formData.fileName = name
       return false
     },
     async handleImport() {
-      if (!this.formData['类型']) {
-        this.$message.warning('请选择类型')
-        return
-      }
       if (!this.fileList.length) {
         this.$message.warning('请选择文件')
         return
@@ -184,71 +218,87 @@ export default {
       try {
         const raw = this.fileList[0].raw || this.fileList[0]
         const res = await importInitialEntry(raw, this.currentRow && this.currentRow.id)
-        if (res && res.code === 1 && res.data) {
-          this.importResult['导入内容'] = {
-            成功: Number(res.data.success || res.data['成功']) || 0,
-            失败: Number(res.data.fail || res.data['失败']) || 0,
+        if (res.code === 1) {
+          const data = res.data || {}
+          this.importResult = {
+            totalNum: Number(data.totalNum) || 0,
+            successNum: Number(data.successNum) || 0,
+            failNum: Number(data.failNum) || 0,
           }
-          this.problemTableData = res.data.problemList || []
-        } else {
-          this.mockImportResult()
+          this.detailTableData = data.successList || []
+          this.detailPagination.total = this.detailTableData.length
+          this.remindList = data.remindList || []
+          this.failFilePath = data.failFilePath || ''
+          this.imported = true
+          this.$message.success('导入完成')
         }
-      } catch (e) {
-        this.mockImportResult()
       } finally {
-        this.imported = true
         this.uploadLoading = false
       }
     },
-    mockImportResult() {
-      this.importResult['导入内容'] = { 成功: 3, 失败: 1 }
-      this.problemTableData = [
-        { '行号': 1, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': 'xxxxxx' },
-        { '行号': 2, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': '' },
-        { '行号': 3, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': '' },
-      ]
-    },
     handleExportProblem() {
-      if (!this.problemTableData.length) {
-        this.$message.warning('暂无问题数据')
+      if (!this.failFilePath) {
+        this.$message.warning('暂无问题文件')
         return
       }
-      this.exportProblemLoading = true
-      setTimeout(() => {
-        this.exportProblemLoading = false
-        this.$message.success('导出问题')
-      }, 300)
+      const baseUrl = process.env.VUE_APP_FILE_ACCESS_PATH || ''
+      window.open(`${baseUrl}/${this.failFilePath}`, '_blank')
     },
     handleReImport() {
       this.fileList = []
-      this.formData['选择文件'] = ''
-      this.importResult['导入内容'] = { 成功: 0, 失败: 0 }
-      this.problemTableData = []
+      this.formData.fileName = ''
+      this.importResult = { totalNum: 0, successNum: 0, failNum: 0 }
+      this.detailTableData = []
+      this.detailPagination.total = 0
+      this.remindList = []
+      this.failFilePath = ''
       this.imported = false
     },
+    async handleSaveDraft() {
+      await this.submitForm(2)
+    },
     async handleSubmitAudit() {
-      if (!this.imported) {
+      await this.submitForm(3)
+    },
+    async submitForm(submitType) {
+      if (!this.imported && this.mode === 'add') {
         this.$message.warning('请先导入')
         return
       }
-      if (this.hasProblem) {
-        await this.$confirm('当前存在问题数据，确定要提交吗?', '提示', { type: 'warning' })
-      }
-      if (this.formData['备注'] && !this.formData['备注'].trim()) {
+      if (this.formData.remark && !this.formData.remark.trim()) {
         this.$message.warning('备注不能只输入空白字符')
         return
       }
-      this.submitAuditLoading = true
+      this.submitLoading = true
       try {
-        const res = this.currentRow && this.currentRow.id ? await submitInitialEntry(this.currentRow.id) : { code: 1 }
-        if (!res || res.code === 1) {
-          this.$message.success('提交成功')
+        const payload = {
+          id: this.currentRow && this.currentRow.id,
+          remark: this.formData.remark,
+          submitType,
+          dataList: this.detailTableData,
+        }
+        const res = this.currentRow && this.currentRow.id ? await editInitialEntry(payload) : await submitInitialEntry(payload)
+        if (res.code === 1) {
+          this.$message.success(submitType === 2 ? '暂存成功' : '提交成功')
           this.$emit('saved')
           this.handleClose()
         }
       } finally {
-        this.submitAuditLoading = false
+        this.submitLoading = false
       }
+    },
+    handleDetailSizeChange(value) {
+      this.detailPagination.pageSize = value
+      this.detailPagination.currentPage = 1
+      if (this.currentRow && this.currentRow.id) this.loadDetail()
+    },
+    handleDetailCurrentChange(value) {
+      this.detailPagination.currentPage = value
+      if (this.currentRow && this.currentRow.id) this.loadDetail()
+    },
+    formatLocation(row) {
+      const values = [row.shelfCode, row.rowCode, row.columnCode].filter(Boolean)
+      return values.length ? values.join('-') : '-'
     },
     handleClose() {
       this.visible = false
@@ -273,7 +323,7 @@ export default {
   }
   .import-action {
     text-align: right;
-    margin-bottom: 28px;
+    margin-bottom: 20px;
   }
   .result-head {
     display: flex;
@@ -291,8 +341,27 @@ export default {
       font-size: 16px;
     }
   }
-  .problem-table {
-    margin-bottom: 18px;
+  .detail-table {
+    margin-bottom: 12px;
+  }
+  .detail-pagination {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+  .remind-section {
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #fff7e6;
+    border: 1px solid #ffd591;
+    color: #7c4b00;
+    .remind-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .remind-item {
+      line-height: 22px;
+    }
   }
   .remark-label {
     font-size: 16px;

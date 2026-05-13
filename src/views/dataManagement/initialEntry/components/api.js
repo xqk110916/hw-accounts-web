@@ -1,63 +1,32 @@
 import request from '@/utils/request'
 
-// 1. 列表查询
 export const listInitialEntry = data => {
   return request({
-    url: '/busin/initial/list',
+    url: '/busin/initial/page/list',
     method: 'post',
     data,
   })
 }
 
-// 2. 详情查询
-export const detailInitialEntry = id => {
+export const detailInitialEntry = data => {
   return request({
     url: '/busin/initial/detail',
-    method: 'get',
-    params: { id },
-  })
-}
-
-// 3. 编辑初始录入
-export const editInitialEntry = data => {
-  return request({
-    url: '/busin/initial/edit',
     method: 'post',
     data,
   })
 }
 
-// 4. 删除初始录入
-export const deleteInitialEntry = id => {
+export const getImportDetail = params => {
   return request({
-    url: '/busin/initial/delete',
-    method: 'post',
-    data: { id },
+    url: '/busin/initial/import-detail',
+    method: 'get',
+    params,
   })
 }
 
-// 5. 提交审核
-export const submitInitialEntry = id => {
-  return request({
-    url: '/busin/initial/submit',
-    method: 'post',
-    data: { id },
-  })
-}
-
-// 6. 审核
-export const auditInitialEntry = data => {
-  return request({
-    url: '/busin/initial/audit',
-    method: 'post',
-    data, // { id, approved }
-  })
-}
-
-// 7. 导入初始录入
 export const importInitialEntry = (file, dataId) => {
   const formData = new FormData()
-  formData.append('file', file)
+  if (file) formData.append('file', file)
   if (dataId) formData.append('dataId', dataId)
   return request({
     url: '/busin/initial/import',
@@ -67,11 +36,52 @@ export const importInitialEntry = (file, dataId) => {
   })
 }
 
-// 8. 获取导入详情
-export const getImportDetail = params => {
+export const submitInitialEntry = data => {
   return request({
-    url: '/busin/initial/import-detail',
+    url: '/busin/initial/submit',
+    method: 'post',
+    data,
+  })
+}
+
+export const editInitialEntry = data => {
+  return request({
+    url: '/busin/initial/edit',
+    method: 'post',
+    data,
+  })
+}
+
+export const submitInitialEntryById = id => {
+  return request({
+    url: '/busin/initial/submitById',
+    method: 'post',
+    data: { id },
+  })
+}
+
+export const auditInitialEntry = data => {
+  return request({
+    url: '/busin/initial/audit',
+    method: 'post',
+    data,
+  })
+}
+
+export const deleteInitialEntry = id => {
+  return request({
+    url: '/busin/initial/delete',
+    method: 'post',
+    data: { id },
+  })
+}
+
+// 下载导入模板
+export const downloadInitialTemplate = params => {
+  return request({
+    url: '/busin/inbound/downTemplate',
     method: 'get',
-    params, // { currentPage, pageSize, id }
+    params,
+    responseType: 'blob',
   })
 }

@@ -83,6 +83,10 @@ service.interceptors.response.use(
       Message({ message: msg, type: 'error' });
       return Promise.reject('error');
     } else {
+      // blob 响应返回完整响应对象，以便获取响应头信息
+      if (res.config.responseType === 'blob') {
+        return res;
+      }
       return res.data;
     }
   },

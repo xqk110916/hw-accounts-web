@@ -458,7 +458,17 @@ export default {
       if (!this.form.taskNum) return
       this.exportLoading = true
       exportInventory({ taskNum: this.form.taskNum }).then(res => {
-        blobSaveExcel(res, `实物盘存清单_${this.form.taskNum}.xlsx`)
+        const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+        // 从 content-disposition 获取文件名
+        const disposition = res.headers && res.headers['content-disposition']
+        let fileName = `实物盘存清单_${this.form.taskNum}`
+        if (disposition) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
+          if (match && match[1]) {
+            fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+          }
+        }
+        blobSaveExcel(blob, fileName)
       }).finally(() => {
         this.exportLoading = false
       })
