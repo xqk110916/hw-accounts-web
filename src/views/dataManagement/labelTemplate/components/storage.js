@@ -147,7 +147,7 @@ export const formToTemplate = (form, fields, currentTemplate) => ({
   titleFontSize: form['标题字号'],
   titleStatus: form['标题状态'],
   fields: fields.map((item, index) => ({
-    key: item.key || defaultFields[index].key,
+    key: item.key || (defaultFields[index] && defaultFields[index].key) || `customField${index + 1}`,
     label: item.label || `字段${index + 1}`,
     name: item.value,
     layout: item['排版'],
@@ -169,6 +169,7 @@ export const formToTemplate = (form, fields, currentTemplate) => ({
 
 export const templateToFields = template =>
   template.fields.map((item, index) => ({
+    id: index + 1,
     key: item.key,
     label: item.label || `字段${index + 1}`,
     value: item.name,
