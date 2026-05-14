@@ -31,6 +31,7 @@ let btns = {
     { label: '添加', execute: 'add' }
   ],
   table: [
+    { label: '详情', execute: 'view' },
     { label: '编辑', execute: 'update' },
     { label: '删除', execute: 'delete' },
   ],

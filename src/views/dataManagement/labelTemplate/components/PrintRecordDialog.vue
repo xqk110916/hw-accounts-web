@@ -173,15 +173,15 @@ export default {
     fillRow(row) {
       this.formData = {
         id: row.id,
-        templateId: row.templateId || this.getLegacyValue(row, '选择模板') || (this.templateOptions[0] && this.templateOptions[0].value),
-        remark: row.remark || this.getLegacyValue(row, '备注') || '',
-        materialCode: row.materialCode || this.getLegacyValue(row, '材料编码') || '',
-        generationUnit: row.generationUnit || this.getLegacyValue(row, '生成单位') || '',
-        warehouse: row.warehouse || this.getLegacyValue(row, '库房') || '',
-        inboundPerson: row.inboundPerson || this.getLegacyValue(row, '入库人') || '',
-        containerNo: row.containerNo || this.getLegacyValue(row, '容器号') || '',
-        inboundTime: row.inboundTime || this.getLegacyValue(row, '入库时间') || '',
-        qrContent: row.qrContent || this.getLegacyValue(row, '二维码') || '',
+        templateId: row.templateId,
+        remark: row.remark,
+        materialCode: row.materialCode,
+        generationUnit: row.generationUnit,
+        warehouse: row.warehouse,
+        inboundPerson: row.inboundPerson,
+        containerNo: row.containerNo,
+        inboundTime: row.inboundTime,
+        qrContent: row.qrContent,
       }
     },
     async loadCurrentTemplate() {
@@ -311,9 +311,6 @@ export default {
     },
     handleClose() {
       this.visible = false
-    },
-    getLegacyValue(source, key) {
-      return source && source[key]
     },
   },
 }

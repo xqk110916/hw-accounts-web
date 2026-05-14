@@ -94,35 +94,37 @@ const ensureFontSize = value => {
 
 const readBoolean = value => yesValues.includes(value)
 
+const withDefault = (value, fallback) => (value === undefined || value === null || value === '' ? fallback : value)
+
 export const backendToTemplate = data => {
   const source = data || {}
   const fields = Array.isArray(source.fieldsConfig) ? [...source.fieldsConfig] : []
   fields.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
   return {
     id: source.id,
-    name: source.templateName || source.name || '模板1',
-    title: source.title || '材料管理卡',
+    name: withDefault(source.templateName, '模板1'),
+    title: withDefault(source.title, '材料管理卡'),
     titleVisible: toVisibleValue(source.titleShow),
     titleFontSize: ensureFontSize(source.titleSize),
     titleStatus: readBoolean(source.titleBold) ? 'bold' : normalizeTitleStatus(source.titleStatus),
     fields: (fields.length ? fields : defaultFields).map((item, index) => ({
-      key: item.key || (defaultFields[index] && defaultFields[index].key) || `customField${index + 1}`,
-      label: item.label || `字段${index + 1}`,
-      name: item.fileName || item.name || item.value || '',
-      layout: normalizeLayout(item.rowSet || item.layout),
+      key: defaultFields[index] ? defaultFields[index].key : `customField${index + 1}`,
+      label: `字段${index + 1}`,
+      name: item.fileName,
+      layout: normalizeLayout(item.rowSet),
       fontSize: ensureFontSize(item.fontSize),
       status: normalizeFieldStatus(item.status),
     })),
     qrSize: {
-      width: ensureMm(source.codeWidth || 50),
-      height: ensureMm(source.codeHeight || 50),
+      width: ensureMm(withDefault(source.codeWidth, 50)),
+      height: ensureMm(withDefault(source.codeHeight, 50)),
     },
     qrVisible: toVisibleValue(source.codeShow),
     margins: {
-      top: ensureMm(source.marginTop || 10),
-      bottom: ensureMm(source.marginBottom || 10),
-      left: ensureMm(source.marginLeft || 10),
-      right: ensureMm(source.marginRight || 10),
+      top: ensureMm(withDefault(source.marginTop, 10)),
+      bottom: ensureMm(withDefault(source.marginBottom, 10)),
+      left: ensureMm(withDefault(source.marginLeft, 10)),
+      right: ensureMm(withDefault(source.marginRight, 10)),
     },
   }
 }
@@ -156,7 +158,7 @@ export const templateToBackend = template => {
 
 export const templateListToOptions = list =>
   (Array.isArray(list) ? list : []).map(item => ({
-    label: item.templateName || item.name,
+    label: item.templateName,
     value: item.id,
   }))
 
@@ -170,15 +172,13 @@ export const labelDataToRow = data => {
   }, {})
   return {
     ...source,
-    printTime: source.printTime || source.createTime || '',
-    labelCount: source.labelCount || 1,
-    materialCode: fieldMap.materialCode || source.materialCode || '',
-    generationUnit: fieldMap.generationUnit || source.generationUnit || '',
-    warehouse: fieldMap.warehouse || source.warehouse || '',
-    inboundPerson: fieldMap.inboundPerson || source.inboundPerson || '',
-    containerNo: fieldMap.containerNo || source.containerNo || '',
-    inboundTime: fieldMap.inboundTime || source.inboundTime || '',
-    qrContent: source.qrcodeBase64 || source.qrContent || '',
+    materialCode: fieldMap.materialCode,
+    generationUnit: fieldMap.generationUnit,
+    warehouse: fieldMap.warehouse,
+    inboundPerson: fieldMap.inboundPerson,
+    containerNo: fieldMap.containerNo,
+    inboundTime: fieldMap.inboundTime,
+    qrContent: source.qrcodeBase64,
   }
 }
 
@@ -242,8 +242,8 @@ export const formToTemplate = (form, fields, currentTemplate) => ({
   titleFontSize: form.titleFontSize,
   titleStatus: form.titleStatus,
   fields: fields.map((item, index) => ({
-    key: item.key || (defaultFields[index] && defaultFields[index].key) || `customField${index + 1}`,
-    label: item.label || `字段${index + 1}`,
+    key: item.key,
+    label: item.label,
     name: item.value,
     layout: item.layout,
     fontSize: item.fontSize,

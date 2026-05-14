@@ -90,7 +90,7 @@
         <el-table :data="form.columns" border style="width: 100%" size="mini">
           <el-table-column label="列" width="80" align="center">
             <template slot-scope="scope">
-              <span>第 {{ scope.$index + 1 }} 列</span>
+              <span>{{ scope.row.code || `第 ${scope.$index + 1} 列` }}</span>
             </template>
           </el-table-column>
           <el-table-column label="类型" prop="type" min-width="150">
@@ -274,7 +274,7 @@ export default {
         warehouseType: this.form.warehouseType || '0',
         materialType: '',
         remark: '',
-        columns: Array.from({ length: 6 }, () => ({ type: defaultType })),
+        columns: Array.from({ length: 6 }, (item, index) => ({ code: `S${index + 1}`, type: defaultType })),
         rawNode: null
       };
       this.$nextTick(() => {
@@ -285,7 +285,7 @@ export default {
     },
     addColumn() {
       const defaultType = this.form.warehouseType === '2' ? '5-1-2-10' : '5-3-2-10';
-      this.form.columns.push({ type: defaultType });
+      this.form.columns.push({ code: `S${this.form.columns.length + 1}`, type: defaultType });
     },
     removeColumn(index) {
       if (this.form.columns.length > 1) {

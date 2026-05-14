@@ -26,6 +26,13 @@
 
 `initialEntry/components/ImportDialog.vue` 的导入明细表展示 `sealCode1`、`sealType1`、`sealCode2`、`sealType2`。封记类型使用字典父级 ID `2052628107427078145`，展示时优先映射字典名称，提交 `dataList` 时保留后端返回的原始字段值。
 
+初始录入审核弹窗打开时调用 `POST /busin/initial/detail` 获取导入明细，审核表格展示接口返回的 `dataList.list`，不使用静态占位数据。
+初始录入列表行操作中的“提交”调用 `POST /busin/initial/submitById`，仅按记录 `id` 提交；新增/编辑弹窗内的暂存和提交仍使用 `POST /busin/initial/submit` 携带完整表单数据。
+
+### 字段取值规范
+
+初始录入和标签模版相关页面的表格、表单、弹窗统一按接口字段 key 取值，中文仅作为 label、提示文案或字典展示名使用。除字典/枚举归一化和 `dataJson` 等后端结构转换外，不再通过中文 key 或多个别名字段兜底读取业务值。
+
 ## 二、材料管理 materialManagement
 
 入口文件：`materialManagement/index.vue`

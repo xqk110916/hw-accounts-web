@@ -46,7 +46,7 @@
                 <div> {{ scope.row[item.prop] }} </div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
+            <el-table-column label="操作" width="150" fixed="right">
               <template slot-scope="scope">
                 <div class="table_operation">
                   <div v-for="item in btns.table" :key="item.label" :class="['btn', 'text']" @click="e => handleBtnClick(item, scope.row)">{{ item.label }}</div>
@@ -206,9 +206,11 @@ export default {
     open() {
       this.$refs.detail.open();
     },
-    view() {},
+    view(row) {
+      this.$refs.detail.open(row, 'view');
+    },
     edit(row) {
-      this.$refs.detail.open(row);
+      this.$refs.detail.open(row, 'edit');
     },
     remove(row) {
       this.$confirm('确定要删除该设备?')

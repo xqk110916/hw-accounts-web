@@ -25,7 +25,7 @@
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column prop="printTime" label="打印时间" min-width="160" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="createTime" label="打印时间" min-width="160" show-overflow-tooltip></el-table-column>
             <el-table-column prop="labelCount" label="标签数量" min-width="140" show-overflow-tooltip></el-table-column>
             <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
             <el-table-column label="操作" width="190" fixed="right">
@@ -64,7 +64,7 @@
 import PrintImportDialog from './components/PrintImportDialog.vue'
 import PrintRecordDialog from './components/PrintRecordDialog.vue'
 import TemplateManageDialog from './components/TemplateManageDialog.vue'
-import { labelDataToRow, templateListToOptions } from './components/storage'
+import { templateListToOptions } from './components/storage'
 import { deleteLabelData, listAllTemplate, listLabelData } from './components/api'
 
 export default {
@@ -117,7 +117,7 @@ export default {
       this.listLoading = true
       try {
         const records = await this.getFilteredRecords()
-        this.tableData = records.map(this.mapRecordToRow)
+        this.tableData = records
       } finally {
         this.listLoading = false
       }
@@ -144,24 +144,7 @@ export default {
       const res = await listLabelData(params)
       const data = res.data || {}
       this.searchForm.total = data.pagination ? data.pagination.total || 0 : 0
-      return (data.list || []).map(labelDataToRow)
-    },
-    mapRecordToRow(record) {
-      return {
-        ...record,
-        printTime: record.printTime || record.createTime || '',
-        labelCount: record.labelCount || 1,
-        remark: record.remark || '',
-        templateId: record.templateId || '',
-        templateName: record.templateName || '',
-        materialCode: record.materialCode || '',
-        generationUnit: record.generationUnit || '',
-        warehouse: record.warehouse || '',
-        inboundPerson: record.inboundPerson || '',
-        containerNo: record.containerNo || '',
-        inboundTime: record.inboundTime || '',
-        qrContent: record.qrContent || '',
-      }
+      return data.list || []
     },
     handleReset() {
       this.searchForm.dateRange = []

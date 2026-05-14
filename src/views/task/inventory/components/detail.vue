@@ -757,7 +757,7 @@ export default {
       }
     },
     getGoodsKey(item) {
-      return String(item.id || item.containerCode || '')
+      return String(item.id || '')
     },
     setGoodsResult(goods, result, clearRemark = false) {
       this.$set(goods, 'result', result)

@@ -15,3 +15,4 @@
 - 单个模板配置由 `components/TemplateDialog.vue` 维护，保存时调用标签模板新增/更新接口。
 - 打印记录列表、新增、编辑、详情、删除和导入已接入 `md/数据管理接口.md` 中的 `/busin/label/data/*` 接口。
 - `components/storage.js` 仅保留前端打印模板结构转换、默认打印配置和 ZPL 生成所需的辅助方法，不再作为模板和打印记录的数据源。
+- 表格和弹窗表单按接口字段 key 直接取值；`storage.js` 只负责 `dataJson` 与前端表单字段、模板显示枚举之间的转换，不再兼容中文 key 或旧别名字段。

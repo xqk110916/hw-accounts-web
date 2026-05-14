@@ -56,15 +56,15 @@ export const submitInitialEntryById = id => {
   return request({
     url: '/busin/initial/submitById',
     method: 'post',
-    data: { id },
+    params: { id },
   })
 }
 
-export const auditInitialEntry = data => {
+export const auditInitialEntry = params => {
   return request({
     url: '/busin/initial/audit',
     method: 'post',
-    data,
+    params,
   })
 }
 

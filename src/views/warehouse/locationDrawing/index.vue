@@ -115,7 +115,7 @@ export default {
       treeData: [],
       defaultProps: {
         children: 'children',
-        label: (data) => data.name || data.label || data.warehouseName || data.balanceAreaName || `节点(${data.id})`
+        label: (data) => data.nodeName || `节点(${data.id})`
       }
     };
   },
@@ -224,7 +224,7 @@ export default {
 
       // 新库/老库统一使用列配置格式
       apiData.shelvesList = formData.columns.map((col, index) => ({
-        shelfCode: `S${index + 1}`,
+        shelfCode: col.code || `S${index + 1}`,
         shelfRowNum: parseInt(col.rows) || 1,
         shelfColNum: parseInt(col.levels) || 1,
         shelfType: col.type,
@@ -248,7 +248,20 @@ export default {
       }
     },
     mapWarehouseNodeToForm(data) {
-      const columns = (data.children || []).map((column, index) => {
+      const shelvesList = Array.isArray(data.shelvesList) ? data.shelvesList : []
+      const columns = shelvesList.length ? shelvesList.map((shelf, index) => {
+        const type = shelf.shelfType
+        const rowCount = Number(shelf.shelfRowNum) || 1
+        const levelCount = Number(shelf.shelfColNum) || 1
+        this.ensureShelfTypeOption(type, rowCount, levelCount)
+        return {
+          id: shelf.id,
+          code: shelf.shelfCode,
+          type,
+          rows: rowCount,
+          levels: levelCount
+        }
+      }) : (data.children || []).map((column, index) => {
         const rows = column.children || [];
         const rowCount = rows.length || 1;
         const levelCount = rows.reduce((max, row) => Math.max(max, (row.children || []).length), 1);
@@ -256,24 +269,24 @@ export default {
         this.ensureShelfTypeOption(type, rowCount, levelCount);
         return {
           id: column.id,
-          code: column.nodeCode || column.label || `S${index + 1}`,
+          code: column.nodeCode,
           type
         };
       });
       return {
         rawNode: data,
         balanceArea: data.parentId,
-        warehouseCode: data.nodeCode || data.warehouseCode || '',
-        warehouseName: this.cleanNodeName(data.nodeName || data.label || data.warehouseName || ''),
+        warehouseCode: data.nodeCode,
+        warehouseName: this.cleanNodeName(data.nodeName),
         warehouseType: this.normalizeWarehouseType(data.warehouseType, columns),
-        materialType: data.materialTypes || (data.extra && data.extra.materialTypes) || '',
-        remark: data.remark || (data.extra && data.extra.remark) || '',
+        materialType: data.materialTypes,
+        remark: data.remark,
         columns: columns.length ? columns : [{ type: '5-3-2-10' }]
       };
     },
     getShelfTypeValue(column, rowCount, levelCount) {
       const extra = column.extra || {};
-      return column.shelfType || extra.shelfType || `${rowCount}-${levelCount}-2-10`;
+      return column.shelfType;
     },
     normalizeWarehouseType(warehouseType, columns) {
       if (String(warehouseType) === '0' || String(warehouseType) === '2') return String(warehouseType);

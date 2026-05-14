@@ -11,11 +11,11 @@ function getNodeChildren(node) {
 function normalizePosition(item = {}) {
   return {
     ...item,
-    id: item.id || item.positionId || item.hierarchyId,
-    code: item.goodsCode || item.code || '',
-    materialCode: item.goodsCode || item.materialCode || '',
-    materialName: item.goodsName || item.materialName || '',
-    storageDate: item.lastInboundTime || item.createTime || item.storageDate || '',
+    id: item.id,
+    code: item.goodsCode,
+    materialCode: item.goodsCode,
+    materialName: item.goodsName,
+    storageDate: item.lastInboundTime,
     status: String(item.status == null ? 0 : item.status)
   };
 }
@@ -26,7 +26,7 @@ function matchPosition(position, columnNode, rowNode, layerNode) {
   const layerId = String(layerNode.id);
   const sameShelf = !position.shelfId || String(position.shelfId) === columnId;
   const sameRow = !position.rowId || String(position.rowId) === rowId;
-  const sameLayer = String(position.columnId || position.hierarchyId || '') === layerId;
+  const sameLayer = String(position.columnId) === layerId;
   return sameShelf && sameRow && sameLayer;
 }
 

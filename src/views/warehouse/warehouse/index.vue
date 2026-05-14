@@ -468,7 +468,12 @@ export default {
 
     getContainerLocation() {
       if (!this.selectedShelf || !this.selectedContainer) return '-';
-      return `${this.currentWarehouse?.name || '库房'} - ${this.selectedShelf.name}`;
+      const position = [
+        this.selectedContainer.shelfCode,
+        this.selectedContainer.rowCode,
+        this.selectedContainer.columnCode
+      ].filter(Boolean).join('-') || this.selectedShelf.name;
+      return `${this.currentWarehouse?.name || '库房'} - ${position}`;
     },
 
     viewContainerHistory() {

@@ -23,15 +23,15 @@
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column prop="operationTypeText" label="数据类型" min-width="120" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="importTime" label="导入时间" min-width="170" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="importUserName" label="导入人" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="operationType" label="数据类型" min-width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="createTime" label="导入时间" min-width="170" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="createUname" label="导入人" min-width="100" show-overflow-tooltip></el-table-column>
             <el-table-column prop="auditTime" label="审批时间" min-width="170" show-overflow-tooltip></el-table-column>
             <el-table-column prop="auditUserName" label="审批人" min-width="100" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="dataTotal" label="据条数" min-width="100" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="dataStatusText" label="状态" min-width="110" show-overflow-tooltip>
+            <el-table-column prop="dataTotal" label="数据条数" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="dataStatus" label="状态" min-width="110" show-overflow-tooltip>
               <template slot-scope="scope">
-                <span :class="['status-tag', getStatusClass(scope.row.dataStatus)]">{{ scope.row.dataStatusText }}</span>
+                <span :class="['status-tag', getStatusClass(scope.row.dataStatus)]">{{ getStatusText(scope.row) }}</span>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="220" fixed="right">
@@ -73,7 +73,7 @@
 <script>
 import ImportDialog from './components/ImportDialog.vue'
 import ApproveDialog from './components/ApproveDialog.vue'
-import { listInitialEntry, deleteInitialEntry, submitInitialEntry } from './components/api.js'
+import { listInitialEntry, deleteInitialEntry, submitInitialEntryById } from './components/api.js'
 
 export default {
   name: 'InitialEntry',
@@ -153,9 +153,9 @@ export default {
         const params = this.buildQueryParams()
         const res = await listInitialEntry(params)
         if (res && res.code === 1) {
-          const records = (res.data && (res.data.records || res.data.list)) || []
-          this.tableData = records.map(this.normalizeRow)
-          this.searchForm.total = Number((res.data && (res.data.total || (res.data.pagination && res.data.pagination.total))) || 0)
+          const data = res.data || {}
+          this.tableData = data.list || []
+          this.searchForm.total = Number(data.pagination ? data.pagination.total : 0)
         } else {
           this.tableData = []
           this.searchForm.total = 0
@@ -185,30 +185,6 @@ export default {
         return false
       }
       return true
-    },
-    normalizeRow(row) {
-      const statusMap = {
-        2: '待提交',
-        3: '待审核',
-        4: '审核通过',
-        5: '审核拒绝',
-        待提交: '待提交',
-        待审核: '待审核',
-        审核通过: '审核通过',
-        审核拒绝: '审核拒绝',
-      }
-      const dataStatus = this.getDataStatusValue(row)
-      return {
-        ...row,
-        dataStatus,
-        operationTypeText: row.operationTypeText || row.operationType || row.dataType || this.getLegacyValue(row, '数据类型') || '材料信息',
-        importTime: row.importTime || row.createTime || this.getLegacyValue(row, '导入时间') || '',
-        importUserName: row.importUserName || row.createUname || this.getLegacyValue(row, '导入人') || '',
-        auditTime: row.auditTime || this.getLegacyValue(row, '审批时间') || '',
-        auditUserName: row.auditUserName || this.getLegacyValue(row, '审批人') || '',
-        dataTotal: row.dataTotal || row.dataCount || row.count || this.getLegacyValue(row, '据条数') || '',
-        dataStatusText: row.dataStatusText || row.statusDesc || this.getLegacyValue(row, '状态') || statusMap[dataStatus] || statusMap[row.status] || row.status || '待提交',
-      }
     },
     handleReset() {
       this.searchForm.addTimeRange = []
@@ -264,7 +240,7 @@ export default {
       await this.$confirm('确定要提交吗?', '提示', { type: 'warning' })
       this.submitLoading = true
       try {
-        const res = await submitInitialEntry(row.id)
+        const res = await submitInitialEntryById(row.id)
         if (!res || res.code === 1) {
           this.$message.success('提交成功')
           this.handleQuery()
@@ -281,23 +257,15 @@ export default {
       this.searchForm.currentPage = value
       this.handleQuery()
     },
-    getDataStatusValue(row) {
-      const textStatusMap = {
-        待提交: 2,
-        待审核: 3,
-        审核中: 3,
-        审核通过: 4,
-        审核拒绝: 5,
-        审核驳回: 5,
+    getStatusText(row) {
+      if (row && row.statusDesc !== undefined && row.statusDesc !== null && row.statusDesc !== '') return row.statusDesc
+      const map = {
+        2: '待提交',
+        3: '待审核',
+        4: '审核通过',
+        5: '审核拒绝',
       }
-      if (row && row.dataStatus !== undefined && row.dataStatus !== null && row.dataStatus !== '') return Number(row.dataStatus)
-      if (row && textStatusMap[row.status] !== undefined) return textStatusMap[row.status]
-      const legacyStatus = this.getLegacyValue(row, '状态')
-      if (textStatusMap[legacyStatus] !== undefined) return textStatusMap[legacyStatus]
-      return Number(row && row.status)
-    },
-    getLegacyValue(source, key) {
-      return source && source[key]
+      return map[Number(row && row.dataStatus)] || ''
     },
     getStatusClass(status) {
       const map = {

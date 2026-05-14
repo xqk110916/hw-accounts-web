@@ -737,35 +737,35 @@ function sortByCode(a, b) {
 
 function normalizePosition(item = {}) {
   const inboundGoods = item.inboundGoodsEntity || {};
-  const storageDate = item.lastInboundTime || item.storageDate || item.createTime || inboundGoods.createTime || '';
+  const storageDate = item.lastInboundTime;
   const valueOrEmpty = value => (value === null || typeof value === 'undefined' ? '' : value);
   const normalizedGoods = {
     ...inboundGoods,
-    taskNum: inboundGoods.taskNum || item.taskNum || '',
-    goodCode: inboundGoods.goodCode || inboundGoods.goodsCode || item.goodsCode || item.materialCode || '',
-    goodsName: inboundGoods.goodsName || inboundGoods.goodName || inboundGoods.materialName || item.goodsName || item.materialName || '',
-    containerCode: inboundGoods.containerCode || item.containerCode || item.containerNo || item.goodsCode || item.code || '',
-    materialTypes: inboundGoods.materialTypes || item.materialTypes || '',
-    grossWeight: valueOrEmpty(inboundGoods.grossWeight || item.grossWeight),
-    tareWeight: valueOrEmpty(inboundGoods.tareWeight || item.tareWeight),
-    netWeight: valueOrEmpty(inboundGoods.netWeight || item.netWeight),
-    weightUnit: inboundGoods.weightUnit || item.weightUnit || '',
-    productionUnit: inboundGoods.productionUnit || item.productionUnit || '',
-    boxNum: inboundGoods.boxNum || item.boxNum || '',
-    sealCode1: inboundGoods.sealCode1 || item.sealCode1 || '',
-    sealType1: inboundGoods.sealType1 || item.sealType1 || '',
-    sealCode2: inboundGoods.sealCode2 || item.sealCode2 || '',
-    sealType2: inboundGoods.sealType2 || item.sealType2 || ''
+    taskNum: inboundGoods.taskNum,
+    goodCode: inboundGoods.goodCode,
+    goodsName: inboundGoods.goodsName,
+    containerCode: inboundGoods.containerCode,
+    materialTypes: inboundGoods.materialTypes,
+    grossWeight: valueOrEmpty(inboundGoods.grossWeight),
+    tareWeight: valueOrEmpty(inboundGoods.tareWeight),
+    netWeight: valueOrEmpty(inboundGoods.netWeight),
+    weightUnit: inboundGoods.weightUnit,
+    productionUnit: inboundGoods.productionUnit,
+    boxNum: inboundGoods.boxNum,
+    sealCode1: inboundGoods.sealCode1,
+    sealType1: inboundGoods.sealType1,
+    sealCode2: inboundGoods.sealCode2,
+    sealType2: inboundGoods.sealType2
   };
   return {
     ...item,
     inboundGoodsEntity: normalizedGoods,
-    id: item.id || item.positionId || item.hierarchyId || item.columnId,
+    id: item.id,
     code: normalizedGoods.containerCode,
     materialCode: normalizedGoods.goodCode,
     materialName: normalizedGoods.goodsName,
     storageDate,
-    lastInboundTime: item.lastInboundTime || storageDate,
+    lastInboundTime: item.lastInboundTime,
     status: String(item.status == null ? 0 : item.status),
     taskNum: normalizedGoods.taskNum,
     materialTypes: normalizedGoods.materialTypes,
@@ -780,19 +780,19 @@ function buildShelvesFromPositions(positions = []) {
   const grouped = new Map();
 
   positions.map(normalizePosition).forEach(position => {
-    const shelfId = position.shelfId || position.shelfCode || 'unknownShelf';
-    const rowId = position.rowId || position.rowCode || 'unknownRow';
+    const shelfId = position.shelfId == null || position.shelfId === '' ? 'unknownShelf' : position.shelfId;
+    const rowId = position.rowId == null || position.rowId === '' ? 'unknownRow' : position.rowId;
     const shelfKey = `${shelfId}-${rowId}`;
     if (!grouped.has(shelfKey)) {
       const shelfType = position.shelfType || '';
       const parsedType = parseShelfType(shelfType);
       grouped.set(shelfKey, {
         id: shelfKey,
-        name: `${position.shelfCode || shelfId}-${position.rowCode || rowId}`,
+        name: `${position.shelfCode}-${position.rowCode}`,
         columnId: shelfId,
         rowId,
-        columnCode: position.shelfCode || String(shelfId),
-        rowCode: position.rowCode || String(rowId),
+        columnCode: position.shelfCode,
+        rowCode: position.rowCode,
         shelfType,
         typeInfo: parsedType,
         width: parsedType.width,
@@ -806,10 +806,10 @@ function buildShelvesFromPositions(positions = []) {
     const shelf = grouped.get(shelfKey);
     shelf.rawPositions.push(position);
     shelf.layers.push({
-      id: position.columnId || position.hierarchyId || position.id,
+      id: position.columnId,
       level: shelf.layers.length + 1,
       node: {
-        id: position.columnId || position.hierarchyId || position.id,
+        id: position.columnId,
         nodeCode: position.columnCode,
         nodeName: position.columnCode
       },
@@ -843,7 +843,7 @@ export async function getBalanceAreaList() {
         const list = Array.isArray(res.data) ? res.data : (res.data.list || []);
         return list.map((item, index) => ({
           ...item,
-          id: item.id || item.code,
+          id: item.id,
           name: item.name,
           position: balanceAreaConfig[index]?.position || { x: (index - 1) * 6, y: 0, z: 0 },
           color: balanceAreaConfig[index]?.color || colors[index % colors.length],
@@ -901,11 +901,11 @@ export async function getWarehouseList(balanceAreaId) {
       const res = await getHierarchyListByNodeType(2);
       const list = Array.isArray(res.data) ? res.data : [];
       const normalized = list
-        .filter(item => !balanceAreaId || String(item.parentId || item.balanceAreaId) === String(balanceAreaId))
+        .filter(item => !balanceAreaId || String(item.parentId) === String(balanceAreaId))
         .map((item, index) => ({
           ...item,
-          id: item.id || item.warehouseId,
-          name: item.warehouseName || item.nodeName,
+          id: item.id,
+          name: item.nodeName,
           width: 20,
           height: 15,
           description: item.remark,

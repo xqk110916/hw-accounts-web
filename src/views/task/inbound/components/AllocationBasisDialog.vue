@@ -216,8 +216,8 @@ export default {
         if (res.code === 1) {
           this.materialCodeOptions = (res.data || [])
             .map(item => {
-              const goodCode = item.goodCode || item.materialCode || item.code || item.id
-              const name = item.goodName || item.materialName || item.commonName || goodCode
+              const goodCode = item.goodCode
+              const name = item.goodName
               return {
                 label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
                 value: goodCode

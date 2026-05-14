@@ -558,25 +558,25 @@ export default {
     normalizeGoods(row = {}) {
       return {
         ...row,
-        id: row.id || '',
-        taskNum: row.taskNum || '',
-        containerCode: row.containerCode || row.containerNo || '',
-        goodCode: row.goodCode || row.materialCode || '',
-        warehouseId: row.warehouseId || '',
-        warehouseName: row.warehouseName || row.warehouse || '',
-        boxNum: row.boxNum || row.cargoBoxNo || '',
-        grossWeight: row.grossWeight || row.weightGross || '',
-        netWeight: row.netWeight || row.weightNet || '',
-        tareWeight: row.tareWeight || row.weightTare || '',
-        metalPercentage: row.metalPercentage || '',
-        productionUnit: row.productionUnit || '',
-        shelfCode: row.shelfCode || '',
-        rowCode: row.rowCode || '',
-        columnCode: row.columnCode || '',
-        sealCode1: row.sealCode1 || '',
-        sealCode2: row.sealCode2 || '',
-        sealType1: row.sealType1 || '',
-        sealType2: row.sealType2 || '',
+        id: row.id,
+        taskNum: row.taskNum,
+        containerCode: row.containerCode,
+        goodCode: row.goodCode,
+        warehouseId: row.warehouseId,
+        warehouseName: row.warehouseName !== undefined ? row.warehouseName : row.warehouse,
+        boxNum: row.boxNum !== undefined ? row.boxNum : row.boxNo,
+        grossWeight: row.grossWeight,
+        netWeight: row.netWeight,
+        tareWeight: row.tareWeight,
+        metalPercentage: row.metalPercentage,
+        productionUnit: row.productionUnit,
+        shelfCode: row.shelfCode,
+        rowCode: row.rowCode,
+        columnCode: row.columnCode,
+        sealCode1: row.sealCode1,
+        sealCode2: row.sealCode2,
+        sealType1: row.sealType1,
+        sealType2: row.sealType2,
       }
     },
     getDetailIdentity(row = {}) {
@@ -635,7 +635,7 @@ export default {
       return (record.modifyDescList || []).filter(Boolean)
     },
     getModifyRecordAuditRemark(record = {}) {
-      return Number(record.status) === 9 ? (record.auditRemark || record.remark || '') : ''
+      return Number(record.status) === 9 ? record.auditRemark : ''
     },
     getModifyRecordStatusText(status) {
       const value = Number(status)
@@ -659,8 +659,7 @@ export default {
       }).catch(() => {})
     },
     getAuditOperationId() {
-      const record = (this.modifyRecords && this.modifyRecords[0]) || {}
-      return this.row.id || this.row.operationId || record.operationId || record.id
+      return this.row.id
     },
     isAuditedModification() {
       if (Array.isArray(this.modifyRecords) && this.modifyRecords.length > 0) return true
@@ -678,7 +677,7 @@ export default {
         return executeAuditedOutboundUpdate(payload)
       }
       const payload = {
-        taskNum: this.form.taskNum || this.row.taskNum,
+        taskNum: this.form.taskNum,
         approved,
         remark,
       }

@@ -146,12 +146,12 @@ export default {
   },
   computed: {
     balanceAreaId() {
-      return this.row.balanceId || this.row.balanceAreaId || this.row.id;
+      return this.row.id;
     },
     infoItems() {
       return [
         { label: '节点', value: this.detail.code },
-        { label: '名称', value: this.detail.name || this.detail.balanceAreaName },
+        { label: '名称', value: this.detail.name },
         { label: '调入许可证', value: this.detail.inLicense },
         { label: '调出许可证', value: this.detail.outLicense },
         { label: '类型', value: getBalanceAreaTypeText(this.detail.type) },
@@ -223,8 +223,8 @@ export default {
     normalizeDetail(data) {
       return {
         ...data,
-        inLicense: data.inLicense || data.importLicense,
-        outLicense: data.outLicense || data.exportLicense,
+        inLicense: data.inLicense,
+        outLicense: data.outLicense,
         type: normalizeBalanceAreaType(data.type)
       };
     },
@@ -235,7 +235,7 @@ export default {
         const parsed = JSON.parse(item.materialTypes);
         if (Array.isArray(parsed) && parsed.length) {
           const first = parsed[0];
-          return typeof first === 'string' ? first : (first.label || first.name || first.value || '未命名材料');
+          return typeof first === 'string' ? first : first.name;
         }
       } catch (error) {
         return item.materialTypes;

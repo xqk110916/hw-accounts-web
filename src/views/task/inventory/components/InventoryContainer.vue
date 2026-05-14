@@ -270,7 +270,7 @@ export default {
       })
     },
     getGoodsKey(item) {
-      return String(item.id || item.containerCode || '')
+      return String(item.id || '')
     },
     isOppositeContainerSelected(warehouseId, resultType, item) {
       const form = this.inventoryFormMap[warehouseId] || {}

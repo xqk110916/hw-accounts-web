@@ -181,8 +181,8 @@
           <span>物料满足情况</span>
         </div>
         <div class="satisfaction-list">
-          <div v-for="item in satisfactionList" :key="item.goodCode || item.materialName" class="satisfaction-item">
-            <span class="material-name">{{ item.materialName || item.goodCode }}</span>
+          <div v-for="item in satisfactionList" :key="item.goodCode" class="satisfaction-item">
+            <span class="material-name">{{ item.materialName }}</span>
             <span>目标(毛/皮/净)：{{ item.targetText }}</span>
             <span>匹配(毛/皮/净)：{{ item.actualText }}</span>
             <el-tag size="mini" :type="item.satisfied ? 'success' : 'danger'">
@@ -344,8 +344,8 @@ export default {
         const res = await getInboundGoodsList()
         this.materialOptions = (res.data || [])
           .map(item => {
-            const goodCode = item.goodCode || item.materialCode || item.code || item.id
-            const name = item.goodName || item.materialName || item.commonName || goodCode
+            const goodCode = item.goodCode
+            const name = item.goodName
             return {
               label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
               value: goodCode,
@@ -437,25 +437,25 @@ export default {
     },
     normalizeMaterial(row = {}) {
       if (!row._key) this.materialIndexSeed += 1
-      const warehouses = splitText(row.warehouses || row.warehousesText)
-      const suppliers = splitText(row.suppliers || row.suppliersText)
-      const batchNos = splitText(row.batchNos || row.batchNosText)
-      const raw = row.raw || row.materialRaw || {}
+      const warehouses = splitText(row.warehouses)
+      const suppliers = splitText(row.suppliers)
+      const batchNos = splitText(row.batchNos)
+      const raw = row.raw || {}
       const normalized = {
         ...row,
         _key: row._key || `material-${Date.now()}-${this.materialIndexSeed}`,
         goodCode: row.goodCode || '',
-        materialName: row.materialName || row.goodCode || '',
+        materialName: row.materialName || '',
         grossWeight: row.grossWeight || '',
         tareWeight: row.tareWeight || '',
-        netWeight: row.netWeight || row.goodWeight || '',
+        netWeight: row.netWeight || '',
         unit: row.unit || 'kg',
         suppliers,
         warehouses,
         batchNos,
-        warehouseOptions: row.warehouseOptions || this.buildOptions(raw.warehouse),
-        batchNoOptions: row.batchNoOptions || this.buildOptions(raw.batchNo),
-        supplierOptions: row.supplierOptions || this.buildOptions(raw.productionUnit),
+        warehouseOptions: row.warehouseOptions || [],
+        batchNoOptions: row.batchNoOptions || [],
+        supplierOptions: row.supplierOptions || [],
         startStorageTime: row.startStorageTime || '',
         endStorageTime: row.endStorageTime || '',
       }
@@ -496,11 +496,11 @@ export default {
         }
         const weights = [item.grossWeight, item.tareWeight, item.netWeight].filter(value => value !== '' && value !== null && value !== undefined)
         if (!weights.length) {
-          this.$message.warning(`${item.materialName || item.goodCode || '物料'}缺少目标重量`)
+          this.$message.warning(`${item.materialName || '物料'}缺少目标重量`)
           return false
         }
         if (weights.some(value => Number.isNaN(toNumber(value)))) {
-          this.$message.warning(`${item.materialName || item.goodCode || '物料'}重量必须为数字`)
+          this.$message.warning(`${item.materialName || '物料'}重量必须为数字`)
           return false
         }
       }
@@ -556,14 +556,14 @@ export default {
         batchNo: row.batchNo || '',
         containerCode: row.containerCode || '',
         goodCode: row.goodCode || '',
-        goodsName: row.material || row.goodsName || row.materialName || '',
-        warehouseName: row.warehouseName || row.warehouse || '',
-        boxNum: row.boxNum || row.boxNo || '',
+        goodsName: row.goodsName || '',
+        warehouseName: row.warehouseName !== undefined ? row.warehouseName : row.warehouse,
+        boxNum: row.boxNum !== undefined ? row.boxNum : row.boxNo,
         grossWeight: row.grossWeight || '',
         tareWeight: row.tareWeight || '',
         netWeight: row.netWeight || '',
         metalPercentage: row.metalPercentage || '',
-        productionUnit: row.productionUnit || row.manufacturer || '',
+        productionUnit: row.productionUnit || '',
         shelfCode: row.shelfCode || '',
         rowCode: row.rowCode || '',
         columnCode: row.columnCode || '',

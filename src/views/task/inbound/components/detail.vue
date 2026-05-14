@@ -774,8 +774,8 @@ export default {
       getMaterialCodeListAll().then(res => {
         this.materialCodeOptions = (res.data || [])
           .map(item => {
-            const goodCode = item.goodCode || item.materialCode || item.code || item.id
-            const name = item.goodName || item.materialName || item.commonName || goodCode
+            const goodCode = item.goodCode
+            const name = item.goodName
             return {
               label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
               value: goodCode,
@@ -1026,7 +1026,7 @@ export default {
       return (record.modifyDescList || []).filter(Boolean)
     },
     getModifyRecordAuditRemark(record = {}) {
-      return Number(record.status) === 9 ? (record.auditRemark || record.remark || '') : ''
+      return Number(record.status) === 9 ? record.auditRemark : ''
     },
     getModifyRecordStatusText(status) {
       const value = Number(status)

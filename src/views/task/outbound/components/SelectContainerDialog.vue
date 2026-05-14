@@ -25,7 +25,7 @@
                 <el-option
                   v-for="item in balanceAreaOptions"
                   :key="item.id"
-                  :label="item.nodeName || item.balanceAreaName || item.areaName"
+                  :label="item.nodeName"
                   :value="item.id"
                 />
               </el-select>
@@ -41,7 +41,7 @@
                 <el-option
                   v-for="item in warehouseOptions"
                   :key="item.id"
-                  :label="item.warehouseName || item.nodeName"
+                  :label="item.warehouseName"
                   :value="item.id"
                 />
               </el-select>
@@ -331,8 +331,8 @@ export default {
         const res = await getMaterialCodeListAll()
         this.materialCodeOptions = (res.data || [])
           .map(item => {
-            const goodCode = item.goodCode || item.materialCode || item.code || item.id
-            const name = item.goodName || item.materialName || item.commonName || goodCode
+            const goodCode = item.goodCode
+            const name = item.goodName
             return {
               label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
               value: goodCode,
@@ -393,10 +393,10 @@ export default {
           shelfMap[shelfKey] = {
             id: shelfKey,
             name: shelfKey,
-            columnId: item.shelfId || item.shelfCode || shelfKey,
-            rowId: item.rowId || item.rowCode || shelfKey,
-            columnCode: item.shelfCode || '-',
-            rowCode: item.rowCode || '-',
+            columnId: item.shelfId,
+            rowId: item.rowId,
+            columnCode: item.shelfCode,
+            rowCode: item.rowCode,
             width: 10,
             height: 2,
             position: { x: 0, y: 0 },
@@ -404,12 +404,12 @@ export default {
           }
         }
         shelfMap[shelfKey].layers.push({
-          id: item.id || `${shelfKey}-${item.columnCode || shelfMap[shelfKey].layers.length}`,
+          id: item.id,
           containers: [{
             ...item,
             code: item.containerCode,
             materialCode: item.goodCode,
-            materialName: item.goodsName || item.goodName || item.materialName,
+            materialName: item.goodsName,
             status: String(item.status == null ? 0 : item.status),
           }],
         })
@@ -433,31 +433,30 @@ export default {
       return !!(row && row.containerCode && String(row.status) !== '0')
     },
     normalizeGoods(row = {}) {
-      const inboundGoods = row.inboundGoodsEntity || {}
       return {
         ...row,
-        id: row.id || row.goodsId || inboundGoods.id,
-        taskNum: row.taskNum || inboundGoods.taskNum || '',
-        containerCode: row.containerCode || row.containerNo || row.code || inboundGoods.containerCode || '',
-        goodCode: row.goodCode || row.goodsCode || row.materialCode || inboundGoods.goodCode || '',
-        goodsName: row.goodsName || row.goodName || row.materialName || inboundGoods.goodsName || '',
-        warehouseId: row.warehouseId || inboundGoods.warehouseId || '',
-        warehouseName: row.warehouseName || row.warehouse || inboundGoods.warehouseName || '',
-        boxNum: row.boxNum || row.cargoBoxNo || inboundGoods.boxNum || '',
-        grossWeight: row.grossWeight || row.weightGross || inboundGoods.grossWeight || '',
-        tareWeight: row.tareWeight || row.weightTare || inboundGoods.tareWeight || '',
-        netWeight: row.netWeight || row.weightNet || inboundGoods.netWeight || '',
-        productionUnit: row.productionUnit || inboundGoods.productionUnit || '',
-        shelfCode: row.shelfCode || inboundGoods.shelfCode || '',
-        rowCode: row.rowCode || inboundGoods.rowCode || '',
-        columnCode: row.columnCode || inboundGoods.columnCode || '',
-        shelfId: row.shelfId || inboundGoods.shelfId || '',
-        rowId: row.rowId || inboundGoods.rowId || '',
-        columnId: row.columnId || row.hierarchyId || inboundGoods.columnId || '',
-        sealCode1: row.sealCode1 || inboundGoods.sealCode1 || '',
-        sealCode2: row.sealCode2 || inboundGoods.sealCode2 || '',
-        sealType1: row.sealType1 || inboundGoods.sealType1 || '',
-        sealType2: row.sealType2 || inboundGoods.sealType2 || '',
+        id: row.id,
+        taskNum: row.taskNum,
+        containerCode: row.containerCode,
+        goodCode: row.goodCode,
+        goodsName: row.goodsName,
+        warehouseId: row.warehouseId,
+        warehouseName: row.warehouseName !== undefined ? row.warehouseName : row.warehouse,
+        boxNum: row.boxNum !== undefined ? row.boxNum : row.boxNo,
+        grossWeight: row.grossWeight,
+        tareWeight: row.tareWeight,
+        netWeight: row.netWeight,
+        productionUnit: row.productionUnit,
+        shelfCode: row.shelfCode,
+        rowCode: row.rowCode,
+        columnCode: row.columnCode,
+        shelfId: row.shelfId,
+        rowId: row.rowId,
+        columnId: row.columnId,
+        sealCode1: row.sealCode1,
+        sealCode2: row.sealCode2,
+        sealType1: row.sealType1,
+        sealType2: row.sealType2,
         status: row.status == null ? 1 : row.status,
       }
     },

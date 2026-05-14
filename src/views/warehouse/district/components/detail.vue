@@ -1,5 +1,5 @@
 <template>
-  <theme-edit :show="show" showFooterSlot title="编辑" :column="1" @cancle="close">
+  <theme-edit :show="show" showFooterSlot :title="titleMap[type]" :column="1" @cancle="close">
     <el-form ref="form" class="form" :model="form" :rules="rules" label-width="130px">
       <el-form-item v-for="item in formKeys" :label="item.label" :prop="item.prop" v-if="judgeRowShow(item)">
         <el-input
@@ -9,6 +9,7 @@
           size="small"
           :placeholder="`请输入${item.label}`"
           @blur="value => changeFormValue(value, item)"
+          :disabled="isReadonly"
           clearable
         ></el-input>
         <el-select
@@ -17,6 +18,7 @@
           size="small"
           :placeholder="`请选择${item.label}`"
           @change="value => changeFormValue(value, item)"
+          :disabled="isReadonly"
           clearable
         >
           <el-option v-for="item in options[item.prop]" :key="item.value" :label="item.label" :value="item.value"> </el-option>
@@ -29,6 +31,7 @@
           :placeholder="`请选择${item.label}`"
           @change="value => changeFormValue(value, item)"
           :props="item.props || defaultProps"
+          :disabled="isReadonly"
           clearable
         >
         </el-cascader>
@@ -40,14 +43,15 @@
           :active-text="item.props ? item.props.activeText : ''"
           :inactive-text="item.props ? item.props.inactiveText : ''"
           @change="value => changeFormValue(value, item)"
+          :disabled="isReadonly"
         >
         </el-switch>
       </el-form-item>
     </el-form>
     <template slot="footer">
       <div class="footer">
-        <el-button size="small" @click="close">取消</el-button>
-        <el-button type="primary" size="small" @click="submitForm">确定</el-button>
+        <el-button size="small" @click="close">{{ isReadonly ? '关闭' : '取消' }}</el-button>
+        <el-button v-if="!isReadonly" type="primary" size="small" @click="submitForm">确定</el-button>
       </div>
     </template>
   </theme-edit>
@@ -63,6 +67,11 @@ export default {
       row: {},
       show: false,
       type: 'add', // add 添加 edit 编辑 view 查看
+      titleMap: {
+        add: '添加',
+        edit: '编辑',
+        view: '详情',
+      },
       formKeys: [],
       form: {},
       rules: {},
@@ -73,14 +82,18 @@ export default {
       },
     };
   },
-  computed: {},
+  computed: {
+    isReadonly() {
+      return this.type === 'view';
+    },
+  },
   created() {
     this.handleParams();
   },
   methods: {
-    open(row) {
-      console.warn(row);
+    open(row, type) {
       this.row = row || {};
+      this.type = type || (this.row.id ? 'edit' : 'add');
       if (this.row.id) {
         this.getDetails(this.row.id).then(res => {
           this.show = true;
@@ -102,7 +115,7 @@ export default {
       return requestFun.detail({ id }).then(res => {
         let data = res.data;
         config.detail.forEach(item => {
-          if (data[item.prop]) {
+          if (data[item.prop] !== undefined && data[item.prop] !== null) {
             this.$set(this.form, item.prop, data[item.prop]);
             // this.form[item.prop] = data[item.prop];
           }
@@ -133,6 +146,7 @@ export default {
     },
     resetForm() {
       this.row = {};
+      this.type = 'add';
       // this.form = this.clearObjectValues(this.form)
       this.form = this.$options.data().form;
       this.$refs.form.resetFields();

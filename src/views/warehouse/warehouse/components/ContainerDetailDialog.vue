@@ -20,22 +20,22 @@
         <table class="custom-descriptions">
           <tr>
             <td class="label">容器编号</td>
-            <td class="value">{{ detailValue('containerCode', 'code') }}</td>
+            <td class="value">{{ detailValue('containerCode') }}</td>
             <td class="label">任务编号</td>
             <td class="value">{{ detailValue('taskNum') }}</td>
           </tr>
           <tr>
-            <td class="label">材料类型</td>
-            <td class="value">{{ materialTypesText }}</td>
+            <td class="label">物料编码</td>
+            <td class="value">{{ detailValue('goodCode') }}</td>
             <td class="label">入库时间</td>
             <td class="value">{{ inboundTime }}</td>
           </tr>
-          <tr>
-            <td class="label">物料编码</td>
-            <td class="value">{{ detailValue('goodCode', 'goodsCode', 'materialCode') }}</td>
+          <!-- <tr>
+            <td class="label">材料类型</td>
+            <td class="value">{{ materialTypesText }}</td>
             <td class="label">物料名称</td>
-            <td class="value">{{ detailValue('goodsName', 'goodName', 'materialName') }}</td>
-          </tr>
+            <td class="value">{{ detailValue('goodsName') }}</td>
+          </tr> -->
           <tr>
             <td class="label">生产单位</td>
             <td class="value">{{ detailValue('productionUnit') }}</td>
@@ -290,7 +290,7 @@ export default {
       return (this.container && this.container.inboundGoodsEntity) || {};
     },
     inboundTime() {
-      return this.detailValue('lastInboundTime', 'inboundTime', 'createTime', 'storageDate');
+      return this.detailValue('createTime');
     },
     materialTypesText() {
       const value = this.detailValueRaw('materialTypes');
@@ -301,7 +301,7 @@ export default {
         if (Array.isArray(parsed)) {
           return parsed.length ? parsed.map(item => {
             if (item && typeof item === 'object') {
-              return item.name || item.label || item.value || item.materialType || JSON.stringify(item);
+              return item.name;
             }
             return item;
           }).join('、') : '-';
@@ -335,7 +335,7 @@ export default {
     normalizePositionOption(item = {}) {
       return {
         ...item,
-        id: item.id || item.positionId || item.hierarchyId || item.columnId,
+        id: item.id,
         status: Number(item.status == null ? 0 : item.status)
       };
     },
@@ -431,9 +431,7 @@ export default {
       }
 
       this.targetWarehouseId = this.mapWarehouseId;
-      this.targetWarehouse = this.warehouseOptions.find(item => String(item.id) === String(this.mapWarehouseId))
-        || this.mapWarehouseOptions.find(item => String(item.id) === String(this.mapWarehouseId))
-        || this.mapWarehouse;
+      this.targetWarehouse = this.warehouseOptions.find(item => String(item.id) === String(this.mapWarehouseId));
 
       await this.loadPositionOptions(this.mapWarehouseId);
       this.targetPosition = this.positionOptions.find(item => String(item.id) === String(normalizedPosition.id)) || normalizedPosition;
@@ -443,21 +441,14 @@ export default {
     formatPositionLabel(position = {}) {
       return [position.shelfCode, position.rowCode, position.columnCode].filter(Boolean).join('-') || '-';
     },
-    detailValueRaw(...keys) {
+    detailValueRaw(key) {
       const detail = this.goodsDetail || {};
-      const container = this.container || {};
-      for (const key of keys) {
-        const value = detail[key];
-        if (value !== null && typeof value !== 'undefined' && value !== '') return value;
-      }
-      for (const key of keys) {
-        const value = container[key];
-        if (value !== null && typeof value !== 'undefined' && value !== '') return value;
-      }
+      const value = detail[key];
+      if (value !== null && typeof value !== 'undefined' && value !== '') return value;
       return '';
     },
-    detailValue(...keys) {
-      const value = this.detailValueRaw(...keys);
+    detailValue(key) {
+      const value = this.detailValueRaw(key);
       return value === '' ? '-' : value;
     },
     formatWeight(value) {

@@ -41,7 +41,11 @@
 - 货架类型字典：调用 `getDictionaryList({ parentId: '2046473482554638338' })`。
 - 容器详情展示 `sealCode1`、`sealType1`、`sealCode2`、`sealType2`；封记类型使用字典父级 ID `2052628107427078145` 映射展示名称。
 
+字段取值约定：库房、位置图和任务联动弹窗按接口字段 key 直接取值。除平衡区类型、货架类型、封记类型等字典/枚举转换外，不再通过多个字段别名兜底读取同一业务值。
+
 容器详情中的移库操作需要先选择目标库房，再选择目标位置。目标库房使用 `GET /busin/locationMap/hierarchy/listByNodeType/2`，目标位置使用 `POST /busin/locationMap/positionMap`，请求体包含 `nodeId` 和 `nodeType: '2'`。位置下拉沿用入库管理添加明细的禁用规则：`status !== 0` 的位置不可选。移库也支持通过 2D 位置图选择空闲位置，打开位置图时默认当前平衡区和当前库房，并允许在弹窗内切换平衡区、库房。确认移动时已对接 `POST /busin/move/submit`，由前端生成 `batchType=move` 的移库任务编号，按当前容器原位置和选择的目标位置提交一条移库申请，成功后刷新当前库房位置数据。
+
+容器详情的“当前位置”由当前库房名称加 `positionMap` 返回的 `shelfCode-rowCode-columnCode` 拼接展示。
 
 布局读取规则：
 
@@ -71,6 +75,8 @@
 - `getHierarchyTree()` 获取完整树，并定位当前库房节点。
 - `getPositionMap({ nodeId: warehouseId, nodeType: '2' })` 获取库位占用。
 - `getDictionaryList({ parentId: '2046473482554638338' })` 获取货架类型及尺寸。
+
+库房节点详情/编辑时，货架配置优先使用详情接口返回的 `shelvesList` 回显；保存时继续按 `shelvesList[].shelfCode/shelfRowNum/shelfColNum/shelfType/sortOrder` 提交。
 
 2D 编辑能力：
 
@@ -114,6 +120,8 @@
 - 备注。
 
 平衡区类型通过字典 `平衡区类型` 加载。前端存在类型值映射逻辑，修改字段或接口入参时需要同步检查 `district/components/index.js` 中的映射处理。
+
+列表操作列提供“详情、编辑、删除”，详情模式复用 `district/components/detail.vue`，字段只读展示。
 
 ## 五、共享布局模型
 

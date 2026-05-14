@@ -594,26 +594,26 @@ export default {
     },
     getWarehouseName(warehouseId) {
       const warehouse = this.warehouseOptions.find(item => String(item.id) === String(warehouseId)) || {}
-      return warehouse.warehouseName || warehouse.nodeName || ''
+      return warehouse.warehouseName
     },
     normalizePositionOption(item = {}) {
       const inboundGoods = item.inboundGoodsEntity || {}
       return {
         ...item,
-        id: item.id || item.positionId || item.hierarchyId || item.columnId,
+        id: item.id,
         status: Number(item.status == null ? 0 : item.status),
-        taskNum: inboundGoods.taskNum || item.taskNum || '',
-        containerCode: inboundGoods.containerCode || item.containerCode || item.containerNo || item.code || '',
-        goodCode: inboundGoods.goodCode || inboundGoods.goodsCode || item.goodCode || item.goodsCode || item.materialCode || '',
-        productionUnit: inboundGoods.productionUnit || item.productionUnit || '',
-        goodsWeight: valueOrEmpty(inboundGoods.goodsWeight || item.goodsWeight),
-        grossWeight: valueOrEmpty(inboundGoods.grossWeight || item.grossWeight),
-        tareWeight: valueOrEmpty(inboundGoods.tareWeight || item.tareWeight),
-        netWeight: valueOrEmpty(inboundGoods.netWeight || item.netWeight),
-        sealCode1: inboundGoods.sealCode1 || item.sealCode1 || '',
-        sealCode2: inboundGoods.sealCode2 || item.sealCode2 || '',
-        sealType1: inboundGoods.sealType1 || item.sealType1 || '',
-        sealType2: inboundGoods.sealType2 || item.sealType2 || '',
+        taskNum: inboundGoods.taskNum,
+        containerCode: inboundGoods.containerCode,
+        goodCode: inboundGoods.goodCode,
+        productionUnit: inboundGoods.productionUnit,
+        goodsWeight: valueOrEmpty(inboundGoods.goodsWeight),
+        grossWeight: valueOrEmpty(inboundGoods.grossWeight),
+        tareWeight: valueOrEmpty(inboundGoods.tareWeight),
+        netWeight: valueOrEmpty(inboundGoods.netWeight),
+        sealCode1: inboundGoods.sealCode1,
+        sealCode2: inboundGoods.sealCode2,
+        sealType1: inboundGoods.sealType1,
+        sealType2: inboundGoods.sealType2,
       }
     },
     async loadSourcePositions(warehouseId) {
@@ -787,35 +787,33 @@ export default {
       }).catch(() => {})
     },
     normalizeMoveGoods(row = {}) {
-      const sourceWarehouseId = row.sourceWarehouseId || this.findWarehouseId(row.sourceWarehouse)
-      const targetWarehouseId = row.targetWarehouseId || this.findWarehouseId(row.targetWarehouse)
       return {
         ...row,
-        id: row.id || '',
-        sourceWarehouseId,
-        targetWarehouseId,
-        sourcePositionId: row.sourcePositionId || row.sourceId || '',
-        targetPositionId: row.targetPositionId || row.targetId || '',
-        taskNum: row.taskNum || '',
-        containerCode: row.containerCode || row.containerNo || '',
-        goodCode: row.goodCode || row.materialCode || '',
-        productionUnit: row.productionUnit || '',
-        goodsWeight: row.goodsWeight || '',
-        grossWeight: row.grossWeight || '',
-        netWeight: row.netWeight || '',
-        tareWeight: row.tareWeight || '',
-        sealCode1: row.sealCode1 || '',
-        sealCode2: row.sealCode2 || '',
-        sealType1: row.sealType1 || '',
-        sealType2: row.sealType2 || '',
-        sourceWarehouse: row.sourceWarehouse || '',
-        sourceShelf: row.sourceShelf || '',
-        sourceRow: row.sourceRow || '',
-        sourceColumn: row.sourceColumn || '',
-        targetWarehouse: row.targetWarehouse || '',
-        targetShelf: row.targetShelf || '',
-        targetRow: row.targetRow || '',
-        targetColumn: row.targetColumn || '',
+        id: row.id,
+        sourceWarehouseId: row.sourceWarehouseId,
+        targetWarehouseId: row.targetWarehouseId,
+        sourcePositionId: row.sourcePositionId,
+        targetPositionId: row.targetPositionId,
+        taskNum: row.taskNum,
+        containerCode: row.containerCode,
+        goodCode: row.goodCode,
+        productionUnit: row.productionUnit,
+        goodsWeight: row.goodsWeight,
+        grossWeight: row.grossWeight,
+        netWeight: row.netWeight,
+        tareWeight: row.tareWeight,
+        sealCode1: row.sealCode1,
+        sealCode2: row.sealCode2,
+        sealType1: row.sealType1,
+        sealType2: row.sealType2,
+        sourceWarehouse: row.sourceWarehouse,
+        sourceShelf: row.sourceShelf,
+        sourceRow: row.sourceRow,
+        sourceColumn: row.sourceColumn,
+        targetWarehouse: row.targetWarehouse,
+        targetShelf: row.targetShelf,
+        targetRow: row.targetRow,
+        targetColumn: row.targetColumn,
       }
     },
     matchDetailPosition(type) {
@@ -835,7 +833,7 @@ export default {
       else if (shelf || row || column) this.$set(this.detailEditForm, idProp, `${prefix}:${[shelf, row, column].join('-')}`)
     },
     findWarehouseId(warehouseName) {
-      const hit = this.warehouseOptions.find(item => (item.warehouseName || item.nodeName) === warehouseName)
+      const hit = this.warehouseOptions.find(item => item.warehouseName === warehouseName)
       return hit ? hit.id : ''
     },
     getDetailIdentity(row = {}) {
@@ -883,7 +881,7 @@ export default {
       return (record.modifyDescList || []).filter(Boolean)
     },
     getModifyRecordAuditRemark(record = {}) {
-      return Number(record.status) === 9 ? (record.auditRemark || record.remark || '') : ''
+      return Number(record.status) === 9 ? record.auditRemark : ''
     },
     getModifyRecordStatusText(status) {
       const value = Number(status)
