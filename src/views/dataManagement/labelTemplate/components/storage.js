@@ -172,6 +172,7 @@ export const labelDataToRow = data => {
   }, {})
   return {
     ...source,
+    ...fieldMap,
     materialCode: fieldMap.materialCode,
     generationUnit: fieldMap.generationUnit,
     warehouse: fieldMap.warehouse,
@@ -184,22 +185,13 @@ export const labelDataToRow = data => {
 
 export const buildLabelDataPayload = (template, formData, id) => {
   const source = template || {}
-  const fieldValueMap = {
-    materialCode: formData.materialCode,
-    generationUnit: formData.generationUnit,
-    warehouse: formData.warehouse,
-    inboundPerson: formData.inboundPerson,
-    containerNo: formData.containerNo,
-    inboundTime: formData.inboundTime,
-  }
   const payload = {
     templateId: source.id,
     templateName: source.name,
-    qrcodeBase64: formData.qrContent,
     remark: formData.remark,
     dataJson: (source.fields || []).map((item, index) => ({
       fileName: item.name,
-      value: fieldValueMap[item.key] || '',
+      value: formData[item.key] || '',
       fontSize: stripUnit(item.fontSize),
       fontBold: item.status === 'bold' ? 'true' : 'false',
       rowSet: toBackendLayout(item.layout),

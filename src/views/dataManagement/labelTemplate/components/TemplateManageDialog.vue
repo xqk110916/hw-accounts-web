@@ -47,6 +47,9 @@
       </div>
     </div>
     <template-dialog ref="templateDialog" @saved="handleSaved"></template-dialog>
+    <div slot="footer" class="dialog-footer">
+      <el-button size="small" @click="handleClose">关闭</el-button>
+    </div>
   </el-dialog>
 </template>
 
@@ -131,6 +134,9 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.dialog-footer {
+  text-align: right;
+}
 .template-manage-dialog {
   .manage-search {
     height: 34px;

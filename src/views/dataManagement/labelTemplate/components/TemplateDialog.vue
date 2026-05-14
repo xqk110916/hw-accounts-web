@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <el-dialog
     :title="dialogTitle"
     :visible.sync="visible"
@@ -118,35 +118,9 @@
               <span><i class="el-icon-view"></i> 预览效果</span>
               <el-button type="text" icon="el-icon-refresh" @click="refreshPreview" style="padding: 0; font-size: 14px;">刷新预览</el-button>
             </div>
-
+            
             <div class="preview-content" v-loading="previewLoading">
-              <div class="preview-box" :style="previewCardStyle">
-                <div class="preview-inner">
-                  <div v-if="templateForm.titleVisible === 'visible'" class="preview-title" :style="titleStyle">{{ templateForm.title }}</div>
-                  <div class="preview-body">
-                    <div class="preview-left-section">
-                      <div class="preview-grid">
-                        <div
-                          v-for="item in visibleFieldConfigList"
-                          :key="item.id"
-                          :class="['preview-field', item.layout === 'double' ? 'double' : '', item.status === 'disabled' ? 'disabled' : '']"
-                          :style="fieldStyle(item)"
-                        >
-                          <span class="field-label-preview">{{ item.value }}</span>
-                          <span class="field-value-preview"></span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="preview-right-section">
-                      <div v-if="templateForm.qrVisible === 'visible'" class="qr-code-wrapper">
-                        <div class="qr-code" :style="qrCodeStyle">
-                          二维码占位
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <label-template-preview :template="realtimeTemplate" mode="design" style="height: 610px;" />
             </div>
           </el-card>
         </div>
@@ -161,6 +135,7 @@
 </template>
 
 <script>
+import LabelTemplatePreview from './LabelTemplatePreview.vue'
 import {
   backendToTemplate,
   createDefaultTemplate,
@@ -173,6 +148,7 @@ import { addTemplate, getTemplateDetail, updateTemplate } from './api'
 
 export default {
   name: 'TemplateDialog',
+  components: { LabelTemplatePreview },
   data() {
     return {
       visible: false,
@@ -217,29 +193,8 @@ export default {
     dialogTitle() {
       return this.mode === 'edit' ? '编辑模板' : '新增模板'
     },
-    visibleFieldConfigList() {
-      return this.fieldConfigList.filter(item => item.status !== 'hidden')
-    },
-    previewCardStyle() {
-      return {
-        paddingTop: this.toPx(this.templateForm.marginTop),
-        paddingBottom: this.toPx(this.templateForm.marginBottom),
-        paddingLeft: this.toPx(this.templateForm.marginLeft),
-        paddingRight: this.toPx(this.templateForm.marginRight),
-      }
-    },
-    titleStyle() {
-      return {
-        fontSize: this.fontSizeToPx(this.templateForm.titleFontSize),
-        fontWeight: this.templateForm.titleStatus === 'bold' ? 700 : 400,
-        opacity: this.templateForm.titleStatus === 'disabled' ? 0.45 : 1,
-      }
-    },
-    qrCodeStyle() {
-      return {
-        width: this.qrSizeToPx(this.qrWidth),
-        height: this.qrSizeToPx(this.qrHeight),
-      }
+    realtimeTemplate() {
+      return formToTemplate(this.templateForm, this.fieldConfigList, this.currentTemplate)
     },
   },
   methods: {
@@ -312,25 +267,6 @@ export default {
     handleQrSizeChange() {
       this.templateForm.qrSize = this.qrWidth + '×' + this.qrHeight
       this.refreshPreview()
-    },
-    toPx(value) {
-      const size = Number.parseFloat(String(value || '').replace('mm', ''))
-      if (!Number.isFinite(size)) return '0px'
-      return `${Math.min(Math.max(size * 2.4, 0), 160)}px`
-    },
-    qrSizeToPx(value) {
-      const size = Number.parseFloat(String(value || '').replace('mm', ''))
-      if (!Number.isFinite(size)) return '300px'
-      return `${Math.max(Math.min(size * 6, 460), 80)}px`
-    },
-    fontSizeToPx(value) {
-      const size = Number.parseFloat(String(value || '').replace('号', ''))
-      return `${Number.isFinite(size) ? size + 4 : 20}px`
-    },
-    fieldStyle(item) {
-      return {
-        fontSize: this.fontSizeToPx(item.fontSize),
-      }
     },
     refreshPreview() {
       this.previewLoading = true
@@ -610,7 +546,7 @@ export default {
     justify-content: center;
     align-items: flex-start;
     padding: 30px;
-
+    
     &::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -618,117 +554,6 @@ export default {
     &::-webkit-scrollbar-thumb {
       background: #c0c4cc;
       border-radius: 3px;
-    }
-  }
-
-  .preview-box {
-    background-color: #fff;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    box-sizing: border-box;
-    transition: all 0.3s;
-    height: 610px;
-    width: 100%;
-    min-width: 660px;
-    overflow: hidden;
-  }
-
-  .preview-inner {
-    display: flex;
-    flex-direction: column;
-    border: 2px solid #1b2129;
-    height: 100%;
-    box-sizing: border-box;
-  }
-
-  .preview-title {
-    height: 60px;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 28px;
-    font-weight: 700;
-    border-bottom: 2px solid #1b2129;
-    text-align: center;
-    padding: 0 10px;
-    line-height: 1.2;
-    box-sizing: border-box;
-  }
-
-  .preview-body {
-    flex: 1;
-    min-height: 0;
-    display: grid;
-    grid-template-columns: 1fr 1.15fr;
-  }
-
-  .preview-left-section {
-    display: flex;
-    flex-direction: column;
-    border-right: 2px solid #1b2129;
-  }
-
-  .preview-grid {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-
-    .preview-field {
-      border-bottom: 1px solid #c4c9cf;
-      display: flex;
-      align-items: center;
-      flex: 1;
-      font-size: 18px;
-
-      &.disabled {
-        opacity: 0.45;
-      }
-
-      .field-label-preview {
-        padding-left: 8px;
-        border-right: 1px solid #c4c9cf;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        width: 30%;
-        box-sizing: border-box;
-      }
-
-      &.double .field-label-preview {
-        width: 50%;
-      }
-
-      .field-value-preview {
-        flex: 1;
-        height: 100%;
-      }
-    }
-  }
-
-  .preview-right-section {
-    display: flex;
-    flex-direction: column;
-
-    .qr-code-wrapper {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-      box-sizing: border-box;
-    }
-
-    .qr-code {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      color: #999;
-      background: #f5f5f5;
-      border: none;
-      box-shadow: none;
-      margin: 0;
     }
   }
 }

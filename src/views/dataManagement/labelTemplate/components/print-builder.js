@@ -29,17 +29,16 @@ const getLabelBounds = template => {
   }
 }
 
-export const buildQrContent = (template, formData) =>
-  JSON.stringify({
+export const buildQrContent = (template, formData) => {
+  const content = {
     template: template.name,
-    materialCode: formData.materialCode || '',
-    generationUnit: formData.generationUnit || '',
-    warehouse: formData.warehouse || '',
-    inboundPerson: formData.inboundPerson || '',
-    containerNo: formData.containerNo || '',
-    inboundTime: formData.inboundTime || '',
     remark: formData.remark || '',
+  }
+  ;(template.fields || []).forEach(field => {
+    content[field.key] = formData[field.key] || ''
   })
+  return JSON.stringify(content)
+}
 
 export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
   if (!ZPL_JSSDK || !ZPL_JSSDK.Builder) {
@@ -48,10 +47,11 @@ export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
 
   const builder = new ZPL_JSSDK.Builder()
   const visibleFields = (template.fields || []).filter(item => item.status === 'normal')
+  const fieldCount = Math.max(visibleFields.length, 1)
   const qrContent = formData.qrContent || buildQrContent(template, formData)
   const bounds = getLabelBounds(template)
   const titleHeight = Math.min(90, Math.max(52, Math.round(bounds.height * 0.14)))
-  const rowHeight = Math.max(40, Math.floor((bounds.height - titleHeight) / 6))
+  const rowHeight = Math.max(30, Math.floor((bounds.height - titleHeight) / fieldCount))
   const qrColumnWidth = Math.min(240, Math.max(170, Math.round(bounds.width * 0.3)))
   const fieldWidth = bounds.width - qrColumnWidth
   const fieldSplitX = bounds.x + Math.round(fieldWidth * 0.38)
@@ -66,20 +66,20 @@ export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
   builder.ZPL_SetPrintQuantity(1, 0, 1, 'Y')
   builder.ZPL_GraphicBox(bounds.x, bounds.y, bounds.width, bounds.height, 2, 0)
   builder.ZPL_GraphicBox(bounds.x, bounds.y + titleHeight, bounds.width, 1, 2, 0)
-  builder.ZPL_GraphicBox(fieldSplitX, bounds.y + titleHeight, 1, rowHeight * 6, 2, 0)
-  builder.ZPL_GraphicBox(qrX, bounds.y + titleHeight, 1, rowHeight * 6, 2, 0)
+  builder.ZPL_GraphicBox(fieldSplitX, bounds.y + titleHeight, 1, rowHeight * fieldCount, 2, 0)
+  builder.ZPL_GraphicBox(qrX, bounds.y + titleHeight, 1, rowHeight * fieldCount, 2, 0)
 
   if (template.titleVisible === 'visible' && template.titleStatus !== 'disabled') {
     const titleSize = getFontDot(template.titleFontSize) + 12
     builder.ZPL_Text(bounds.x + Math.round(bounds.width * 0.32), bounds.y + 18, 16, 0, titleSize, titleSize, template.title || '')
   }
 
-  Array.from({ length: 6 }).forEach((_, index) => {
+  Array.from({ length: fieldCount }).forEach((_, index) => {
     const y = bounds.y + titleHeight + rowHeight * (index + 1)
     builder.ZPL_GraphicBox(bounds.x, y, fieldWidth, 1, 1, 0)
   })
 
-  visibleFields.slice(0, 6).forEach((field, index) => {
+  visibleFields.forEach((field, index) => {
     const y = bounds.y + titleHeight + 18 + index * rowHeight
     const fontSize = getFontDot(field.fontSize)
     builder.ZPL_Text(bounds.x + 20, y, 16, 0, fontSize, fontSize, field.name || '')

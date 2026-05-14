@@ -114,12 +114,12 @@ export default {
         this.$message.warning('请选择模板')
         return
       }
-      const res = await exportLabelDataTemplate({ templateId: this.formData.templateId })
+      const res = await exportLabelDataTemplate({ id: this.formData.templateId })
       const blob = new Blob([res.data])
       const link = document.createElement('a')
       const disposition = res.headers && (res.headers['content-disposition'] || res.headers['Content-Disposition'])
       const matched = disposition && disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
-      const fileName = matched ? decodeURIComponent(matched[1].replace(/"/g, '')) : '标签数据导入模板.xlsx'
+      const fileName = matched ? decodeURIComponent(matched[1].replace(/"/g, '')) : '标签数据导入模板'
       link.href = window.URL.createObjectURL(blob)
       link.download = fileName
       link.click()

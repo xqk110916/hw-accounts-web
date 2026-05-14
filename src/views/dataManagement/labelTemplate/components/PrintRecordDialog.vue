@@ -3,7 +3,7 @@
     :title="dialogTitle"
     :visible.sync="visible"
     :close-on-click-modal="false"
-    width="720px"
+    width="800px"
     top="4vh"
     append-to-body
     :before-close="handleClose"
@@ -16,48 +16,26 @@
           </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="formData.remark" :readonly="readonly" placeholder="请输入" maxlength="200" @input="refreshQrCode"></el-input>
+          <el-input v-model="formData.remark" :readonly="readonly" placeholder="请输入" maxlength="200"></el-input>
         </el-form-item>
       </el-form>
 
-      <div class="label-card">
-        <div v-if="currentTemplate.titleVisible === 'visible'" class="card-title">{{ currentTemplate.title }}</div>
-        <div class="grid-row two-cols">
-          <div class="grid-label">{{ getFieldLabel('materialCode') }}</div>
-          <div class="grid-value">
-            <el-input v-model="formData.materialCode" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
-          </div>
-          <div class="grid-label">{{ getFieldLabel('generationUnit') }}</div>
-          <div class="grid-value">
-            <el-input v-model="formData.generationUnit" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
-          </div>
-        </div>
-        <div class="grid-row two-cols">
-          <div class="grid-label">{{ getFieldLabel('warehouse') }}</div>
-          <div class="grid-value">
-            <el-input v-model="formData.warehouse" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
-          </div>
-          <div class="grid-label">{{ getFieldLabel('inboundPerson') }}</div>
-          <div class="grid-value">
-            <el-input v-model="formData.inboundPerson" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
-          </div>
-        </div>
-        <div class="grid-row full-row">
-          <div class="grid-label">{{ getFieldLabel('containerNo') }}</div>
-          <div class="grid-value">
-            <el-input v-model="formData.containerNo" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
-          </div>
-        </div>
-        <div class="grid-row full-row">
-          <div class="grid-label">{{ getFieldLabel('inboundTime') }}</div>
-          <div class="grid-value">
-            <el-input v-model="formData.inboundTime" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
-          </div>
-        </div>
-        <div v-if="currentTemplate.qrVisible === 'visible'" class="qr-title">二维码 <i v-if="!readonly" class="el-icon-refresh" @click="refreshQrCode"></i></div>
-        <div v-if="currentTemplate.qrVisible === 'visible'" class="qr-wrap">
-          <div class="qr-code" v-loading="qrCodeLoading"></div>
-        </div>
+      <div class="label-card-container">
+        <label-template-preview
+          :template="currentTemplate"
+          :form-data="formData"
+          :mode="readonly ? 'preview' : 'edit'"
+        >
+          <template #qrcode="{ qrStyle }">
+            <div class="qr-code-display" :style="qrStyle">
+              <img v-if="formData.qrContent" :src="formData.qrContent" class="qr-code-image" alt="二维码" />
+              <div v-else class="qr-code-empty">
+                <i class="el-icon-picture-outline"></i>
+                <span>{{ readonly ? '暂无二维码' : '保存后生成' }}</span>
+              </div>
+            </div>
+          </template>
+        </label-template-preview>
       </div>
     </div>
     <div slot="footer">
@@ -69,7 +47,8 @@
 </template>
 
 <script>
-import { buildLabelPrintData, buildQrContent } from './print-builder'
+import LabelTemplatePreview from './LabelTemplatePreview.vue'
+import { buildLabelPrintData } from './print-builder'
 import {
   backendToTemplate,
   buildLabelDataPayload,
@@ -82,6 +61,7 @@ import { addLabelData, getLabelDataDetail, getTemplateDetail, listAllTemplate, u
 
 export default {
   name: 'PrintRecordDialog',
+  components: { LabelTemplatePreview },
   data() {
     return {
       visible: false,
@@ -89,7 +69,6 @@ export default {
       formLoading: false,
       saveLoading: false,
       printLoading: false,
-      qrCodeLoading: false,
       templateOptions: [],
       currentTemplate: createDefaultTemplate('模板1'),
       formData: {
@@ -125,9 +104,6 @@ export default {
       return '添加'
     },
   },
-  beforeDestroy() {
-    clearTimeout(this.qrTimer)
-  },
   methods: {
     async open(row, mode) {
       this.mode = mode || 'add'
@@ -144,7 +120,6 @@ export default {
           this.fillRow(row)
         }
         await this.loadCurrentTemplate()
-        this.refreshQrCode()
         this.$nextTick(() => {
           if (this.$refs.form) this.$refs.form.clearValidate()
         })
@@ -161,12 +136,6 @@ export default {
         id: '',
         templateId: this.templateOptions[0] ? this.templateOptions[0].value : '',
         remark: '',
-        materialCode: '',
-        generationUnit: '',
-        warehouse: '',
-        inboundPerson: '',
-        containerNo: '',
-        inboundTime: '',
         qrContent: '',
       }
     },
@@ -175,58 +144,38 @@ export default {
         id: row.id,
         templateId: row.templateId,
         remark: row.remark,
-        materialCode: row.materialCode,
-        generationUnit: row.generationUnit,
-        warehouse: row.warehouse,
-        inboundPerson: row.inboundPerson,
-        containerNo: row.containerNo,
-        inboundTime: row.inboundTime,
         qrContent: row.qrContent,
+        ...row,
       }
     },
     async loadCurrentTemplate() {
       if (!this.formData.templateId) {
         this.currentTemplate = createDefaultTemplate('模板1')
-        return
+      } else {
+        const res = await getTemplateDetail(this.formData.templateId)
+        this.currentTemplate = backendToTemplate(res.data)
       }
-      const res = await getTemplateDetail(this.formData.templateId)
-      this.currentTemplate = backendToTemplate(res.data)
+      
+      // Ensure reactivity for dynamic fields
+      this.currentTemplate.fields.forEach(field => {
+        if (this.formData[field.key] === undefined) {
+          this.$set(this.formData, field.key, '')
+        }
+      })
     },
     async handleTemplateChange() {
       await this.loadCurrentTemplate()
       this.formData.qrContent = ''
-      this.refreshQrCode()
-    },
-    getFieldLabel(key) {
-      const field = (this.currentTemplate.fields || []).find(item => item.key === key)
-      return field ? field.name : ''
-    },
-    refreshQrCode() {
-      this.qrCodeLoading = true
-      clearTimeout(this.qrTimer)
-      this.qrTimer = setTimeout(() => {
-        this.ensureQrContent()
-        this.qrCodeLoading = false
-      }, 120)
-    },
-    ensureQrContent() {
-      this.formData.qrContent = buildQrContent(this.currentTemplate, this.formData)
-      return this.formData.qrContent
     },
     validateCardFields() {
-      const requiredFields = [
-        { key: 'materialCode', label: '材料编码' },
-        { key: 'generationUnit', label: '生成单位' },
-        { key: 'warehouse', label: '库房' },
-        { key: 'inboundPerson', label: '入库人' },
-        { key: 'containerNo', label: '容器号' },
-        { key: 'inboundTime', label: '入库时间' },
-      ]
-      for (let i = 0; i < requiredFields.length; i += 1) {
-        const field = requiredFields[i]
-        if (!this.formData[field.key] || !String(this.formData[field.key]).trim()) {
-          this.$message.warning('请输入' + field.label)
-          return false
+      const fields = this.currentTemplate.fields || []
+      for (let i = 0; i < fields.length; i += 1) {
+        const field = fields[i]
+        if (field.status !== 'hidden' && field.status !== '隐藏') {
+          if (!this.formData[field.key] || !String(this.formData[field.key]).trim()) {
+            this.$message.warning(`请输入${field.name || field.label}`)
+            return false
+          }
         }
       }
       return true
@@ -257,7 +206,6 @@ export default {
     handleSave() {
       this.$refs.form.validate(async valid => {
         if (!valid || !this.validateCardFields()) return
-        this.ensureQrContent()
         this.saveLoading = true
         try {
           const payload = buildLabelDataPayload(this.currentTemplate, this.formData, this.formData.id)
@@ -279,7 +227,6 @@ export default {
       this.$refs.form.validate(async valid => {
         const config = getPrinterConfig()
         if (!valid || !this.validateCardFields() || !this.validatePrinterConfig(config)) return
-        this.ensureQrContent()
         this.printLoading = true
         try {
           const sdk = await this.$zplPrinter.getSdk()
@@ -321,71 +268,35 @@ export default {
   .full-input {
     width: 100%;
   }
-  .label-card {
-    width: 630px;
+  .label-card-container {
+    width: 780px;
     margin: 18px auto 0;
-    border: 2px solid #1b2129;
-    color: #1b2129;
-    .card-title {
-      height: 48px;
-      line-height: 48px;
-      text-align: center;
-      font-size: 28px;
-      font-weight: 700;
-      border-bottom: 2px solid #1b2129;
+    height: 610px;
+  }
+  .qr-code-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+
+    .qr-code-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
-    .grid-row {
-      display: grid;
-      border-bottom: 2px solid #1b2129;
-      &.two-cols {
-        grid-template-columns: 155px 1fr 155px 1fr;
-      }
-      &.full-row {
-        grid-template-columns: 155px 1fr;
-      }
-    }
-    .grid-label {
-      min-height: 44px;
+
+    .qr-code-empty {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      border-right: 2px solid #1b2129;
-      font-size: 26px;
-    }
-    .grid-value {
-      min-height: 44px;
-      padding: 4px;
-      box-sizing: border-box;
-      border-right: 2px solid #1b2129;
-      &:last-child {
-        border-right: 0;
-      }
-    }
-    .qr-title {
-      height: 50px;
-      line-height: 50px;
-      text-align: center;
-      border-bottom: 2px solid #1b2129;
-      font-size: 24px;
-      .el-icon-refresh {
-        cursor: pointer;
-        margin-left: 10px;
-      }
-    }
-    .qr-wrap {
-      height: 500px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      .qr-code {
-        width: 420px;
-        height: 420px;
-        background:
-          linear-gradient(90deg, #000 10px, transparent 10px) 0 0 / 40px 40px,
-          linear-gradient(#000 10px, transparent 10px) 0 0 / 40px 40px,
-          #fff;
-        border: 20px solid #fff;
-        box-shadow: inset 0 0 0 34px #000, inset 0 0 0 58px #fff, inset 0 0 0 82px #000;
+      color: #c0c4cc;
+      font-size: 14px;
+
+      i {
+        font-size: 48px;
+        margin-bottom: 8px;
       }
     }
   }

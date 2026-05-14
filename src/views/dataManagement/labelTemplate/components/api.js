@@ -25,7 +25,7 @@ export const getLabelDataDetail = id => {
 
 export const exportLabelDataTemplate = params => {
   return request({
-    url: '/busin/label/data/exportTemplate',
+    url: '/busin/label/template/export',
     method: 'get',
     params,
     responseType: 'blob',
