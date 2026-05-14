@@ -4,7 +4,7 @@
       <el-form ref="form" :model="formData" label-width="90px" size="small" class="import-form">
         <el-form-item label="类型" required>
           <el-select v-model="formData.operationType" :disabled="readonly" placeholder="请选择类型" class="type-select">
-            <el-option label="入库" value="入库"></el-option>
+            <el-option v-for="item in typeOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
           </el-select>
           <el-button type="text" class="template-link" :disabled="readonly" @click="handleDownloadTemplate">下载模板</el-button>
         </el-form-item>
@@ -34,7 +34,6 @@
         <el-table-column type="index" label="序号" width="60"></el-table-column>
         <el-table-column prop="goodCode" label="材料编码" min-width="100" show-overflow-tooltip></el-table-column>
         <el-table-column prop="productionUnit" label="生产单位" min-width="110" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="taskNum" label="任务号" min-width="110" show-overflow-tooltip></el-table-column>
         <el-table-column prop="warehouseName" label="库房" min-width="100" show-overflow-tooltip></el-table-column>
         <el-table-column prop="boxNum" label="货箱号" min-width="100" show-overflow-tooltip></el-table-column>
         <el-table-column prop="containerCode" label="容器号" min-width="110" show-overflow-tooltip></el-table-column>
@@ -82,7 +81,7 @@
       <el-button size="small" @click="handleClose">关闭</el-button>
       <template v-if="!readonly">
         <el-button size="small" :loading="submitLoading" @click="handleSaveDraft">暂存</el-button>
-        <el-button type="primary" size="small" :loading="submitLoading" @click="handleSubmitAudit">提交审核</el-button>
+        <el-button type="primary" size="small" :loading="submitLoading" @click="handleSubmitAudit">提交</el-button>
       </template>
     </div>
   </el-dialog>
@@ -91,6 +90,7 @@
 <script>
 import { detailInitialEntry, downloadInitialTemplate, editInitialEntry, importInitialEntry, submitInitialEntry } from './api.js'
 import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
+import { getDictionaryList } from '@/api/common/dictionary.js'
 
 export default {
   name: 'ImportDialog',
@@ -115,9 +115,11 @@ export default {
       failFilePath: '',
       fileList: [],
       imported: false,
+      reImported: false,
       uploadLoading: false,
       submitLoading: false,
       sealTypeOptions: [],
+      typeOptions: [],
       detailPagination: {
         currentPage: 1,
         pageSize: 10,
@@ -127,6 +129,7 @@ export default {
   },
   created() {
     this.loadSealTypeOptions()
+    this.loadTypeOptions()
   },
   computed: {
     dialogTitle() {
@@ -145,10 +148,13 @@ export default {
       this.resetData()
       this.visible = true
       if (row && row.id) this.loadDetail()
+      if (this.mode === 'add' && this.typeOptions.length === 1) {
+        this.formData.operationType = this.typeOptions[0].value
+      }
     },
     resetData() {
       this.formData = {
-        operationType: '入库',
+        operationType: '',
         fileName: '',
         remark: '',
       }
@@ -158,6 +164,7 @@ export default {
       this.failFilePath = ''
       this.fileList = []
       this.imported = false
+      this.reImported = false
       this.detailPagination = { currentPage: 1, pageSize: 10, total: 0 }
     },
     async loadDetail() {
@@ -170,7 +177,7 @@ export default {
         })
         if (res.code === 1) {
           const data = res.data || {}
-          this.formData.operationType = data.operationType || this.currentRow.operationType || '入库'
+          this.formData.operationType = data.operationType || this.currentRow.operationType || ''
           this.formData.remark = data.remark || ''
           const pageData = data.dataList || {}
           this.detailTableData = pageData.list || []
@@ -192,6 +199,28 @@ export default {
       }).catch(() => {
         this.sealTypeOptions = []
       })
+    },
+    async loadTypeOptions() {
+      try {
+        const res = await getDictionaryList({ keyword: '录入类型' })
+        if (res.code === 1 && res.data && res.data.list) {
+          const parent = res.data.list.find(item => item.fullName === '录入类型' && item.parentId === '0')
+          if (parent) {
+            const childRes = await getDictionaryList({ parentId: parent.id })
+            if (childRes.code === 1 && childRes.data && childRes.data.list) {
+              this.typeOptions = childRes.data.list.map(item => ({
+                label: item.fullName,
+                value: item.fullName
+              }))
+              if (this.mode === 'add' && this.typeOptions.length === 1) {
+                this.formData.operationType = this.typeOptions[0].value
+              }
+            }
+          }
+        }
+      } catch (e) {
+        this.typeOptions = []
+      }
     },
     getSealTypeLabel(value) {
       return formatSealType(this.sealTypeOptions, value)
@@ -251,6 +280,7 @@ export default {
           this.remindList = data.remindList || []
           this.failFilePath = data.failFilePath || ''
           this.imported = true
+          this.reImported = true
           this.$message.success('导入完成')
         }
       } finally {
@@ -274,6 +304,7 @@ export default {
       this.remindList = []
       this.failFilePath = ''
       this.imported = false
+      this.reImported = false
     },
     async handleSaveDraft() {
       await this.submitForm(2)
@@ -292,11 +323,12 @@ export default {
       }
       this.submitLoading = true
       try {
+        const isEdit = this.currentRow && this.currentRow.id
         const payload = {
-          id: this.currentRow && this.currentRow.id,
+          id: isEdit ? this.currentRow.id : undefined,
           remark: this.formData.remark,
           submitType,
-          dataList: this.detailTableData,
+          dataList: isEdit && !this.reImported ? [] : this.detailTableData,
         }
         const res = this.currentRow && this.currentRow.id ? await editInitialEntry(payload) : await submitInitialEntry(payload)
         if (res.code === 1) {

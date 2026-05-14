@@ -1,12 +1,3 @@
-const fieldValueMap = {
-  materialCode: '材料编码',
-  generationUnit: '生成单位',
-  warehouse: '库房',
-  inboundPerson: '入库人',
-  containerNo: '容器号',
-  inboundTime: '入库时间',
-}
-
 const fontDotMap = {
   '12号': 20,
   '14号': 22,
@@ -41,13 +32,13 @@ const getLabelBounds = template => {
 export const buildQrContent = (template, formData) =>
   JSON.stringify({
     template: template.name,
-    materialCode: formData['材料编码'] || '',
-    generationUnit: formData['生成单位'] || '',
-    warehouse: formData['库房'] || '',
-    inboundPerson: formData['入库人'] || '',
-    containerNo: formData['容器号'] || '',
-    inboundTime: formData['入库时间'] || '',
-    remark: formData['备注'] || '',
+    materialCode: formData.materialCode || '',
+    generationUnit: formData.generationUnit || '',
+    warehouse: formData.warehouse || '',
+    inboundPerson: formData.inboundPerson || '',
+    containerNo: formData.containerNo || '',
+    inboundTime: formData.inboundTime || '',
+    remark: formData.remark || '',
   })
 
 export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
@@ -56,8 +47,8 @@ export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
   }
 
   const builder = new ZPL_JSSDK.Builder()
-  const visibleFields = (template.fields || []).filter(item => item.status === '正常')
-  const qrContent = formData['二维码'] || buildQrContent(template, formData)
+  const visibleFields = (template.fields || []).filter(item => item.status === 'normal')
+  const qrContent = formData.qrContent || buildQrContent(template, formData)
   const bounds = getLabelBounds(template)
   const titleHeight = Math.min(90, Math.max(52, Math.round(bounds.height * 0.14)))
   const rowHeight = Math.max(40, Math.floor((bounds.height - titleHeight) / 6))
@@ -78,7 +69,7 @@ export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
   builder.ZPL_GraphicBox(fieldSplitX, bounds.y + titleHeight, 1, rowHeight * 6, 2, 0)
   builder.ZPL_GraphicBox(qrX, bounds.y + titleHeight, 1, rowHeight * 6, 2, 0)
 
-  if (template.titleVisible === '显示' && template.titleStatus !== '禁用') {
+  if (template.titleVisible === 'visible' && template.titleStatus !== 'disabled') {
     const titleSize = getFontDot(template.titleFontSize) + 12
     builder.ZPL_Text(bounds.x + Math.round(bounds.width * 0.32), bounds.y + 18, 16, 0, titleSize, titleSize, template.title || '')
   }
@@ -91,17 +82,16 @@ export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
   visibleFields.slice(0, 6).forEach((field, index) => {
     const y = bounds.y + titleHeight + 18 + index * rowHeight
     const fontSize = getFontDot(field.fontSize)
-    const valueKey = fieldValueMap[field.key]
     builder.ZPL_Text(bounds.x + 20, y, 16, 0, fontSize, fontSize, field.name || '')
-    builder.ZPL_Text_Block(fieldSplitX + 10, y, 16, 0, fontSize, fontSize, Math.max(100, qrX - fieldSplitX - 20), rowHeight - 12, formData[valueKey] || '')
+    builder.ZPL_Text_Block(fieldSplitX + 10, y, 16, 0, fontSize, fontSize, Math.max(100, qrX - fieldSplitX - 20), rowHeight - 12, formData[field.key] || '')
   })
 
-  if (template.qrVisible === '显示') {
+  if (template.qrVisible === 'visible') {
     builder.ZPL_QRCode(qrX + Math.max(10, Math.round((qrColumnWidth - qrSize) / 2)), bounds.y + titleHeight + 34, 0, 2, qrModuleSize, 'M', 'A', 'A', qrContent)
   }
 
-  if (formData['材料编码']) {
-    builder.ZPL_BarCode128(qrX + 12, bounds.y + bounds.height - 95, 0, 2, 60, 'Y', 'Y', 'Y', 'A', formData['材料编码'])
+  if (formData.materialCode) {
+    builder.ZPL_BarCode128(qrX + 12, bounds.y + bounds.height - 95, 0, 2, 60, 'Y', 'Y', 'Y', 'A', formData.materialCode)
   }
 
   builder.ZPL_EndFormat()

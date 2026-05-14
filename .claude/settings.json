@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(/.claude/skills/menu_management/**)",
+      "mcp__cdp-bridge__browser_cookies",
+      "mcp__cdp-bridge__browser_navigate"
+    ]
+  }
+}

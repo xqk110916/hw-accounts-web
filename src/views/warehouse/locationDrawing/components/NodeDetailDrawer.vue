@@ -108,6 +108,20 @@ import { getPositionMap } from '@/api/warehouse/locationMap';
 
 const COLORS = ['#246fe5', '#17a589', '#e6a23c', '#f56c6c', '#6f62d8', '#2f9bb4', '#909399'];
 
+function normalizeBalanceAreaType(value) {
+  if (value === 'proxy' || value === '代存') return 'proxy';
+  if (value === 'local' || value === '本地') return 'local';
+  return value || 'local';
+}
+
+function toBackendBalanceAreaType(value) {
+  return normalizeBalanceAreaType(value) === 'proxy' ? '代存' : '本地';
+}
+
+function getBalanceAreaTypeText(value) {
+  return normalizeBalanceAreaType(value) === 'proxy' ? '代存' : '本地';
+}
+
 export default {
   name: 'NodeDetailDrawer',
   data() {
@@ -140,7 +154,7 @@ export default {
         { label: '名称', value: this.detail.name || this.detail.balanceAreaName },
         { label: '调入许可证', value: this.detail.inLicense },
         { label: '调出许可证', value: this.detail.outLicense },
-        { label: '类型', value: this.detail.type === 'proxy' ? '代存' : this.detail.type === 'local' ? '本地' : this.detail.type },
+        { label: '类型', value: getBalanceAreaTypeText(this.detail.type) },
         { label: '备注', value: this.detail.remark }
       ];
     },
@@ -211,7 +225,7 @@ export default {
         ...data,
         inLicense: data.inLicense || data.importLicense,
         outLicense: data.outLicense || data.exportLicense,
-        type: data.type === '代存' ? 'proxy' : data.type === '本地' ? 'local' : (data.type || 'local')
+        type: normalizeBalanceAreaType(data.type)
       };
     },
     getMaterialName(item) {
@@ -245,7 +259,7 @@ export default {
             id: this.balanceAreaId,
             importLicense: this.form.inLicense,
             exportLicense: this.form.outLicense,
-            type: this.form.type === 'proxy' ? '代存' : '本地'
+            type: toBackendBalanceAreaType(this.form.type)
           });
           this.$message.success('保存成功');
           this.editing = false;

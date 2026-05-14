@@ -17,24 +17,24 @@ export const defaultPrinterConfig = {
 }
 
 const defaultFields = [
-  { key: 'materialCode', label: '字段1', name: '材料编码', layout: '单排', fontSize: '16号', status: '正常' },
-  { key: 'generationUnit', label: '字段2', name: '生成单位', layout: '单排', fontSize: '16号', status: '正常' },
-  { key: 'warehouse', label: '字段3', name: '库房', layout: '单排', fontSize: '16号', status: '正常' },
-  { key: 'inboundPerson', label: '字段4', name: '入库人', layout: '单排', fontSize: '16号', status: '正常' },
-  { key: 'containerNo', label: '字段5', name: '容器号', layout: '单排', fontSize: '16号', status: '正常' },
-  { key: 'inboundTime', label: '字段6', name: '入库时间', layout: '单排', fontSize: '16号', status: '正常' },
+  { key: 'materialCode', label: '字段1', name: '材料编码', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'generationUnit', label: '字段2', name: '生成单位', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'warehouse', label: '字段3', name: '库房', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'inboundPerson', label: '字段4', name: '入库人', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'containerNo', label: '字段5', name: '容器号', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'inboundTime', label: '字段6', name: '入库时间', layout: 'single', fontSize: '16号', status: 'normal' },
 ]
 
 export const createDefaultTemplate = (name = '模板1') => ({
   id: `tpl_${Date.now()}`,
   name,
   title: '材料管理卡',
-  titleVisible: '显示',
+  titleVisible: 'visible',
   titleFontSize: '16号',
-  titleStatus: '正常',
+  titleStatus: 'normal',
   fields: defaultFields.map(item => ({ ...item })),
   qrSize: { width: '50mm', height: '50mm' },
-  qrVisible: '显示',
+  qrVisible: 'visible',
   margins: {
     top: '10mm',
     bottom: '10mm',
@@ -45,11 +45,37 @@ export const createDefaultTemplate = (name = '模板1') => ({
 
 const clone = data => JSON.parse(JSON.stringify(data))
 
-const yesValues = ['true', '1', '显示', true, 1]
+const yesValues = ['true', '1', 'visible', '显示', true, 1]
 
-const toVisibleText = value => (value === undefined || value === null || value === '' || yesValues.includes(value) ? '显示' : '隐藏')
+const toVisibleValue = value => (value === undefined || value === null || value === '' || yesValues.includes(value) ? 'visible' : 'hidden')
 
-const toBooleanText = value => (value === '显示' || value === '正常' || value === '加粗' ? 'true' : 'false')
+const toBooleanText = value => (['visible', 'normal', 'bold', '显示', '正常', '加粗'].includes(value) ? 'true' : 'false')
+
+const normalizeLayout = value => {
+  if (value === 'double' || value === '双排') return 'double'
+  return 'single'
+}
+
+const toBackendLayout = value => (normalizeLayout(value) === 'double' ? '双排' : '单排')
+
+const normalizeFieldStatus = value => {
+  if (value === 'hidden' || value === '隐藏') return 'hidden'
+  if (value === 'disabled' || value === '禁用') return 'disabled'
+  return 'normal'
+}
+
+const toBackendFieldStatus = value => {
+  const normalized = normalizeFieldStatus(value)
+  if (normalized === 'hidden') return '隐藏'
+  if (normalized === 'disabled') return '禁用'
+  return '正常'
+}
+
+const normalizeTitleStatus = value => {
+  if (value === true || value === 1 || value === 'true' || value === 'bold' || value === '加粗') return 'bold'
+  if (value === 'disabled' || value === '禁用') return 'disabled'
+  return 'normal'
+}
 
 const stripUnit = value => {
   const size = Number.parseFloat(String(value || '').replace(/[^\d.]/g, ''))
@@ -76,22 +102,22 @@ export const backendToTemplate = data => {
     id: source.id,
     name: source.templateName || source.name || '模板1',
     title: source.title || '材料管理卡',
-    titleVisible: toVisibleText(source.titleShow),
+    titleVisible: toVisibleValue(source.titleShow),
     titleFontSize: ensureFontSize(source.titleSize),
-    titleStatus: readBoolean(source.titleBold) ? '加粗' : '正常',
+    titleStatus: readBoolean(source.titleBold) ? 'bold' : normalizeTitleStatus(source.titleStatus),
     fields: (fields.length ? fields : defaultFields).map((item, index) => ({
       key: item.key || (defaultFields[index] && defaultFields[index].key) || `customField${index + 1}`,
       label: item.label || `字段${index + 1}`,
       name: item.fileName || item.name || item.value || '',
-      layout: item.rowSet || item.layout || '单排',
+      layout: normalizeLayout(item.rowSet || item.layout),
       fontSize: ensureFontSize(item.fontSize),
-      status: item.status || '正常',
+      status: normalizeFieldStatus(item.status),
     })),
     qrSize: {
       width: ensureMm(source.codeWidth || 50),
       height: ensureMm(source.codeHeight || 50),
     },
-    qrVisible: toVisibleText(source.codeShow),
+    qrVisible: toVisibleValue(source.codeShow),
     margins: {
       top: ensureMm(source.marginTop || 10),
       bottom: ensureMm(source.marginBottom || 10),
@@ -109,7 +135,7 @@ export const templateToBackend = template => {
     title: source.title,
     titleShow: toBooleanText(source.titleVisible),
     titleSize: stripUnit(source.titleFontSize),
-    titleBold: source.titleStatus === '加粗' ? 'true' : 'false',
+    titleBold: source.titleStatus === 'bold' ? 'true' : 'false',
     codeShow: toBooleanText(source.qrVisible),
     codeWidth: stripUnit(source.qrSize && source.qrSize.width),
     codeHeight: Number(stripUnit(source.qrSize && source.qrSize.height) || 0),
@@ -120,8 +146,9 @@ export const templateToBackend = template => {
     fieldsConfig: (source.fields || []).map((item, index) => ({
       fileName: item.name,
       fontSize: stripUnit(item.fontSize),
-      fontBold: item.status === '加粗' ? 'true' : 'false',
-      rowSet: item.layout,
+      fontBold: item.status === 'bold' ? 'true' : 'false',
+      rowSet: toBackendLayout(item.layout),
+      status: toBackendFieldStatus(item.status),
       sortOrder: index + 1,
     })),
   }
@@ -158,24 +185,25 @@ export const labelDataToRow = data => {
 export const buildLabelDataPayload = (template, formData, id) => {
   const source = template || {}
   const fieldValueMap = {
-    materialCode: formData['材料编码'],
-    generationUnit: formData['生成单位'],
-    warehouse: formData['库房'],
-    inboundPerson: formData['入库人'],
-    containerNo: formData['容器号'],
-    inboundTime: formData['入库时间'],
+    materialCode: formData.materialCode,
+    generationUnit: formData.generationUnit,
+    warehouse: formData.warehouse,
+    inboundPerson: formData.inboundPerson,
+    containerNo: formData.containerNo,
+    inboundTime: formData.inboundTime,
   }
   const payload = {
     templateId: source.id,
     templateName: source.name,
-    qrcodeBase64: formData['二维码'],
-    remark: formData['备注'],
+    qrcodeBase64: formData.qrContent,
+    remark: formData.remark,
     dataJson: (source.fields || []).map((item, index) => ({
       fileName: item.name,
       value: fieldValueMap[item.key] || '',
       fontSize: stripUnit(item.fontSize),
-      fontBold: item.status === '加粗' ? 'true' : 'false',
-      rowSet: item.layout,
+      fontBold: item.status === 'bold' ? 'true' : 'false',
+      rowSet: toBackendLayout(item.layout),
+      status: toBackendFieldStatus(item.status),
       sortOrder: index + 1,
     })),
   }
@@ -193,44 +221,44 @@ export const getPrinterConfig = () => ({
 })
 
 export const templateToForm = template => ({
-  '模板': template.id,
-  '标题': template.title,
-  '标题显示状态': template.titleVisible,
-  '标题字号': template.titleFontSize,
-  '标题状态': template.titleStatus,
-  '二维码': `${template.qrSize.width}×${template.qrSize.height}`,
-  '显示状态': template.qrVisible,
-  '上边距': template.margins.top,
-  '下边距': template.margins.bottom,
-  '左边距': template.margins.left,
-  '右边距': template.margins.right,
+  templateId: template.id,
+  title: template.title,
+  titleVisible: template.titleVisible,
+  titleFontSize: template.titleFontSize,
+  titleStatus: template.titleStatus,
+  qrSize: `${template.qrSize.width}×${template.qrSize.height}`,
+  qrVisible: template.qrVisible,
+  marginTop: template.margins.top,
+  marginBottom: template.margins.bottom,
+  marginLeft: template.margins.left,
+  marginRight: template.margins.right,
 })
 
 export const formToTemplate = (form, fields, currentTemplate) => ({
   id: currentTemplate && currentTemplate.id,
-  name: currentTemplate && currentTemplate.name ? currentTemplate.name : form['模板'],
-  title: form['标题'],
-  titleVisible: form['标题显示状态'],
-  titleFontSize: form['标题字号'],
-  titleStatus: form['标题状态'],
+  name: currentTemplate && currentTemplate.name ? currentTemplate.name : form.templateId,
+  title: form.title,
+  titleVisible: form.titleVisible,
+  titleFontSize: form.titleFontSize,
+  titleStatus: form.titleStatus,
   fields: fields.map((item, index) => ({
     key: item.key || (defaultFields[index] && defaultFields[index].key) || `customField${index + 1}`,
     label: item.label || `字段${index + 1}`,
     name: item.value,
-    layout: item['排版'],
-    fontSize: item['字号'],
-    status: item['状态'],
+    layout: item.layout,
+    fontSize: item.fontSize,
+    status: item.status,
   })),
   qrSize: {
-    width: form['二维码'].split('×')[0],
-    height: form['二维码'].split('×')[1],
+    width: form.qrSize.split('×')[0],
+    height: form.qrSize.split('×')[1],
   },
-  qrVisible: form['显示状态'],
+  qrVisible: form.qrVisible,
   margins: {
-    top: form['上边距'],
-    bottom: form['下边距'],
-    left: form['左边距'],
-    right: form['右边距'],
+    top: form.marginTop,
+    bottom: form.marginBottom,
+    left: form.marginLeft,
+    right: form.marginRight,
   },
 })
 
@@ -240,7 +268,7 @@ export const templateToFields = template =>
     key: item.key,
     label: item.label || `字段${index + 1}`,
     value: item.name,
-    '排版': item.layout,
-    '字号': item.fontSize,
-    '状态': item.status,
+    layout: item.layout,
+    fontSize: item.fontSize,
+    status: item.status,
   }))

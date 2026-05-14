@@ -52,7 +52,10 @@ export function getDictionaryDetail(id) {
 
 ## 3. 创建字典项
 
-通过 node 脚本调用接口创建，需要用户提供 token 信息（从浏览器 Cookies 中获取 `tokenName` 和 `tokenValue`）。
+通过 node 脚本调用接口创建，需要 token 信息。
+
+### 获取 Token
+使用 MCP 工具 `mcp__cdp-bridge__browser_cookies` 获取浏览器 Cookies 中的 `tokenName` 和 `tokenValue`。如果未登录，请先登录系统。
 
 ### 关键规则
 

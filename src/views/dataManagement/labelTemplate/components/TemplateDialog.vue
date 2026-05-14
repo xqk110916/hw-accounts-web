@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <el-dialog
     :title="dialogTitle"
     :visible.sync="visible"
@@ -6,113 +6,156 @@
     width="92%"
     top="4vh"
     append-to-body
+    custom-class="template-dialog-wrapper"
     :before-close="handleClose"
   >
-    <div class="template-dialog" v-loading="templateLoading">
-      <div class="config-panel">
-        <div class="form-row">
-          <span class="row-label">模板名称</span>
-          <el-input v-model="templateName" size="small" class="template-select" @input="refreshPreview"></el-input>
+    <div class="template-layout" v-loading="templateLoading">
+      <div class="layout-row">
+        <!-- 左侧配置区 -->
+        <div class="layout-left">
+          <el-card class="box-card config-card" shadow="never">
+            <div slot="header" class="clearfix card-header">
+              <span><i class="el-icon-setting"></i> 模板配置</span>
+            </div>
+
+            <div class="config-content">
+              <el-form label-width="90px" size="small" class="custom-form">
+                <!-- 基础设置 -->
+                <div class="section-title">基础设置</div>
+                <el-form-item label="模板名称" required>
+                  <el-input v-model="templateName" @input="refreshPreview" placeholder="请输入模板名称" />
+                </el-form-item>
+
+                <el-form-item label="标题设置" required>
+                  <div class="flex-row gap-2">
+                    <el-input v-model="templateForm.title" @input="refreshPreview" style="flex: 2" placeholder="请输入标题" />
+                    <el-select v-model="templateForm.titleVisible" @change="refreshPreview" style="flex: 1">
+                      <el-option label="显示" value="visible"></el-option>
+                      <el-option label="隐藏" value="hidden"></el-option>
+                    </el-select>
+                    <el-select v-model="templateForm.titleFontSize" @change="refreshPreview" style="flex: 1">
+                      <el-option v-for="item in fontSizeOptions" :key="item" :label="item" :value="item"></el-option>
+                    </el-select>
+                    <el-select v-model="templateForm.titleStatus" @change="refreshPreview" style="flex: 1">
+                      <el-option v-for="item in titleStatusOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+                    </el-select>
+                  </div>
+                </el-form-item>
+
+                <!-- 字段设置 -->
+                <div class="section-title">字段设置</div>
+                <div class="field-list-container">
+                  <div class="field-item" v-for="(item, index) in fieldConfigList" :key="item.id">
+                    <div class="field-actions-left">
+                      <el-button type="text" icon="el-icon-top" :disabled="index === 0" @click="moveField(index, -1)" class="action-btn" title="上移"></el-button>
+                      <el-button type="text" icon="el-icon-bottom" :disabled="index === fieldConfigList.length - 1" @click="moveField(index, 1)" class="action-btn" title="下移"></el-button>
+                    </div>
+
+                    <div class="field-label">{{ item.label }}</div>
+
+                    <div class="field-content flex-row gap-2">
+                      <el-input v-model="item.value" @input="handleFieldChange" placeholder="字段名称" style="flex: 2" />
+                      <el-select v-model="item.layout" @change="refreshPreview" style="flex: 1">
+                        <el-option label="单排" value="single"></el-option>
+                        <el-option label="双排" value="double"></el-option>
+                      </el-select>
+                      <el-select v-model="item.fontSize" @change="refreshPreview" style="flex: 1">
+                        <el-option v-for="font in fontSizeOptions" :key="font" :label="font" :value="font"></el-option>
+                      </el-select>
+                      <el-select v-model="item.status" @change="refreshPreview" style="flex: 1">
+                        <el-option v-for="state in fieldStatusOptions" :key="state.value" :label="state.label" :value="state.value"></el-option>
+                      </el-select>
+                    </div>
+
+                    <div class="field-actions-right">
+                      <el-button type="primary" icon="el-icon-plus" circle plain size="mini" @click="addField(index)" title="新增"></el-button>
+                      <el-button type="danger" icon="el-icon-minus" circle plain size="mini" :disabled="fieldConfigList.length <= 1" @click="removeField(index)" title="删除"></el-button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 二维码与边距 -->
+                <div class="section-title">其他设置</div>
+                <el-form-item label="二维码">
+                  <div class="flex-row gap-2 align-center">
+                    <el-input v-model="qrWidth" @input="handleQrSizeChange" placeholder="宽度(如: 50mm)" style="width: 140px" />
+                    <span class="multiply-sign">×</span>
+                    <el-input v-model="qrHeight" @input="handleQrSizeChange" placeholder="高度(如: 50mm)" style="width: 140px" />
+                    <el-select v-model="templateForm.qrVisible" @change="refreshPreview" style="width: 100px; margin-left: auto;">
+                      <el-option label="显示" value="visible"></el-option>
+                      <el-option label="隐藏" value="hidden"></el-option>
+                    </el-select>
+                  </div>
+                </el-form-item>
+
+                <el-form-item label="边距设置">
+                  <div class="flex-row gap-2 margin-row" style="margin-bottom: 12px;">
+                    <el-input v-model="templateForm.marginTop" @input="refreshPreview" style="flex: 1">
+                      <template slot="prepend">上</template>
+                    </el-input>
+                    <el-input v-model="templateForm.marginBottom" @input="refreshPreview" style="flex: 1">
+                      <template slot="prepend">下</template>
+                    </el-input>
+                  </div>
+                  <div class="flex-row gap-2 margin-row">
+                    <el-input v-model="templateForm.marginLeft" @input="refreshPreview" style="flex: 1">
+                      <template slot="prepend">左</template>
+                    </el-input>
+                    <el-input v-model="templateForm.marginRight" @input="refreshPreview" style="flex: 1">
+                      <template slot="prepend">右</template>
+                    </el-input>
+                  </div>
+                </el-form-item>
+              </el-form>
+            </div>
+          </el-card>
         </div>
 
-        <div class="form-row">
-          <span class="row-label">标题</span>
-          <el-input v-model="templateForm['标题']" size="small" class="title-input" @input="refreshPreview"></el-input>
-          <el-select v-model="templateForm['标题显示状态']" size="small" class="small-select" @change="refreshPreview">
-            <el-option label="显示" value="显示"></el-option>
-            <el-option label="隐藏" value="隐藏"></el-option>
-          </el-select>
-          <el-select v-model="templateForm['标题字号']" size="small" class="small-select" @change="refreshPreview">
-            <el-option v-for="item in fontSizeOptions" :key="item" :label="item" :value="item"></el-option>
-          </el-select>
-          <el-select v-model="templateForm['标题状态']" size="small" class="state-select" @change="refreshPreview">
-            <el-option v-for="item in titleStatusOptions" :key="item" :label="item" :value="item"></el-option>
-          </el-select>
-        </div>
+        <!-- 右侧预览区 -->
+        <div class="layout-right">
+          <el-card class="box-card preview-card" shadow="never">
+            <div slot="header" class="clearfix card-header flex-between">
+              <span><i class="el-icon-view"></i> 预览效果</span>
+              <el-button type="text" icon="el-icon-refresh" @click="refreshPreview" style="padding: 0; font-size: 14px;">刷新预览</el-button>
+            </div>
 
-        <div v-for="(item, index) in fieldConfigList" :key="item.id" class="form-row field-row">
-          <span class="sort-icons">
-            <i v-if="index > 0" class="el-icon-top" @click="moveField(index, -1)"></i>
-            <i v-if="index < fieldConfigList.length - 1" class="el-icon-bottom" @click="moveField(index, 1)"></i>
-          </span>
-          <span class="field-label">{{ item.label }}</span>
-          <el-input v-model="item.value" size="small" class="field-input" @input="handleFieldChange"></el-input>
-          <el-select v-model="item['排版']" size="small" class="mini-select" @change="refreshPreview">
-            <el-option label="单排" value="单排"></el-option>
-            <el-option label="双排" value="双排"></el-option>
-          </el-select>
-          <el-select v-model="item['字号']" size="small" class="mini-select" @change="refreshPreview">
-            <el-option v-for="font in fontSizeOptions" :key="font" :label="font" :value="font"></el-option>
-          </el-select>
-          <el-select v-model="item['状态']" size="small" class="state-select" @change="refreshPreview">
-            <el-option v-for="state in fieldStatusOptions" :key="state" :label="state" :value="state"></el-option>
-          </el-select>
-          <el-button size="mini" class="icon-btn" @click="addField(index)">+</el-button>
-          <el-button size="mini" class="icon-btn minus" :disabled="fieldConfigList.length <= 1" @click="removeField(index)">-</el-button>
-        </div>
-
-        <div class="form-row">
-          <span class="sort-icons"><i class="el-icon-top"></i></span>
-          <span class="field-label">二维码</span>
-          <el-input v-model="qrWidth" size="small" class="qr-input" @input="handleQrSizeChange"></el-input>
-          <span class="multiply">×</span>
-          <el-input v-model="qrHeight" size="small" class="qr-input" @input="handleQrSizeChange"></el-input>
-          <el-select v-model="templateForm['显示状态']" size="small" class="state-select" @change="refreshPreview">
-            <el-option label="显示" value="显示"></el-option>
-            <el-option label="隐藏" value="隐藏"></el-option>
-          </el-select>
-        </div>
-
-        <div class="margin-title">边距设置</div>
-        <div class="margin-grid">
-          <div class="margin-item">
-            <span>上边距</span>
-            <el-input v-model="templateForm['上边距']" size="small" @input="refreshPreview"></el-input>
-          </div>
-          <div class="margin-item">
-            <span>下边距</span>
-            <el-input v-model="templateForm['下边距']" size="small" @input="refreshPreview"></el-input>
-          </div>
-          <div class="margin-item">
-            <span>左边距</span>
-            <el-input v-model="templateForm['左边距']" size="small" @input="refreshPreview"></el-input>
-          </div>
-          <div class="margin-item">
-            <span>右边距</span>
-            <el-input v-model="templateForm['右边距']" size="small" @input="refreshPreview"></el-input>
-          </div>
-        </div>
-      </div>
-
-      <div class="preview-panel">
-        <div class="preview-head">
-          <span>预览</span>
-          <i class="el-icon-refresh" @click="refreshPreview"></i>
-        </div>
-        <div class="preview-card" v-loading="previewLoading" :style="previewCardStyle">
-          <div class="preview-left">
-            <div v-if="templateForm['标题显示状态'] === '显示'" class="preview-title" :style="titleStyle">{{ templateForm['标题'] }}</div>
-            <div class="preview-grid">
-              <div
-                v-for="item in visibleFieldConfigList"
-                :key="item.id"
-                :class="['preview-field', item['排版'] === '双排' ? 'double' : '', item['状态'] === '禁用' ? 'disabled' : '']"
-                :style="fieldStyle(item)"
-              >
-                {{ item.value }}
+            <div class="preview-content" v-loading="previewLoading">
+              <div class="preview-box" :style="previewCardStyle">
+                <div class="preview-inner">
+                  <div v-if="templateForm.titleVisible === 'visible'" class="preview-title" :style="titleStyle">{{ templateForm.title }}</div>
+                  <div class="preview-body">
+                    <div class="preview-left-section">
+                      <div class="preview-grid">
+                        <div
+                          v-for="item in visibleFieldConfigList"
+                          :key="item.id"
+                          :class="['preview-field', item.layout === 'double' ? 'double' : '', item.status === 'disabled' ? 'disabled' : '']"
+                          :style="fieldStyle(item)"
+                        >
+                          <span class="field-label-preview">{{ item.value }}</span>
+                          <span class="field-value-preview"></span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="preview-right-section">
+                      <div v-if="templateForm.qrVisible === 'visible'" class="qr-code-wrapper">
+                        <div class="qr-code" :style="qrCodeStyle">
+                          二维码占位
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="preview-qr">
-            <div v-if="templateForm['显示状态'] === '显示'" class="qr-label">二维码</div>
-            <div v-if="templateForm['显示状态'] === '显示'" class="qr-code" :style="qrCodeStyle"></div>
-          </div>
+          </el-card>
         </div>
       </div>
     </div>
-    <div slot="footer">
-      <el-button size="small" @click="handleClose">关闭</el-button>
-      <el-button type="primary" size="small" :loading="saveTemplateLoading" @click="handleSaveTemplate">保存</el-button>
+
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="handleClose" size="medium">取消</el-button>
+      <el-button type="primary" :loading="saveTemplateLoading" @click="handleSaveTemplate" size="medium">保存模板</el-button>
     </div>
   </el-dialog>
 </template>
@@ -141,23 +184,31 @@ export default {
       templateName: '',
       currentTemplate: null,
       fontSizeOptions: ['12号', '14号', '16号', '18号'],
-      titleStatusOptions: ['正常', '加粗', '禁用'],
-      fieldStatusOptions: ['正常', '隐藏', '禁用'],
+      titleStatusOptions: [
+        { label: '正常', value: 'normal' },
+        { label: '加粗', value: 'bold' },
+        { label: '禁用', value: 'disabled' },
+      ],
+      fieldStatusOptions: [
+        { label: '正常', value: 'normal' },
+        { label: '隐藏', value: 'hidden' },
+        { label: '禁用', value: 'disabled' },
+      ],
       qrWidth: '50mm',
       qrHeight: '50mm',
       nextFieldId: 1,
       templateForm: {
-        '模板': '模板1',
-        '标题': '材料管理卡',
-        '标题显示状态': '显示',
-        '标题字号': '16号',
-        '标题状态': '正常',
-        '二维码': '50mm×50mm',
-        '显示状态': '显示',
-        '上边距': '10mm',
-        '下边距': '10mm',
-        '左边距': '10mm',
-        '右边距': '10mm',
+        templateId: '模板1',
+        title: '材料管理卡',
+        titleVisible: 'visible',
+        titleFontSize: '16号',
+        titleStatus: 'normal',
+        qrSize: '50mm×50mm',
+        qrVisible: 'visible',
+        marginTop: '10mm',
+        marginBottom: '10mm',
+        marginLeft: '10mm',
+        marginRight: '10mm',
       },
       fieldConfigList: [],
     }
@@ -167,21 +218,21 @@ export default {
       return this.mode === 'edit' ? '编辑模板' : '新增模板'
     },
     visibleFieldConfigList() {
-      return this.fieldConfigList.filter(item => item['状态'] !== '隐藏')
+      return this.fieldConfigList.filter(item => item.status !== 'hidden')
     },
     previewCardStyle() {
       return {
-        paddingTop: this.toPx(this.templateForm['上边距']),
-        paddingBottom: this.toPx(this.templateForm['下边距']),
-        paddingLeft: this.toPx(this.templateForm['左边距']),
-        paddingRight: this.toPx(this.templateForm['右边距']),
+        paddingTop: this.toPx(this.templateForm.marginTop),
+        paddingBottom: this.toPx(this.templateForm.marginBottom),
+        paddingLeft: this.toPx(this.templateForm.marginLeft),
+        paddingRight: this.toPx(this.templateForm.marginRight),
       }
     },
     titleStyle() {
       return {
-        fontSize: this.fontSizeToPx(this.templateForm['标题字号']),
-        fontWeight: this.templateForm['标题状态'] === '加粗' ? 700 : 400,
-        opacity: this.templateForm['标题状态'] === '禁用' ? 0.45 : 1,
+        fontSize: this.fontSizeToPx(this.templateForm.titleFontSize),
+        fontWeight: this.templateForm.titleStatus === 'bold' ? 700 : 400,
+        opacity: this.templateForm.titleStatus === 'disabled' ? 0.45 : 1,
       }
     },
     qrCodeStyle() {
@@ -232,9 +283,9 @@ export default {
         key: 'customField' + this.nextFieldId,
         label: '',
         value: '自定义字段' + this.nextFieldId,
-        '排版': '单排',
-        '字号': '16号',
-        '状态': '正常',
+        layout: 'single',
+        fontSize: '16号',
+        status: 'normal',
       })
       this.nextFieldId += 1
       this.relabelFields()
@@ -259,7 +310,7 @@ export default {
       this.refreshPreview()
     },
     handleQrSizeChange() {
-      this.templateForm['二维码'] = this.qrWidth + '×' + this.qrHeight
+      this.templateForm.qrSize = this.qrWidth + '×' + this.qrHeight
       this.refreshPreview()
     },
     toPx(value) {
@@ -278,7 +329,7 @@ export default {
     },
     fieldStyle(item) {
       return {
-        fontSize: this.fontSizeToPx(item['字号']),
+        fontSize: this.fontSizeToPx(item.fontSize),
       }
     },
     refreshPreview() {
@@ -293,7 +344,7 @@ export default {
         this.$message.warning('请输入模板名称')
         return false
       }
-      if (!this.templateForm['标题'] || !this.templateForm['标题'].trim()) {
+      if (!this.templateForm.title || !this.templateForm.title.trim()) {
         this.$message.warning('请输入标题')
         return false
       }
@@ -308,7 +359,7 @@ export default {
         this.$message.warning('字段名称不可重复')
         return false
       }
-      const marginKeys = ['上边距', '下边距', '左边距', '右边距']
+      const marginKeys = ['marginTop', 'marginBottom', 'marginLeft', 'marginRight']
       const invalidMargin = marginKeys.some(key => !/^\d+mm$/.test(this.templateForm[key]))
       if (invalidMargin) {
         this.$message.warning('边距格式应为数字mm')
@@ -319,7 +370,7 @@ export default {
         this.$message.warning('边距数值不能超过100mm')
         return false
       }
-      if (!/^\d+mm×\d+mm$/.test(this.templateForm['二维码'])) {
+      if (!/^\d+mm×\d+mm$/.test(this.templateForm.qrSize)) {
         this.$message.warning('二维码格式应为数字mm×数字mm')
         return false
       }
@@ -357,173 +408,332 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.template-dialog {
-  display: flex;
-  min-height: 620px;
-  color: #1b2129;
-  .config-panel {
-    width: 660px;
-    padding-right: 24px;
-    box-sizing: border-box;
+::v-deep .template-dialog-wrapper {
+  .el-dialog__body {
+    padding: 20px;
+    background-color: #f5f7fa;
   }
-  .preview-panel {
+}
+
+.template-layout {
+  min-height: 650px;
+
+  .layout-row {
+    display: flex;
+    align-items: stretch;
+    height: 680px;
+    gap: 20px;
+  }
+
+  .layout-left {
+    width: 660px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .layout-right {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
-  .form-row {
+
+  .box-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-radius: 6px;
+    border: none;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05) !important;
+
+    ::v-deep .el-card__header {
+      padding: 15px 20px;
+      background-color: #fff;
+      border-bottom: 1px solid #ebeef5;
+      border-radius: 6px 6px 0 0;
+    }
+    ::v-deep .el-card__body {
+      flex: 1;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  .card-header {
+    font-size: 16px;
+    font-weight: 600;
+    color: #303133;
+    &.flex-between {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    i {
+      margin-right: 6px;
+      color: #409eff;
+    }
+  }
+
+  .config-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background-color: #fff;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #dcdfe6;
+      border-radius: 3px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  }
+
+  .section-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #606266;
+    margin-bottom: 16px;
+    margin-top: 10px;
+    padding-left: 10px;
+    border-left: 3px solid #409eff;
+    line-height: 1.2;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  .flex-row {
     display: flex;
     align-items: center;
-    margin-bottom: 14px;
-    .row-label {
-      width: 92px;
-      text-align: right;
-      padding-right: 12px;
-      box-sizing: border-box;
+  }
+
+  .gap-2 {
+    gap: 10px;
+  }
+
+  .align-center {
+    align-items: center;
+  }
+
+  .multiply-sign {
+    color: #909399;
+    font-size: 18px;
+    padding: 0 4px;
+  }
+
+  /* Field List Styling */
+  .field-list-container {
+    margin-bottom: 24px;
+    padding-left: 8px;
+  }
+
+  .field-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    background-color: #f8f9fb;
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: 1px solid #eef0f5;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background-color: #f2f6fc;
+      border-color: #dcdfe6;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
-    .template-select {
-      width: 380px;
-      margin-right: 8px;
-    }
-    .title-input {
-      width: 190px;
-    }
-    .small-select {
-      width: 78px;
-      margin-left: 4px;
-    }
-    .state-select {
-      width: 140px;
-      margin-left: 4px;
-    }
-    .field-label {
-      width: 70px;
-    }
-    .field-input {
-      width: 190px;
-    }
-    .mini-select {
-      width: 78px;
-      margin-left: 4px;
-    }
-    .icon-btn {
-      width: 24px;
-      height: 24px;
+  }
+
+  .field-actions-left {
+    display: flex;
+    flex-direction: column;
+    margin-right: 15px;
+
+    .action-btn {
       padding: 0;
-      margin-left: 6px;
-      color: #246fe5;
-      border-color: #246fe5;
-      &.minus {
-        color: #e68600;
-        border-color: #e68600;
+      height: 18px;
+      font-size: 16px;
+      color: #909399;
+
+      &:hover:not(:disabled) {
+        color: #409eff;
+      }
+      &:disabled {
+        color: #c0c4cc;
       }
     }
   }
-  .sort-icons {
-    width: 72px;
-    display: inline-flex;
-    justify-content: flex-end;
+
+  .field-label {
+    width: 45px;
+    font-size: 13px;
+    color: #606266;
+    font-weight: 500;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  .field-content {
+    flex: 1;
+    display: flex;
     align-items: center;
-    font-size: 28px;
-    color: #1b2129;
-    i {
-      cursor: pointer;
-      margin-left: 6px;
+  }
+
+  .field-actions-right {
+    margin-left: 15px;
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .margin-row {
+    ::v-deep .el-input-group__prepend {
+      padding: 0 10px;
+      background-color: #f5f7fa;
     }
   }
-  .qr-input {
-    width: 160px;
-  }
-  .multiply {
-    font-size: 28px;
-    padding: 0 10px;
-  }
-  .margin-title {
-    margin-top: 34px;
-    margin-bottom: 10px;
-    font-size: 24px;
-    font-weight: 700;
-  }
-  .margin-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 48px;
-    row-gap: 22px;
-    width: 570px;
-    .margin-item {
-      display: grid;
-      grid-template-columns: 72px 1fr;
-      align-items: center;
+
+  /* Preview Area Styling */
+  .preview-content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 30px;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #c0c4cc;
+      border-radius: 3px;
     }
   }
-  .preview-head {
+
+  .preview-box {
+    background-color: #fff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+    transition: all 0.3s;
+    height: 610px;
+    width: 100%;
+    min-width: 660px;
+    overflow: hidden;
+  }
+
+  .preview-inner {
+    display: flex;
+    flex-direction: column;
+    border: 2px solid #1b2129;
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  .preview-title {
+    height: 60px;
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 42px;
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
-    .el-icon-refresh {
-      margin-left: 18px;
-      cursor: pointer;
-    }
+    border-bottom: 2px solid #1b2129;
+    text-align: center;
+    padding: 0 10px;
+    line-height: 1.2;
+    box-sizing: border-box;
   }
-  .preview-card {
+
+  .preview-body {
+    flex: 1;
+    min-height: 0;
     display: grid;
     grid-template-columns: 1fr 1.15fr;
-    border: 2px solid #1b2129;
-    height: 610px;
-    box-sizing: border-box;
-    .preview-left {
-      min-height: 0;
+  }
+
+  .preview-left-section {
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid #1b2129;
+  }
+
+  .preview-grid {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+
+    .preview-field {
+      border-bottom: 1px solid #c4c9cf;
       display: flex;
-      flex-direction: column;
-      border-right: 2px solid #1b2129;
+      align-items: center;
+      flex: 1;
+      font-size: 18px;
+
+      &.disabled {
+        opacity: 0.45;
+      }
+
+      .field-label-preview {
+        padding-left: 8px;
+        border-right: 1px solid #c4c9cf;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        width: 30%;
+        box-sizing: border-box;
+      }
+
+      &.double .field-label-preview {
+        width: 50%;
+      }
+
+      .field-value-preview {
+        flex: 1;
+        height: 100%;
+      }
     }
-    .preview-title {
-      height: 120px;
-      flex: none;
+  }
+
+  .preview-right-section {
+    display: flex;
+    flex-direction: column;
+
+    .qr-code-wrapper {
+      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      font-weight: 700;
-      border-bottom: 1px solid #c4c9cf;
+      padding: 10px;
+      box-sizing: border-box;
     }
-    .preview-grid {
-      flex: 1;
-      min-height: 0;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(4, 1fr);
-      > div {
-        border-right: 1px solid #c4c9cf;
-        border-bottom: 1px solid #c4c9cf;
-        display: flex;
-        align-items: center;
-        padding-left: 8px;
-        font-size: 18px;
-      }
-    }
-    .preview-qr {
-      .qr-label {
-        height: 52px;
-        line-height: 52px;
-        text-align: center;
-        font-size: 24px;
-        border-bottom: 2px solid #1b2129;
-      }
-      .qr-code {
-        width: 450px;
-        height: 450px;
-        margin: 24px auto 0;
-        background:
-          linear-gradient(90deg, #000 10px, transparent 10px) 0 0 / 42px 42px,
-          linear-gradient(#000 10px, transparent 10px) 0 0 / 42px 42px,
-          #fff;
-        border: 20px solid #fff;
-        box-shadow: inset 0 0 0 34px #000, inset 0 0 0 58px #fff, inset 0 0 0 82px #000;
-      }
+
+    .qr-code {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #999;
+      background: #f5f5f5;
+      border: none;
+      box-shadow: none;
+      margin: 0;
     }
   }
+}
+
+.dialog-footer {
+  text-align: right;
 }
 </style>

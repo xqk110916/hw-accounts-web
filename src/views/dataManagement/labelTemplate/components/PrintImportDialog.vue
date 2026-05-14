@@ -26,7 +26,7 @@
         >
           <el-button size="small">选择文件</el-button>
           <el-button size="small" type="text" :disabled="!formData.templateId" @click.stop="handleDownloadTemplate">下载模板</el-button>
-          <span class="file-name">{{ formData['选择文件'] || '未选择任何文件' }}</span>
+          <span class="file-name">{{ formData.fileName || '未选择任何文件' }}</span>
         </el-upload>
       </el-form-item>
     </el-form>
@@ -51,7 +51,7 @@ export default {
       fileList: [],
       templateOptions: [],
       formData: {
-        '选择文件': '',
+        fileName: '',
         templateId: '',
         remark: '',
       },
@@ -60,7 +60,7 @@ export default {
   methods: {
     async open() {
       this.fileList = []
-      this.formData['选择文件'] = ''
+      this.formData.fileName = ''
       this.formData.templateId = ''
       this.formData.remark = ''
       this.visible = true
@@ -80,12 +80,12 @@ export default {
       const name = file && file.name ? file.name : ''
       if (!/\.(xls|xlsx)$/i.test(name)) {
         this.fileList = []
-        this.formData['选择文件'] = ''
+        this.formData.fileName = ''
         this.$message.warning('只能上传 Excel 文件')
         return false
       }
       this.fileList = [file]
-      this.formData['选择文件'] = name
+      this.formData.fileName = name
       return false
     },
     async handleImport() {

@@ -23,15 +23,15 @@
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column prop="数据类型" label="数据类型" min-width="120" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="导入时间" label="导入时间" min-width="170" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="导入人" label="导入人" min-width="100" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="审批时间" label="审批时间" min-width="170" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="审批人" label="审批人" min-width="100" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="据条数" label="据条数" min-width="100" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="状态" label="状态" min-width="110" show-overflow-tooltip>
+            <el-table-column prop="operationTypeText" label="数据类型" min-width="120" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="importTime" label="导入时间" min-width="170" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="importUserName" label="导入人" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="auditTime" label="审批时间" min-width="170" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="auditUserName" label="审批人" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="dataTotal" label="据条数" min-width="100" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="dataStatusText" label="状态" min-width="110" show-overflow-tooltip>
               <template slot-scope="scope">
-                <span :class="['status-tag', getStatusClass(scope.row['状态'])]">{{ scope.row['状态'] }}</span>
+                <span :class="['status-tag', getStatusClass(scope.row.dataStatus)]">{{ scope.row.dataStatusText }}</span>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="220" fixed="right">
@@ -81,26 +81,26 @@ export default {
   data() {
     return {
       searchForm: {
-        '添加时间': [],
-        '状态': ['全部'],
+        addTimeRange: [],
+        dataStatusList: ['all'],
         currentPage: 1,
         pageSize: 20,
         total: 0,
       },
       searchOptions: [
-        { label: '添加时间', prop: '添加时间', type: 'daterange', col: 7 },
+        { label: '添加时间', prop: 'addTimeRange', type: 'daterange', col: 7 },
         {
           label: '状态',
-          prop: '状态',
+          prop: 'dataStatusList',
           type: 'select',
           multiple: true,
           col: 8,
           option: [
-            { label: '全部', value: '全部' },
-            { label: '待提交', value: '待提交' },
-            { label: '待审核', value: '待审核' },
-            { label: '审核通过', value: '审核通过' },
-            { label: '审核拒绝', value: '审核拒绝' },
+            { label: '全部', value: 'all' },
+            { label: '待提交', value: 2 },
+            { label: '待审核', value: 3 },
+            { label: '审核通过', value: 4 },
+            { label: '审核拒绝', value: 5 },
           ],
         },
         { type: 'slot', slotName: 'footer', col: 4 },
@@ -113,16 +113,16 @@ export default {
     }
   },
   watch: {
-    "searchForm.状态"(value) {
+    'searchForm.dataStatusList'(value) {
       if (!Array.isArray(value) || !value.length) {
-        this.searchForm['状态'] = ['全部']
+        this.searchForm.dataStatusList = ['all']
         return
       }
       const lastValue = value[value.length - 1]
-      if (lastValue === '全部' && value.length > 1) {
-        this.searchForm['状态'] = ['全部']
-      } else if (lastValue !== '全部' && value.indexOf('全部') > -1) {
-        this.searchForm['状态'] = value.filter(item => item !== '全部')
+      if (lastValue === 'all' && value.length > 1) {
+        this.searchForm.dataStatusList = ['all']
+      } else if (lastValue !== 'all' && value.indexOf('all') > -1) {
+        this.searchForm.dataStatusList = value.filter(item => item !== 'all')
       }
     },
   },
@@ -168,18 +168,18 @@ export default {
       }
     },
     buildQueryParams() {
-      const dateRange = this.searchForm['添加时间'] || []
-      const statusList = this.searchForm['状态'] || []
+      const dateRange = this.searchForm.addTimeRange || []
+      const statusList = this.searchForm.dataStatusList || []
       return {
         currentPage: this.searchForm.currentPage,
         pageSize: this.searchForm.pageSize,
         startTime: dateRange[0] || '',
         endTime: dateRange[1] || '',
-        statusList: statusList.indexOf('全部') > -1 ? [] : statusList,
+        statusList: statusList.indexOf('all') > -1 ? [] : statusList,
       }
     },
     validateDateRange() {
-      const dateRange = this.searchForm['添加时间']
+      const dateRange = this.searchForm.addTimeRange
       if (Array.isArray(dateRange) && dateRange.length === 2 && dateRange[0] > dateRange[1]) {
         this.$message.warning('开始日期不得晚于结束日期')
         return false
@@ -197,20 +197,22 @@ export default {
         审核通过: '审核通过',
         审核拒绝: '审核拒绝',
       }
+      const dataStatus = this.getDataStatusValue(row)
       return {
         ...row,
-        '数据类型': row['数据类型'] || row.operationType || row.dataType || '材料信息',
-        '导入时间': row['导入时间'] || row.createTime || row.importTime || '',
-        '导入人': row['导入人'] || row.createUname || row.importUserName || '',
-        '审批时间': row['审批时间'] || row.auditTime || '',
-        '审批人': row['审批人'] || row.auditUserName || '',
-        '据条数': row['据条数'] || row.dataCount || row.count || '',
-        '状态': row['状态'] || statusMap[row.dataStatus] || statusMap[row.status] || row.status || '待提交',
+        dataStatus,
+        operationTypeText: row.operationTypeText || row.operationType || row.dataType || this.getLegacyValue(row, '数据类型') || '材料信息',
+        importTime: row.importTime || row.createTime || this.getLegacyValue(row, '导入时间') || '',
+        importUserName: row.importUserName || row.createUname || this.getLegacyValue(row, '导入人') || '',
+        auditTime: row.auditTime || this.getLegacyValue(row, '审批时间') || '',
+        auditUserName: row.auditUserName || this.getLegacyValue(row, '审批人') || '',
+        dataTotal: row.dataTotal || row.dataCount || row.count || this.getLegacyValue(row, '据条数') || '',
+        dataStatusText: row.dataStatusText || row.statusDesc || this.getLegacyValue(row, '状态') || statusMap[dataStatus] || statusMap[row.status] || row.status || '待提交',
       }
     },
     handleReset() {
-      this.searchForm['添加时间'] = []
-      this.searchForm['状态'] = ['全部']
+      this.searchForm.addTimeRange = []
+      this.searchForm.dataStatusList = ['all']
       this.searchForm.currentPage = 1
       this.searchForm.pageSize = 20
       this.handleQuery()
@@ -230,8 +232,10 @@ export default {
     },
     getRowActions(row) {
       const actions = [{ label: '详情', execute: 'view' }]
-      if (row['状态'] === '待审核') actions.push({ label: '审核', execute: 'audit' })
-      if (row['状态'] === '待提交' || row['状态'] === '审核拒绝') {
+      const dataStatus = Number(row.dataStatus)
+
+      if (dataStatus === 3) actions.push({ label: '审核', execute: 'audit' })
+      if (dataStatus === 2 || dataStatus === 5) {
         actions.push({ label: '编辑', execute: 'edit' })
         actions.push({ label: '提交', execute: 'submit' })
         actions.push({ label: '删除', execute: 'delete' })
@@ -252,7 +256,8 @@ export default {
       }
     },
     async handleSubmit(row) {
-      if (row['状态'] !== '待提交' && row['状态'] !== '审核拒绝') {
+      const dataStatus = Number(row.dataStatus)
+      if (dataStatus !== 2 && dataStatus !== 5) {
         this.$message.warning('当前状态不可提交')
         return
       }
@@ -276,14 +281,32 @@ export default {
       this.searchForm.currentPage = value
       this.handleQuery()
     },
+    getDataStatusValue(row) {
+      const textStatusMap = {
+        待提交: 2,
+        待审核: 3,
+        审核中: 3,
+        审核通过: 4,
+        审核拒绝: 5,
+        审核驳回: 5,
+      }
+      if (row && row.dataStatus !== undefined && row.dataStatus !== null && row.dataStatus !== '') return Number(row.dataStatus)
+      if (row && textStatusMap[row.status] !== undefined) return textStatusMap[row.status]
+      const legacyStatus = this.getLegacyValue(row, '状态')
+      if (textStatusMap[legacyStatus] !== undefined) return textStatusMap[legacyStatus]
+      return Number(row && row.status)
+    },
+    getLegacyValue(source, key) {
+      return source && source[key]
+    },
     getStatusClass(status) {
       const map = {
-        待提交: 'status-default',
-        待审核: 'status-pending',
-        审核通过: 'status-approved',
-        审核拒绝: 'status-rejected',
+        2: 'status-default',
+        3: 'status-pending',
+        4: 'status-approved',
+        5: 'status-rejected',
       }
-      return map[status] || 'status-default'
+      return map[Number(status)] || 'status-default'
     },
   },
 }

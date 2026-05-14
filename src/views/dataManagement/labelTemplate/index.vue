@@ -25,9 +25,9 @@
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column prop="打印时间" label="打印时间" min-width="160" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="标签数量" label="标签数量" min-width="140" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="备注" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="printTime" label="打印时间" min-width="160" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="labelCount" label="标签数量" min-width="140" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
             <el-table-column label="操作" width="190" fixed="right">
               <template slot-scope="scope">
                 <div class="table_operation">
@@ -73,14 +73,14 @@ export default {
   data() {
     return {
       searchForm: {
-        '日期范围': [],
+        dateRange: [],
         templateId: '',
         currentPage: 1,
         pageSize: 20,
         total: 0,
       },
       searchOptions: [
-        { label: '打印时间', prop: '日期范围', type: 'daterange', col: 7 },
+        { label: '打印时间', prop: 'dateRange', type: 'daterange', col: 7 },
         { label: '模板', prop: 'templateId', type: 'select', col: 5, option: [] },
         { type: 'slot', slotName: 'footer', col: 4 },
       ],
@@ -128,7 +128,7 @@ export default {
       if (templateSearch) templateSearch.option = templateListToOptions(res.data)
     },
     validateDateRange() {
-      const range = this.searchForm['日期范围']
+      const range = this.searchForm.dateRange
       if (Array.isArray(range) && range.length === 2 && range[0] > range[1]) {
         this.$message.warning('开始日期不得晚于结束日期')
         return false
@@ -149,21 +149,22 @@ export default {
     mapRecordToRow(record) {
       return {
         ...record,
-        '打印时间': record.printTime || record.createTime || '',
-        '标签数量': record.labelCount || 1,
-        '备注': record.remark || '',
-        '选择模板': record.templateId || record.templateName || '',
-        '材料编码': record.materialCode || '',
-        '生成单位': record.generationUnit || '',
-        '库房': record.warehouse || '',
-        '入库人': record.inboundPerson || '',
-        '容器号': record.containerNo || '',
-        '入库时间': record.inboundTime || '',
-        '二维码': record.qrContent || '',
+        printTime: record.printTime || record.createTime || '',
+        labelCount: record.labelCount || 1,
+        remark: record.remark || '',
+        templateId: record.templateId || '',
+        templateName: record.templateName || '',
+        materialCode: record.materialCode || '',
+        generationUnit: record.generationUnit || '',
+        warehouse: record.warehouse || '',
+        inboundPerson: record.inboundPerson || '',
+        containerNo: record.containerNo || '',
+        inboundTime: record.inboundTime || '',
+        qrContent: record.qrContent || '',
       }
     },
     handleReset() {
-      this.searchForm['日期范围'] = []
+      this.searchForm.dateRange = []
       this.searchForm.templateId = ''
       this.searchForm.currentPage = 1
       this.searchForm.pageSize = 20

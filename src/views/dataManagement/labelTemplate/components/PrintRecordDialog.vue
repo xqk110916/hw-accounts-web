@@ -10,52 +10,52 @@
   >
     <div class="record-dialog" v-loading="formLoading">
       <el-form ref="form" :model="formData" :rules="rules" label-width="92px" size="small">
-        <el-form-item label="选择模板" prop="选择模板">
-          <el-select v-model="formData['选择模板']" :disabled="readonly" placeholder="请选择模板" class="full-input" @change="handleTemplateChange">
+        <el-form-item label="选择模板" prop="templateId">
+          <el-select v-model="formData.templateId" :disabled="readonly" placeholder="请选择模板" class="full-input" @change="handleTemplateChange">
             <el-option v-for="item in templateOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="备注" prop="备注">
-          <el-input v-model="formData['备注']" :readonly="readonly" placeholder="请输入" maxlength="200" @input="refreshQrCode"></el-input>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="formData.remark" :readonly="readonly" placeholder="请输入" maxlength="200" @input="refreshQrCode"></el-input>
         </el-form-item>
       </el-form>
 
       <div class="label-card">
-        <div v-if="currentTemplate.titleVisible === '显示'" class="card-title">{{ currentTemplate.title }}</div>
+        <div v-if="currentTemplate.titleVisible === 'visible'" class="card-title">{{ currentTemplate.title }}</div>
         <div class="grid-row two-cols">
           <div class="grid-label">{{ getFieldLabel('materialCode') }}</div>
           <div class="grid-value">
-            <el-input v-model="formData['材料编码']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
+            <el-input v-model="formData.materialCode" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
           <div class="grid-label">{{ getFieldLabel('generationUnit') }}</div>
           <div class="grid-value">
-            <el-input v-model="formData['生成单位']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
+            <el-input v-model="formData.generationUnit" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
         </div>
         <div class="grid-row two-cols">
           <div class="grid-label">{{ getFieldLabel('warehouse') }}</div>
           <div class="grid-value">
-            <el-input v-model="formData['库房']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
+            <el-input v-model="formData.warehouse" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
           <div class="grid-label">{{ getFieldLabel('inboundPerson') }}</div>
           <div class="grid-value">
-            <el-input v-model="formData['入库人']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
+            <el-input v-model="formData.inboundPerson" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
         </div>
         <div class="grid-row full-row">
           <div class="grid-label">{{ getFieldLabel('containerNo') }}</div>
           <div class="grid-value">
-            <el-input v-model="formData['容器号']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
+            <el-input v-model="formData.containerNo" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
         </div>
         <div class="grid-row full-row">
           <div class="grid-label">{{ getFieldLabel('inboundTime') }}</div>
           <div class="grid-value">
-            <el-input v-model="formData['入库时间']" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
+            <el-input v-model="formData.inboundTime" :readonly="readonly" size="small" placeholder="请输入" @input="refreshQrCode"></el-input>
           </div>
         </div>
-        <div v-if="currentTemplate.qrVisible === '显示'" class="qr-title">二维码 <i v-if="!readonly" class="el-icon-refresh" @click="refreshQrCode"></i></div>
-        <div v-if="currentTemplate.qrVisible === '显示'" class="qr-wrap">
+        <div v-if="currentTemplate.qrVisible === 'visible'" class="qr-title">二维码 <i v-if="!readonly" class="el-icon-refresh" @click="refreshQrCode"></i></div>
+        <div v-if="currentTemplate.qrVisible === 'visible'" class="qr-wrap">
           <div class="qr-code" v-loading="qrCodeLoading"></div>
         </div>
       </div>
@@ -94,24 +94,24 @@ export default {
       currentTemplate: createDefaultTemplate('模板1'),
       formData: {
         id: '',
-        '选择模板': '',
-        '备注': '',
-        '材料编码': '',
-        '生成单位': '',
-        '库房': '',
-        '入库人': '',
-        '容器号': '',
-        '入库时间': '',
-        '二维码': '',
+        templateId: '',
+        remark: '',
+        materialCode: '',
+        generationUnit: '',
+        warehouse: '',
+        inboundPerson: '',
+        containerNo: '',
+        inboundTime: '',
+        qrContent: '',
       },
       rules: {
-        '选择模板': [{ required: true, message: '请选择模板', trigger: 'change' }],
-        '材料编码': [{ required: true, message: '请输入材料编码', trigger: 'blur' }],
-        '生成单位': [{ required: true, message: '请输入生成单位', trigger: 'blur' }],
-        '库房': [{ required: true, message: '请输入库房', trigger: 'blur' }],
-        '入库人': [{ required: true, message: '请输入入库人', trigger: 'blur' }],
-        '容器号': [{ required: true, message: '请输入容器号', trigger: 'blur' }],
-        '入库时间': [{ required: true, message: '请输入入库时间', trigger: 'blur' }],
+        templateId: [{ required: true, message: '请选择模板', trigger: 'change' }],
+        materialCode: [{ required: true, message: '请输入材料编码', trigger: 'blur' }],
+        generationUnit: [{ required: true, message: '请输入生成单位', trigger: 'blur' }],
+        warehouse: [{ required: true, message: '请输入库房', trigger: 'blur' }],
+        inboundPerson: [{ required: true, message: '请输入入库人', trigger: 'blur' }],
+        containerNo: [{ required: true, message: '请输入容器号', trigger: 'blur' }],
+        inboundTime: [{ required: true, message: '请输入入库时间', trigger: 'blur' }],
       },
     }
   },
@@ -159,42 +159,42 @@ export default {
     resetForm() {
       this.formData = {
         id: '',
-        '选择模板': this.templateOptions[0] ? this.templateOptions[0].value : '',
-        '备注': '',
-        '材料编码': '',
-        '生成单位': '',
-        '库房': '',
-        '入库人': '',
-        '容器号': '',
-        '入库时间': '',
-        '二维码': '',
+        templateId: this.templateOptions[0] ? this.templateOptions[0].value : '',
+        remark: '',
+        materialCode: '',
+        generationUnit: '',
+        warehouse: '',
+        inboundPerson: '',
+        containerNo: '',
+        inboundTime: '',
+        qrContent: '',
       }
     },
     fillRow(row) {
       this.formData = {
         id: row.id,
-        '选择模板': row.templateId || row['选择模板'] || (this.templateOptions[0] && this.templateOptions[0].value),
-        '备注': row.remark || row['备注'] || '',
-        '材料编码': row.materialCode || row['材料编码'] || '',
-        '生成单位': row.generationUnit || row['生成单位'] || '',
-        '库房': row.warehouse || row['库房'] || '',
-        '入库人': row.inboundPerson || row['入库人'] || '',
-        '容器号': row.containerNo || row['容器号'] || '',
-        '入库时间': row.inboundTime || row['入库时间'] || '',
-        '二维码': row.qrContent || row['二维码'] || '',
+        templateId: row.templateId || this.getLegacyValue(row, '选择模板') || (this.templateOptions[0] && this.templateOptions[0].value),
+        remark: row.remark || this.getLegacyValue(row, '备注') || '',
+        materialCode: row.materialCode || this.getLegacyValue(row, '材料编码') || '',
+        generationUnit: row.generationUnit || this.getLegacyValue(row, '生成单位') || '',
+        warehouse: row.warehouse || this.getLegacyValue(row, '库房') || '',
+        inboundPerson: row.inboundPerson || this.getLegacyValue(row, '入库人') || '',
+        containerNo: row.containerNo || this.getLegacyValue(row, '容器号') || '',
+        inboundTime: row.inboundTime || this.getLegacyValue(row, '入库时间') || '',
+        qrContent: row.qrContent || this.getLegacyValue(row, '二维码') || '',
       }
     },
     async loadCurrentTemplate() {
-      if (!this.formData['选择模板']) {
+      if (!this.formData.templateId) {
         this.currentTemplate = createDefaultTemplate('模板1')
         return
       }
-      const res = await getTemplateDetail(this.formData['选择模板'])
+      const res = await getTemplateDetail(this.formData.templateId)
       this.currentTemplate = backendToTemplate(res.data)
     },
     async handleTemplateChange() {
       await this.loadCurrentTemplate()
-      this.formData['二维码'] = ''
+      this.formData.qrContent = ''
       this.refreshQrCode()
     },
     getFieldLabel(key) {
@@ -210,15 +210,22 @@ export default {
       }, 120)
     },
     ensureQrContent() {
-      this.formData['二维码'] = buildQrContent(this.currentTemplate, this.formData)
-      return this.formData['二维码']
+      this.formData.qrContent = buildQrContent(this.currentTemplate, this.formData)
+      return this.formData.qrContent
     },
     validateCardFields() {
-      const requiredFields = ['材料编码', '生成单位', '库房', '入库人', '容器号', '入库时间']
+      const requiredFields = [
+        { key: 'materialCode', label: '材料编码' },
+        { key: 'generationUnit', label: '生成单位' },
+        { key: 'warehouse', label: '库房' },
+        { key: 'inboundPerson', label: '入库人' },
+        { key: 'containerNo', label: '容器号' },
+        { key: 'inboundTime', label: '入库时间' },
+      ]
       for (let i = 0; i < requiredFields.length; i += 1) {
         const field = requiredFields[i]
-        if (!this.formData[field] || !String(this.formData[field]).trim()) {
-          this.$message.warning('请输入' + field)
+        if (!this.formData[field.key] || !String(this.formData[field.key]).trim()) {
+          this.$message.warning('请输入' + field.label)
           return false
         }
       }
@@ -304,6 +311,9 @@ export default {
     },
     handleClose() {
       this.visible = false
+    },
+    getLegacyValue(source, key) {
+      return source && source[key]
     },
   },
 }

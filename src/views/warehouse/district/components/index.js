@@ -1,12 +1,26 @@
 import * as balanceAreaApi from '@/api/warehouse/balanceArea';
 import { getDictionaryList } from '@/api/common/dictionary';
 
+function normalizeBalanceAreaType(value) {
+  if (value === 'proxy' || value === '代存') return 'proxy';
+  if (value === 'local' || value === '本地') return 'local';
+  return value || 'local';
+}
+
+function toBackendBalanceAreaType(value) {
+  return normalizeBalanceAreaType(value) === 'proxy' ? '代存' : '本地';
+}
+
+function getBalanceAreaTypeText(value) {
+  return normalizeBalanceAreaType(value) === 'proxy' ? '代存' : '本地';
+}
+
 function fetchDictByCategory(keyword, withAll = false) {
   return getDictionaryList({ keyword }).then(res => {
     const parent = (res.data?.list || []).find(d => d.fullName === keyword && d.parentId === '0');
     if (!parent) return { data: withAll ? [{ label: '全部', value: '' }] : [] };
     return getDictionaryList({ parentId: parent.id }).then(childRes => {
-      const list = (childRes.data?.list || []).map(d => ({ label: d.fullName, value: d.dictValue }));
+      const list = (childRes.data?.list || []).map(d => ({ label: d.fullName, value: normalizeBalanceAreaType(d.dictValue || d.fullName) }));
       return { data: withAll ? [{ label: '全部', value: '' }, ...list] : list };
     });
   });
@@ -28,7 +42,7 @@ let config = {
     { label: '名称', prop: 'name' },
     { label: '调入许可证', prop: 'inLicense' },
     { label: '调出许可证', prop: 'outLicense' },
-    { label: '类型', prop: 'type' },
+    { label: '类型', prop: 'typeText' },
     { label: '备注', prop: 'remark' },
   ],
   search: [
@@ -68,7 +82,7 @@ let requestFun = {
       pageSize: params.pageSize || 10,
       code: params.code,
       name: params.name,
-      type: params.type === 'proxy' ? '代存' : (params.type === 'local' ? '本地' : params.type)
+      type: params.type ? toBackendBalanceAreaType(params.type) : params.type
     };
     try {
       const res = await balanceAreaApi.getBalanceAreaPageList(apiParams);
@@ -78,7 +92,8 @@ let requestFun = {
           ...item,
           inLicense: item.importLicense,
           outLicense: item.exportLicense,
-          type: item.type === '代存' ? 'proxy' : 'local'
+          type: normalizeBalanceAreaType(item.type),
+          typeText: getBalanceAreaTypeText(item.type)
         }));
         return {
           code: 1,
@@ -104,7 +119,8 @@ let requestFun = {
             ...item,
             inLicense: item.importLicense,
             outLicense: item.exportLicense,
-            type: item.type === '代存' ? 'proxy' : 'local'
+            type: normalizeBalanceAreaType(item.type),
+            typeText: getBalanceAreaTypeText(item.type)
           }
         };
       }
@@ -118,7 +134,7 @@ let requestFun = {
       ...data,
       importLicense: data.inLicense,
       exportLicense: data.outLicense,
-      type: data.type === 'proxy' ? '代存' : '本地'
+      type: toBackendBalanceAreaType(data.type)
     };
     try {
       if (data.id) {
@@ -145,7 +161,8 @@ let requestFun = {
 
 let handleTbaleMap = (data) => {
   return data.map(item => {
-    item.type = item.type === 'proxy' ? '代存' : '本地';
+    item.type = normalizeBalanceAreaType(item.type);
+    item.typeText = getBalanceAreaTypeText(item.type);
     return item;
   });
 };

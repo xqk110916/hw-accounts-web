@@ -9,18 +9,18 @@
     :before-close="handleClose"
   >
     <div class="approve-dialog" v-loading="detailLoading">
-      <div class="approve-title">{{ approveData['XXXX'] }}</div>
+      <div class="approve-title">{{ approveData.title }}</div>
       <div class="section-title">导入内容</div>
       <el-table :data="approveTableData" border size="small">
-        <el-table-column prop="行号" label="行号" width="64"></el-table-column>
-        <el-table-column prop="字段1" label="字段1"></el-table-column>
-        <el-table-column prop="字段2" label="字段2"></el-table-column>
-        <el-table-column prop="字段3" label="字段3"></el-table-column>
-        <el-table-column prop="字段4" label="字段4"></el-table-column>
-        <el-table-column prop="问题" label="问题"></el-table-column>
+        <el-table-column prop="rowNo" label="行号" width="64"></el-table-column>
+        <el-table-column prop="field1" label="字段1"></el-table-column>
+        <el-table-column prop="field2" label="字段2"></el-table-column>
+        <el-table-column prop="field3" label="字段3"></el-table-column>
+        <el-table-column prop="field4" label="字段4"></el-table-column>
+        <el-table-column prop="issue" label="问题"></el-table-column>
       </el-table>
       <div class="remark-label">备注</div>
-      <div class="remark-content">{{ approveData['备注'] }}</div>
+      <div class="remark-content">{{ approveData.remark }}</div>
     </div>
     <div slot="footer" class="dialog-footer">
       <el-button type="primary" size="small" :loading="approveLoading" @click="handlePass">通过</el-button>
@@ -37,7 +37,7 @@
       <el-form :model="approveForm" label-width="90px" size="small">
         <el-form-item label="审批意见" required>
           <el-input
-            v-model="approveForm['审批意见']"
+            v-model="approveForm.approvalRemark"
             type="textarea"
             :rows="4"
             maxlength="500"
@@ -67,14 +67,14 @@ export default {
       approveLoading: false,
       currentRow: null,
       approveData: {
-        'XXXX': '',
-        '导入内容': {},
-        '备注': '',
+        title: '',
+        importContent: {},
+        remark: '',
       },
       approveTableData: [],
       approveForm: {
-        '审批结果': '',
-        '审批意见': '',
+        approvalResult: '',
+        approvalRemark: '',
       },
     }
   },
@@ -82,30 +82,29 @@ export default {
     open(row) {
       this.currentRow = row
       this.approveForm = {
-        '审批结果': '',
-        '审批意见': '',
+        approvalResult: '',
+        approvalRemark: '',
       }
       this.approveData = {
-        'XXXX': (row && row['数据类型']) || 'XXXX',
-        '导入内容': {},
-        '备注': (row && row['备注']) || '',
+        title: (row && (row.operationTypeText || this.getLegacyValue(row, '数据类型'))) || 'XXXX',
+        importContent: {},
+        remark: (row && (row.remark || this.getLegacyValue(row, '备注'))) || '',
       }
       this.approveTableData = [
-        { '行号': 1, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': 'xxxxxx' },
-        { '行号': 2, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': '' },
-        { '行号': 3, '字段1': 'xxxxx', '字段2': 'xxxxx', '字段3': 'xxxxx', '字段4': 'xxxxx', '问题': '' },
+        { rowNo: 1, field1: 'xxxxx', field2: 'xxxxx', field3: 'xxxxx', field4: 'xxxxx', issue: 'xxxxxx' },
+        { rowNo: 2, field1: 'xxxxx', field2: 'xxxxx', field3: 'xxxxx', field4: 'xxxxx', issue: '' },
+        { rowNo: 3, field1: 'xxxxx', field2: 'xxxxx', field3: 'xxxxx', field4: 'xxxxx', issue: '' },
       ]
       this.visible = true
     },
     async handlePass() {
       await this.$confirm('确定审核通过吗?', '提示', { type: 'warning' })
-      this.approveForm['审批结果'] = '通过'
+      this.approveForm.approvalResult = 'pass'
       this.approveLoading = true
       try {
         const res = await auditInitialEntry({
           id: this.currentRow && this.currentRow.id,
           approved: true,
-          '审批结果': this.approveForm['审批结果'],
         })
         if (!res || res.code === 1) {
           this.$message.success('审核通过')
@@ -117,12 +116,12 @@ export default {
       }
     },
     openRejectDialog() {
-      this.approveForm['审批结果'] = '拒绝'
-      this.approveForm['审批意见'] = ''
+      this.approveForm.approvalResult = 'reject'
+      this.approveForm.approvalRemark = ''
       this.rejectDialogVisible = true
     },
     async handleReject() {
-      if (!this.approveForm['审批意见'] || !this.approveForm['审批意见'].trim()) {
+      if (!this.approveForm.approvalRemark || !this.approveForm.approvalRemark.trim()) {
         this.$message.warning('请输入审批意见')
         return
       }
@@ -131,8 +130,7 @@ export default {
         const res = await auditInitialEntry({
           id: this.currentRow && this.currentRow.id,
           approved: false,
-          '审批结果': this.approveForm['审批结果'],
-          '审批意见': this.approveForm['审批意见'],
+          remark: this.approveForm.approvalRemark,
         })
         if (!res || res.code === 1) {
           this.$message.success('审核拒绝')
@@ -147,6 +145,9 @@ export default {
     handleClose() {
       this.visible = false
       this.rejectDialogVisible = false
+    },
+    getLegacyValue(source, key) {
+      return source && source[key]
     },
   },
 }
