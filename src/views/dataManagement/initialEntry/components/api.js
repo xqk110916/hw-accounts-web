@@ -72,7 +72,7 @@ export const deleteInitialEntry = id => {
   return request({
     url: '/busin/initial/delete',
     method: 'post',
-    data: { id },
+    params: { id },
   })
 }
 
