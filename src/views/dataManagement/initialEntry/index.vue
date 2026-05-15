@@ -10,7 +10,7 @@
           </div>
         </search-filter>
         <div class="operation">
-          <div :class="['btn', 'primary']" @click="handleAdd">添加</div>
+          <div :class="['btn', 'primary']" @click="handleAdd">新增</div>
         </div>
         <div class="table">
           <el-table

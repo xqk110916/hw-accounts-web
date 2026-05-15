@@ -148,7 +148,7 @@ export const btns = {
   operation: [
     { label: '添加任务', type: 'primary', execute: 'add' },
     { label: '调拨依据管理', type: 'primary', execute: 'manageAllocationBasis' },
-    { label: '导出', type: 'primary', fn: null },
+    // { label: '导出', type: 'primary', fn: null },
   ],
   table: [
     { label: '详情', type: 'text', execute: 'view' },

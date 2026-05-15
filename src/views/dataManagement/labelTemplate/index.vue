@@ -10,8 +10,8 @@
           </div>
         </search-filter>
         <div class="operation">
-          <div :class="['btn', 'primary']" @click="handleImport">导入</div>
-          <div :class="['btn', 'primary']" @click="handleAdd">添加</div>
+          <div :class="['btn', 'primary']" @click="handleAdd">新增</div>
+          <div :class="['btn', 'default-btn']" @click="handleImport">导入</div>
           <div :class="['btn', 'default-btn']" @click="handleTemplateManage">模板管理</div>
         </div>
         <div class="table">
@@ -24,9 +24,19 @@
             style="width: 100%"
             @selection-change="handleSelectionChange"
           >
-            <el-table-column type="selection" width="55"></el-table-column>
-            <el-table-column prop="createTime" label="打印时间" min-width="160" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="labelCount" label="标签数量" min-width="140" show-overflow-tooltip></el-table-column>
+            <!-- <el-table-column type="selection" width="55"></el-table-column> -->
+            <el-table-column prop="templateId" label="模板名称" min-width="140" show-overflow-tooltip>
+              <template slot-scope="scope">{{ templateMap[scope.row.templateId] || '' }}</template>
+            </el-table-column>
+            <el-table-column prop="containerNo" label="容器号" min-width="140" show-overflow-tooltip>
+              <template slot-scope="scope">{{ getDataJsonValue(scope.row, '容器号') }}</template>
+            </el-table-column>
+            <el-table-column prop="warehouse" label="库房" min-width="140" show-overflow-tooltip>
+              <template slot-scope="scope">{{ getDataJsonValue(scope.row, '库房') }}</template>
+            </el-table-column>
+            <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip></el-table-column>
+            
+            <!-- <el-table-column prop="labelCount" label="标签数量" min-width="140" show-overflow-tooltip></el-table-column> -->
             <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
             <el-table-column label="操作" width="190" fixed="right">
               <template slot-scope="scope">
@@ -85,6 +95,7 @@ export default {
         { type: 'slot', slotName: 'footer', col: 4 },
       ],
       tableData: [],
+      templateMap: {},
       selectedRows: [],
       listLoading: false,
       deleteLoading: false,
@@ -103,6 +114,11 @@ export default {
     window.removeEventListener('resize', this.computedTableHeight)
   },
   methods: {
+    getDataJsonValue(row, fileName) {
+      const dataJson = row.dataJson || []
+      const field = dataJson.find(item => item.fileName === fileName)
+      return field ? field.value || '' : ''
+    },
     computedTableHeight() {
       let rightDom = document.querySelector('.right')
       let rightDomHeight = rightDom ? rightDom.clientHeight : 0
@@ -124,8 +140,13 @@ export default {
     },
     async loadTemplateOptions() {
       const res = await listAllTemplate()
+      const list = res.data || []
+      this.templateMap = list.reduce((map, item) => {
+        map[item.id] = item.templateName
+        return map
+      }, {})
       const templateSearch = this.searchOptions.find(item => item.prop === 'templateId')
-      if (templateSearch) templateSearch.option = templateListToOptions(res.data)
+      if (templateSearch) templateSearch.option = templateListToOptions(list)
     },
     validateDateRange() {
       const range = this.searchForm.dateRange

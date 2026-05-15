@@ -4,12 +4,12 @@
       <div class="right">
         <search-filter class="search" :options="search.options" :form="search.params">
           <div slot="footer" class="footer">
-            <div :class="['btn', 'text']" @click="getTableList">查询</div>
+            <div :class="['btn', 'text']" @click="handleQuery">查询</div>
             <div class="partition"></div>
             <div :class="['btn', 'text']" @click="resetSearchParams">重置</div>
           </div>
         </search-filter>
-        <div class="operation-bar" v-if="btns.operation && btns.operation.length">
+        <div class="operation" v-if="btns.operation && btns.operation.length">
           <div
             v-for="item in btns.operation"
             :key="item.label"
@@ -20,34 +20,40 @@
           </div>
         </div>
         <div class="table">
-          <el-table ref="table" :data="tableData" @selection-change="handleSelectionChange" highlight-current-row :height="height" style="width: 100%">
+          <el-table
+            ref="table"
+            v-loading="loading"
+            :data="tableData"
+            highlight-current-row
+            :height="height"
+            style="width: 100%"
+            @selection-change="handleSelectionChange"
+          >
             <el-table-column type="selection" width="55"></el-table-column>
-            
             <el-table-column
               v-for="item in tableKeys"
+              :key="item.prop"
               :prop="item.prop"
               :label="item.label"
-              :key="item.prop"
-              show-overflow-tooltip
               :width="item.width"
+              :min-width="item.minWidth"
+              show-overflow-tooltip
             >
               <template slot-scope="scope">
-                <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'status'">
-                    {{ scope.row.status === 'normal' ? '完整' : '破损' }}
-                  </span>
-                </div>
-                <div v-else>{{ scope.row[item.prop] }}</div>
+                <span v-if="item.prop === 'seal1Display'">{{ scope.row.seal1Display }}</span>
+                <span v-else-if="item.prop === 'seal2Display'">{{ scope.row.seal2Display }}</span>
+                <span v-else-if="item.prop === 'sealStatus'">{{ scope.row.sealStatusName }}</span>
+                <span v-else>{{ scope.row[item.prop] || '-' }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="100" fixed="right">
+            <el-table-column label="操作" width="140" fixed="right">
               <template slot-scope="scope">
                 <div class="table_operation">
                   <div
                     v-for="item in btns.table"
                     :key="item.label"
                     :class="['btn', 'text']"
-                    @click="e => handleBtnClick(item, scope.row)"
+                    @click="handleBtnClick(item, scope.row)"
                   >
                     {{ item.label }}
                   </div>
@@ -57,49 +63,78 @@
           </el-table>
           <div class="pagination">
             <el-pagination
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
               :current-page="search.params.currentPage"
               :page-sizes="[10, 20, 50, 100]"
               :page-size="search.params.pageSize"
+              :total="search.params.total"
               background
               layout="total, sizes, prev, pager, next"
-              :total="search.params.totoal"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
             >
             </el-pagination>
           </div>
         </div>
       </div>
     </div>
+    <edit-dialog
+      ref="editDialog"
+      :seal-type-options="sealTypeOptions"
+      :container-options="containerOptions"
+      @saved="handleSaved"
+    />
+    <detail-dialog ref="detailDialog" :seal-type-options="sealTypeOptions" />
+    <import-dialog ref="importDialog" @saved="handleSaved" />
   </div>
 </template>
 
 <script>
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
+import DetailDialog from './components/DetailDialog.vue'
+import EditDialog from './components/EditDialog.vue'
+import ImportDialog from './components/ImportDialog.vue'
+import {
+  btns,
+  config,
+  handleSearchParams,
+  loadContainerOptions,
+  normalizeSealRecord,
+  requestFun,
+} from './components/index.js'
 
 export default {
   name: 'SealLedger',
+  components: { DetailDialog, EditDialog, ImportDialog },
   data() {
     return {
+      loading: false,
       search: {
         params: {
           currentPage: 1,
           pageSize: 20,
-          totoal: 0,
+          total: 0,
+          sealCode: '',
+          sealType: '',
+          sealStatus: '',
+          registerTimeRange: [],
+          containerCode: '',
         },
         options: [],
       },
       tableData: [],
+      selectedRows: [],
       selectedIds: [],
       height: 0,
       tableKeys: [],
-      btns
+      btns,
+      sealTypeOptions: [],
+      containerOptions: [],
     }
   },
   async created() {
-    await getDefaultOptions()
     this.handleData()
-    this.getTableList()
+    await this.loadDefaultOptions()
+    await this.getTableList()
   },
   mounted() {
     setTimeout(() => {
@@ -112,65 +147,144 @@ export default {
   },
   methods: {
     computedTableHeight() {
-      let rightDom = document.querySelector('.right')
-      let rightDomHeight = rightDom ? rightDom.clientHeight : 0
-      let searchDom = document.querySelector('.search')
-      let searchDomHeight = searchDom ? searchDom.clientHeight : 0
-      let operationDom = document.querySelector('.operation-bar')
-      let operationDomHeight = operationDom ? operationDom.clientHeight : 0
+      const rightDom = document.querySelector('.right')
+      const rightDomHeight = rightDom ? rightDom.clientHeight : 0
+      const searchDom = document.querySelector('.search')
+      const searchDomHeight = searchDom ? searchDom.clientHeight : 0
+      const operationDom = document.querySelector('.operation')
+      const operationDomHeight = operationDom ? operationDom.clientHeight : 0
 
       this.height = rightDomHeight - searchDomHeight - operationDomHeight - 90
     },
-    async handleData() {
+    handleData() {
       this.tableKeys = config.table
-      config.search.forEach(item => {
-        this.search.options.push(item)
-        this.$set(this.search.params, item.prop, '')
-        if (item.option && Object.prototype.toString.call(item.option) !== '[object Array]') {
-          item.option.then(res => {
-            item.option = Array.isArray(res.data) ? res.data : res.data.list
-          })
-        }
-      })
-      this.search.options.push({ type: 'slot', slotName: 'footer', col: 6 })
+      this.search.options = config.search.map(item => ({ ...item }))
+      this.search.options.push({ type: 'slot', slotName: 'footer', col: 4 })
     },
-    handleSelectionChange(val) {
-      this.selectedIds = val.map(item => item.id)
+    async loadDefaultOptions() {
+      const [sealTypeOptions, containerOptions] = await Promise.all([
+        getSealTypeOptions().catch(() => []),
+        loadContainerOptions().catch(() => []),
+      ])
+      this.sealTypeOptions = sealTypeOptions
+      this.containerOptions = containerOptions
+      this.setSearchOption('sealType', sealTypeOptions)
+      this.setSearchOption('containerCode', containerOptions)
     },
-    handleBtnClick(item, payload) {
-      if (item.execute === 'export') {
-        this.$message.success('已加入导出队列')
-      } else if (item.execute === 'view') {
-        this.$message.info('查看详情: ' + payload.id)
-      } else if (item.execute === 'batchDelete') {
-        if (this.selectedIds.length === 0) {
-          return this.$message.warning('请先勾选需要删除的记录')
+    setSearchOption(prop, option) {
+      const item = this.search.options.find(optionItem => optionItem.prop === prop)
+      if (item) this.$set(item, 'option', option)
+    },
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
+    },
+    handleQuery() {
+      this.search.params.currentPage = 1
+      this.getTableList()
+    },
+    async getTableList() {
+      this.loading = true
+      try {
+        const params = handleSearchParams(this.search.params)
+        const res = await requestFun.list(params)
+        if (res.code === 1) {
+          const data = (res.data && res.data.list) || []
+          const page = (res.data && res.data.pagination) || {}
+          this.tableData = data.map(item => normalizeSealRecord(item, this.getSealTypeLabel))
+          this.search.params.total = page.total || 0
+          return this.tableData
         }
-        this.$confirm('确定要删除选中的记录吗?', '提示', { type: 'warning' }).then(() => {
-          requestFun.batchDelete({ ids: this.selectedIds }).then(res => {
-            if (res.code === 1) {
-              this.$message.success('删除成功')
-              this.getTableList()
-            }
-          })
-        })
+        this.tableData = []
+        this.search.params.total = 0
+        return []
+      } finally {
+        this.loading = false
       }
     },
-    getTableList() {
-      this.tableData = []
-      return requestFun.list(this.search.params).then(res => {
+    handleSelectionChange(rows) {
+      this.selectedRows = rows || []
+      this.selectedIds = this.selectedRows.map(item => item.id).filter(Boolean)
+    },
+    handleBtnClick(item, payload) {
+      switch (item.execute) {
+        case 'add':
+          this.openAdd()
+          break
+        case 'import':
+          this.openImport()
+          break
+        case 'batchDelete':
+          this.handleBatchDelete()
+          break
+        case 'view':
+          this.openDetail(payload)
+          break
+        case 'update':
+          this.openEdit(payload)
+          break
+        case 'delete':
+          this.handleDelete(payload)
+          break
+      }
+    },
+    openAdd() {
+      this.$refs.editDialog.open()
+    },
+    openEdit(row) {
+      this.$refs.editDialog.open(row)
+    },
+    openDetail(row) {
+      this.$refs.detailDialog.open(row)
+    },
+    openImport() {
+      this.$refs.importDialog.open()
+    },
+    async handleDelete(row) {
+      if (!row || !row.id) return
+      try {
+        await this.$confirm('确定要删除该封记记录吗？', '提示', { type: 'warning' })
+        const res = await requestFun.delete(row.id)
         if (res.code === 1) {
-          let data = res.data.list || []
-          let page = res.data.pagination || {}
-          if (handleTbaleMap) data = handleTbaleMap(data)
-          this.tableData = data
-          this.search.params.totoal = page.total
-          return data
+          this.$message.success('删除成功')
+          await this.refreshAfterDelete(1)
         }
-      })
+      } catch (error) {}
+    },
+    async handleBatchDelete() {
+      if (!this.selectedIds.length) {
+        this.$message.warning('请先选择需要删除的记录')
+        return
+      }
+      try {
+        await this.$confirm('确定要删除选中的封记记录吗？', '提示', { type: 'warning' })
+        const res = await requestFun.batchDelete(this.selectedIds)
+        if (res.code === 1) {
+          const count = this.selectedIds.length
+          this.$message.success('删除成功')
+          this.clearSelection()
+          await this.refreshAfterDelete(count)
+        }
+      } catch (error) {}
+    },
+    async refreshAfterDelete(count) {
+      const remain = this.tableData.length - count
+      if (remain <= 0 && this.search.params.currentPage > 1) {
+        this.search.params.currentPage -= 1
+      }
+      await this.getTableList()
+    },
+    clearSelection() {
+      this.selectedRows = []
+      this.selectedIds = []
+      if (this.$refs.table) this.$refs.table.clearSelection()
+    },
+    async handleSaved() {
+      await this.loadDefaultOptions()
+      await this.getTableList()
     },
     handleSizeChange(value) {
       this.search.params.pageSize = value
+      this.search.params.currentPage = 1
       this.getTableList()
     },
     handleCurrentChange(value) {
@@ -178,12 +292,19 @@ export default {
       this.getTableList()
     },
     resetSearchParams() {
-      this.search.params.currentPage = 1
-      config.search.forEach(item => {
-        this.search.params[item.prop] = ''
-      })
+      this.search.params = {
+        currentPage: 1,
+        pageSize: 20,
+        total: 0,
+        sealCode: '',
+        sealType: '',
+        sealStatus: '',
+        registerTimeRange: [],
+        containerCode: '',
+      }
+      this.clearSelection()
       this.getTableList()
-    }
+    },
   },
 }
 </script>
@@ -223,12 +344,12 @@ export default {
         }
       }
 
-      .operation-bar {
+      .operation {
         height: 32px;
         margin-top: 4px;
         margin-bottom: 6px;
       }
-      
+
       .table {
         margin-top: 10px;
         flex: 1;

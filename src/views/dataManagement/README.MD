@@ -133,3 +133,50 @@
 - 修改标签模版字段时，需要同时检查 `storage.js` 的模版结构、`TemplateDialog.vue` 的编辑表单、`PrintRecordDialog.vue` 的打印表单和 `print-builder.js` 的字段映射。
 - 标签模版管理当前使用真实接口数据，`storage.js` 不再作为列表和表单持久化来源。
 - 新增数据管理下的页面、路由或菜单时，需要同步更新 `docs/SYSTEM_MODULES_MAP.md`、对应模块 README 和菜单配置来源。
+
+## 五、封记台账 sealLedger
+
+入口文件：`sealLedger/index.vue`
+
+封记台账用于维护容器与两道封记之间的登记关系，支持分页查询、新增、编辑、详情、单条删除、批量删除和 Excel 导入。页面已从占位数据改为对接真实封记台账接口。
+
+核心文件：
+
+- `sealLedger/index.vue`：列表页入口，包含搜索区、操作区、表格区、分页和 Dialog 引用。
+- `sealLedger/components/index.js`：搜索项、表格列、按钮、状态选项、查询参数转换和表格展示转换。
+- `sealLedger/components/api.js`：封记台账接口封装。
+- `sealLedger/components/EditDialog.vue`：新增 / 编辑封记记录，所有字段必填。
+- `sealLedger/components/DetailDialog.vue`：封记记录只读详情。
+- `sealLedger/components/ImportDialog.vue`：封记记录 Excel 导入。
+
+主要字段 key：
+
+- 容器号：`containerCode`，必填。
+- 登记时间：`registerTime`，必填。
+- 封记编码1：`sealCode1`，必填。
+- 封记类型1：`sealType1`，必填，使用封记类型字典。
+- 封记编码2：`sealCode2`，必填，且不得与 `sealCode1` 重复。
+- 封记类型2：`sealType2`，必填，使用封记类型字典。
+- 封记状态：`sealStatus`，`0` 表示完好，`1` 表示破损。
+
+主要接口：
+
+- 新增：`POST /busin/seal/record/add`
+- 批量删除：`POST /busin/seal/record/batchDelete`
+- 删除：`DELETE /busin/seal/record/delete/{id}`
+- 详情：`GET /busin/seal/record/detail/{id}`
+- 导入：`POST /busin/seal/record/import`
+- 下载导入模板：`GET /busin/inbound/downTemplate`，固定参数 `tempType=4`
+- 分页列表：`POST /busin/seal/record/list`
+- 更新：`PUT /busin/seal/record/update`
+
+字典和下拉：
+
+- 封记类型复用 `src/utils/sealType.js` 的 `getSealTypeOptions()` 和 `formatSealType()`。
+- 封记类型字典父级 ID：`2052628107427078145`。
+- 容器下拉使用现有 `POST /busin/inbound/goodsPageList` 获取容器号并转换为 `containerCode` 选项。
+
+字段取值约定：
+
+- 表单、搜索、表格和接口参数统一使用英文 key；中文仅作为 label、按钮文案、提示文案或表格列名。
+- 搜索区状态、类型、容器均使用 `select / el-select`，不使用 checkbox。
