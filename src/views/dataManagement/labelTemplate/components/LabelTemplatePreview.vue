@@ -14,7 +14,18 @@
               <span class="field-label-preview">{{ item.name || item.label }}</span>
               <span class="field-value-preview">
                 <template v-if="mode === 'edit'">
-                  <el-input v-model="formData[item.key]" size="small" placeholder="请输入" @input="onInput" class="edit-input" />
+                  <el-select v-if="selectFieldKeys.includes(item.key)"
+                    v-model="selectBindValues[item.key]" size="small" filterable
+                    :placeholder="`请选择${item.name || item.label}`" class="edit-input"
+                    @change="val => onSelectChange(item.key, val)">
+                    <el-option v-for="opt in (selectFieldOptions[item.key] || [])" :key="opt.value" :label="opt.label" :value="opt.value" />
+                  </el-select>
+                  <el-date-picker v-else-if="dateFieldValues.includes(item.fileValue)"
+                    v-model="formData[item.key]" size="small" type="date"
+                    value-format="yyyy-MM-dd"
+                    :placeholder="`请选择${item.name || item.label}`" class="edit-input"
+                    @change="onInput" />
+                  <el-input v-else v-model="formData[item.key]" size="small" placeholder="请输入" @input="onInput" class="edit-input" />
                 </template>
                 <template v-else-if="mode === 'preview'">
                   <span class="preview-text">{{ formData[item.key] || '' }}</span>
@@ -54,7 +65,23 @@ export default {
     mode: {
       type: String,
       default: 'preview', // 'design', 'preview', 'edit'
-    }
+    },
+    selectFieldKeys: {
+      type: Array,
+      default: () => [],
+    },
+    dateFieldValues: {
+      type: Array,
+      default: () => [],
+    },
+    selectFieldOptions: {
+      type: Object,
+      default: () => ({}),
+    },
+    selectBindValues: {
+      type: Object,
+      default: () => ({}),
+    },
   },
   computed: {
     visibleFields() {
@@ -108,6 +135,10 @@ export default {
     },
     onInput() {
       this.$emit('input-change')
+    },
+    onSelectChange(fieldKey, value) {
+      this.$emit('select-change', { fieldKey, value })
+      this.onInput()
     }
   }
 }

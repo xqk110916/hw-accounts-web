@@ -119,7 +119,7 @@ export default {
       const link = document.createElement('a')
       const disposition = res.headers && (res.headers['content-disposition'] || res.headers['Content-Disposition'])
       const matched = disposition && disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
-      const fileName = matched ? decodeURIComponent(matched[1].replace(/"/g, '')) : '标签数据导入模板'
+      const fileName = matched ? decodeURIComponent(matched[1].replace(/"/g, '')) : '标签数据导入模板.xlsx'
       link.href = window.URL.createObjectURL(blob)
       link.download = fileName
       link.click()

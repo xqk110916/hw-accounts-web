@@ -16,13 +16,14 @@ export const defaultPrinterConfig = {
   },
 }
 
+export const FIXED_FIELD_KEYS = ['containerNo', 'warehouse']
+
 const defaultFields = [
-  { key: 'materialCode', label: '字段1', name: '材料编码', layout: 'single', fontSize: '16号', status: 'normal' },
-  { key: 'generationUnit', label: '字段2', name: '生成单位', layout: 'single', fontSize: '16号', status: 'normal' },
-  { key: 'warehouse', label: '字段3', name: '库房', layout: 'single', fontSize: '16号', status: 'normal' },
-  { key: 'inboundPerson', label: '字段4', name: '入库人', layout: 'single', fontSize: '16号', status: 'normal' },
-  { key: 'containerNo', label: '字段5', name: '容器号', layout: 'single', fontSize: '16号', status: 'normal' },
-  { key: 'inboundTime', label: '字段6', name: '入库时间', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'containerNo', label: '字段1', name: '容器号', fileValue: 'containerCode', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'warehouse', label: '字段2', name: '库房', fileValue: 'warehouseName', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'materialCode', label: '字段3', name: '材料编码', fileValue: 'goodCode', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'productionUnit', label: '字段4', name: '生产单位', fileValue: 'productionUnit', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'storageTime', label: '字段5', name: '入库时间', fileValue: 'storageTime', layout: 'single', fontSize: '16号', status: 'normal' },
 ]
 
 export const createDefaultTemplate = (name = '模板1') => ({
@@ -111,6 +112,7 @@ export const backendToTemplate = data => {
       key: defaultFields[index] ? defaultFields[index].key : `customField${index + 1}`,
       label: `字段${index + 1}`,
       name: item.fileName,
+      fileValue: item.fileValue || '',
       layout: normalizeLayout(item.rowSet),
       fontSize: ensureFontSize(item.fontSize),
       status: normalizeFieldStatus(item.status),
@@ -147,6 +149,7 @@ export const templateToBackend = template => {
     marginBottom: Number(stripUnit(source.margins && source.margins.bottom) || 0),
     fieldsConfig: (source.fields || []).map((item, index) => ({
       fileName: item.name,
+      fileValue: item.fileValue || '',
       fontSize: stripUnit(item.fontSize),
       fontBold: item.status === 'bold' ? 'true' : 'false',
       rowSet: toBackendLayout(item.layout),
@@ -174,11 +177,10 @@ export const labelDataToRow = data => {
     ...source,
     ...fieldMap,
     materialCode: fieldMap.materialCode,
-    generationUnit: fieldMap.generationUnit,
+    productionUnit: fieldMap.productionUnit,
+    inboundTime: fieldMap.storageTime,
     warehouse: fieldMap.warehouse,
-    inboundPerson: fieldMap.inboundPerson,
     containerNo: fieldMap.containerNo,
-    inboundTime: fieldMap.inboundTime,
     qrContent: source.qrcodeBase64,
   }
 }
@@ -191,6 +193,7 @@ export const buildLabelDataPayload = (template, formData, id) => {
     remark: formData.remark,
     dataJson: (source.fields || []).map((item, index) => ({
       fileName: item.name,
+      fileValue: item.fileValue || '',
       value: formData[item.key] || '',
       fontSize: stripUnit(item.fontSize),
       fontBold: item.status === 'bold' ? 'true' : 'false',
@@ -237,6 +240,7 @@ export const formToTemplate = (form, fields, currentTemplate) => ({
     key: item.key,
     label: item.label,
     name: item.value,
+    fileValue: item.fileValue || '',
     layout: item.layout,
     fontSize: item.fontSize,
     status: item.status,
@@ -260,6 +264,7 @@ export const templateToFields = template =>
     key: item.key,
     label: item.label || `字段${index + 1}`,
     value: item.name,
+    fileValue: item.fileValue || '',
     layout: item.layout,
     fontSize: item.fontSize,
     status: item.status,

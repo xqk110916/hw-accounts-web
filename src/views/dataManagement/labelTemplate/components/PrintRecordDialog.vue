@@ -16,7 +16,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
-          <el-input v-model="formData.remark" :readonly="readonly" placeholder="请输入" maxlength="200"></el-input>
+          <el-input v-model="formData.remark" :disabled="readonly" placeholder="请输入" maxlength="200"></el-input>
         </el-form-item>
       </el-form>
 
@@ -25,6 +25,11 @@
           :template="currentTemplate"
           :form-data="formData"
           :mode="readonly ? 'preview' : 'edit'"
+          :select-field-keys="readonly ? [] : selectFieldKeys"
+          :select-field-options="selectFieldOptions"
+          :select-bind-values="selectBindValues"
+          :date-field-values="dateFieldValues"
+          @select-change="handleSelectFieldChange"
         >
           <template #qrcode="{ qrStyle }">
             <div class="qr-code-display" :style="qrStyle">
@@ -58,6 +63,8 @@ import {
   templateListToOptions,
 } from './storage'
 import { addLabelData, getLabelDataDetail, getTemplateDetail, listAllTemplate, updateLabelData } from './api'
+import { getLocationHierarchy, getPositionMap, getMaterialCodeListAll } from '@/views/task/inbound/components/api'
+import { getSealTypeOptions } from '@/utils/sealType'
 
 export default {
   name: 'PrintRecordDialog',
@@ -76,22 +83,25 @@ export default {
         templateId: '',
         remark: '',
         materialCode: '',
-        generationUnit: '',
+        productionUnit: '',
         warehouse: '',
-        inboundPerson: '',
         containerNo: '',
-        inboundTime: '',
+        storageTime: '',
         qrContent: '',
       },
       rules: {
         templateId: [{ required: true, message: '请选择模板', trigger: 'change' }],
         materialCode: [{ required: true, message: '请输入材料编码', trigger: 'blur' }],
-        generationUnit: [{ required: true, message: '请输入生成单位', trigger: 'blur' }],
+        productionUnit: [{ required: true, message: '请输入生产单位', trigger: 'blur' }],
         warehouse: [{ required: true, message: '请输入库房', trigger: 'blur' }],
-        inboundPerson: [{ required: true, message: '请输入入库人', trigger: 'blur' }],
         containerNo: [{ required: true, message: '请输入容器号', trigger: 'blur' }],
-        inboundTime: [{ required: true, message: '请输入入库时间', trigger: 'blur' }],
+        storageTime: [{ required: true, message: '请选择入库时间', trigger: 'change' }],
       },
+      selectFieldKeys: ['materialCode', 'warehouse', 'position', 'sealType1', 'sealType2'],
+      selectFieldOptions: { materialCode: [], warehouse: [], position: [], sealType1: [], sealType2: [] },
+      selectBindValues: { materialCode: '', warehouse: '', position: '', sealType1: '', sealType2: '' },
+      dateFieldValues: ['storageTime'],
+      warehouseIdMap: {},
     }
   },
   computed: {
@@ -111,15 +121,39 @@ export default {
       this.resetForm()
       this.visible = true
       try {
-        await this.loadTemplateOptions()
-        this.resetForm()
-        if (row && row.id) {
-          const res = await getLabelDataDetail(row.id)
-          this.fillRow(labelDataToRow(res.data))
-        } else if (row) {
-          this.fillRow(row)
+        if (this.readonly) {
+          // 详情模式：获取模板选项 + 详情接口 + 模板详情接口
+          await this.loadTemplateOptions()
+          if (row && row.id) {
+            const res = await getLabelDataDetail(row.id)
+            this.fillRow(labelDataToRow(res.data))
+          } else if (row) {
+            this.fillRow(row)
+          }
+          if (this.formData.templateId) {
+            const res = await getTemplateDetail(this.formData.templateId)
+            this.currentTemplate = backendToTemplate(res.data)
+            this.currentTemplate.fields.forEach(field => {
+              if (this.formData[field.key] === undefined) {
+                this.$set(this.formData, field.key, '')
+              }
+            })
+          } else {
+            this.currentTemplate = createDefaultTemplate('模板1')
+          }
+        } else {
+          // 编辑/新增模式加载全部数据
+          await this.loadTemplateOptions()
+          await this.loadSelectFieldOptions()
+          this.resetForm()
+          if (row && row.id) {
+            const res = await getLabelDataDetail(row.id)
+            this.fillRow(labelDataToRow(res.data))
+          } else if (row) {
+            this.fillRow(row)
+          }
+          await this.loadCurrentTemplate()
         }
-        await this.loadCurrentTemplate()
         this.$nextTick(() => {
           if (this.$refs.form) this.$refs.form.clearValidate()
         })
@@ -138,6 +172,7 @@ export default {
         remark: '',
         qrContent: '',
       }
+      this.selectBindValues = { materialCode: '', warehouse: '', position: '', sealType1: '', sealType2: '' }
     },
     fillRow(row) {
       this.formData = {
@@ -155,17 +190,33 @@ export default {
         const res = await getTemplateDetail(this.formData.templateId)
         this.currentTemplate = backendToTemplate(res.data)
       }
-      
+
       // Ensure reactivity for dynamic fields
       this.currentTemplate.fields.forEach(field => {
         if (this.formData[field.key] === undefined) {
           this.$set(this.formData, field.key, '')
         }
       })
+
+      // Pre-load position options if warehouse value exists (edit mode)
+      if (this.formData.warehouse) {
+        const warehouseOpt = this.selectFieldOptions.warehouse.find(
+          opt => opt.label === this.formData.warehouse
+        )
+        if (warehouseOpt) {
+          this.$set(this.selectBindValues, 'warehouse', warehouseOpt.value)
+          await this.loadPositionOptions(warehouseOpt.value)
+        }
+      }
+
+      // Restore selectBindValues for other fields from formData labels
+      this.restoreSelectBindValues()
     },
     async handleTemplateChange() {
       await this.loadCurrentTemplate()
       this.formData.qrContent = ''
+      this.$set(this.selectFieldOptions, 'position', [])
+      this.$set(this.selectBindValues, 'position', '')
     },
     validateCardFields() {
       const fields = this.currentTemplate.fields || []
@@ -258,6 +309,103 @@ export default {
     },
     handleClose() {
       this.visible = false
+    },
+    async loadSelectFieldOptions() {
+      await Promise.all([
+        this.loadMaterialCodeOptions(),
+        this.loadWarehouseOptions(),
+        this.loadSealTypeOptions(),
+      ])
+    },
+    async loadMaterialCodeOptions() {
+      try {
+        const res = await getMaterialCodeListAll()
+        this.$set(this.selectFieldOptions, 'materialCode', (res.data || []).map(item => ({
+          label: item.goodName || item.goodCode,
+          value: item.goodCode,
+        })))
+      } catch (e) {
+        this.$set(this.selectFieldOptions, 'materialCode', [])
+      }
+    },
+    async loadWarehouseOptions() {
+      try {
+        const res = await getLocationHierarchy(2)
+        const list = res.data || []
+        this.$set(this.selectFieldOptions, 'warehouse', list.map(item => ({
+          label: item.warehouseName,
+          value: item.id,
+        })))
+        this.warehouseIdMap = {}
+        list.forEach(item => {
+          this.warehouseIdMap[item.id] = item.warehouseName
+        })
+      } catch (e) {
+        this.$set(this.selectFieldOptions, 'warehouse', [])
+      }
+    },
+    async loadSealTypeOptions() {
+      try {
+        const options = await getSealTypeOptions()
+        this.$set(this.selectFieldOptions, 'sealType1', options)
+        this.$set(this.selectFieldOptions, 'sealType2', options)
+      } catch (e) {
+        this.$set(this.selectFieldOptions, 'sealType1', [])
+        this.$set(this.selectFieldOptions, 'sealType2', [])
+      }
+    },
+    async loadPositionOptions(warehouseId) {
+      if (!warehouseId) {
+        this.$set(this.selectFieldOptions, 'position', [])
+        return
+      }
+      try {
+        const res = await getPositionMap({ nodeId: warehouseId, nodeType: '2' })
+        this.$set(this.selectFieldOptions, 'position', (res.data || []).map(item => ({
+          label: `${item.shelfCode}-${item.rowCode}-${item.columnCode}`,
+          value: item.id,
+        })))
+      } catch (e) {
+        this.$set(this.selectFieldOptions, 'position', [])
+      }
+    },
+    restoreSelectBindValues() {
+      this.selectFieldKeys.forEach(fieldKey => {
+        if (fieldKey === 'warehouse') return // Already handled above
+        const label = this.formData[fieldKey]
+        if (!label) return
+        const options = this.selectFieldOptions[fieldKey] || []
+        const matched = options.find(opt => opt.label === label)
+        if (matched) {
+          this.$set(this.selectBindValues, fieldKey, matched.value)
+        }
+      })
+    },
+    handleSelectFieldChange({ fieldKey, value }) {
+      if (fieldKey === 'warehouse') {
+        const selected = this.selectFieldOptions.warehouse.find(opt => opt.value === value)
+        if (selected) {
+          this.$set(this.formData, 'warehouse', selected.label)
+        }
+        this.$set(this.formData, 'position', '')
+        this.$set(this.selectBindValues, 'position', '')
+        if (value) {
+          this.loadPositionOptions(value)
+        } else {
+          this.$set(this.selectFieldOptions, 'position', [])
+        }
+      } else if (fieldKey === 'position') {
+        const selected = this.selectFieldOptions.position.find(opt => opt.value === value)
+        if (selected) {
+          this.$set(this.formData, 'position', selected.label)
+        }
+      } else {
+        const options = this.selectFieldOptions[fieldKey] || []
+        const selected = options.find(opt => opt.value === value)
+        if (selected) {
+          this.$set(this.formData, fieldKey, selected.label)
+        }
+      }
     },
   },
 }

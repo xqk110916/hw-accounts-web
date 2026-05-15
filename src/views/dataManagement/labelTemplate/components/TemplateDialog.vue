@@ -54,7 +54,9 @@
                     <div class="field-label">{{ item.label }}</div>
 
                     <div class="field-content flex-row gap-2">
-                      <el-input v-model="item.value" @input="handleFieldChange" placeholder="字段名称" style="flex: 2" />
+                      <el-select v-model="item.value" filterable allow-create placeholder="请选择字段名称" style="flex: 2" @change="val => handleFieldSelectChange(val, item)">
+                        <el-option v-for="opt in fieldOptions" :key="opt.fileValue" :label="opt.label" :value="opt.value" :disabled="isFieldSelected(opt.value, item)" />
+                      </el-select>
                       <el-select v-model="item.layout" @change="refreshPreview" style="flex: 1">
                         <el-option label="单排" value="single"></el-option>
                         <el-option label="双排" value="double"></el-option>
@@ -69,7 +71,7 @@
 
                     <div class="field-actions-right">
                       <el-button type="primary" icon="el-icon-plus" circle plain size="mini" @click="addField(index)" title="新增"></el-button>
-                      <el-button type="danger" icon="el-icon-minus" circle plain size="mini" :disabled="fieldConfigList.length <= 1" @click="removeField(index)" title="删除"></el-button>
+                      <el-button type="danger" icon="el-icon-minus" circle plain size="mini" :disabled="fieldConfigList.length <= 1 || fixedFieldKeys.includes(item.key)" @click="removeField(index)" title="删除"></el-button>
                     </div>
                   </div>
                 </div>
@@ -187,6 +189,23 @@ export default {
         marginRight: '10mm',
       },
       fieldConfigList: [],
+      fixedFieldKeys: ['containerNo', 'warehouse'],
+      fieldOptions: [
+        { label: '材料编码', value: '材料编码', fileValue: 'goodCode' },
+        { label: '容器号', value: '容器号', fileValue: 'containerCode' },
+        { label: '生产单位', value: '生产单位', fileValue: 'productionUnit' },
+        { label: '库房', value: '库房', fileValue: 'warehouseName' },
+        { label: '位置', value: '位置', fileValue: 'position' },
+        { label: '货箱号', value: '货箱号', fileValue: 'boxNum' },
+        { label: '封记编码1', value: '封记编码1', fileValue: 'sealCode1' },
+        { label: '封记类型1', value: '封记类型1', fileValue: 'sealType1' },
+        { label: '封记编码2', value: '封记编码2', fileValue: 'sealCode2' },
+        { label: '封记类型2', value: '封记类型2', fileValue: 'sealType2' },
+        { label: '重量(毛重)', value: '重量(毛重)', fileValue: 'grossWeight' },
+        { label: '重量(皮重)', value: '重量(皮重)', fileValue: 'tareWeight' },
+        { label: '重量(净重)', value: '重量(净重)', fileValue: 'netWeight' },
+        { label: '入库时间', value: '入库时间', fileValue: 'storageTime' },
+      ],
     }
   },
   computed: {
@@ -238,6 +257,7 @@ export default {
         key: 'customField' + this.nextFieldId,
         label: '',
         value: '自定义字段' + this.nextFieldId,
+        fileValue: '',
         layout: 'single',
         fontSize: '16号',
         status: 'normal',
@@ -263,6 +283,14 @@ export default {
     },
     handleFieldChange() {
       this.refreshPreview()
+    },
+    isFieldSelected(value, currentItem) {
+      return this.fieldConfigList.some(item => item !== currentItem && item.value === value)
+    },
+    handleFieldSelectChange(val, item) {
+      const matched = this.fieldOptions.find(opt => opt.value === val)
+      item.fileValue = matched ? matched.fileValue : ''
+      this.handleFieldChange()
     },
     handleQrSizeChange() {
       this.templateForm.qrSize = this.qrWidth + '×' + this.qrHeight
