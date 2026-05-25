@@ -21,7 +21,7 @@
           <span style="margin-left: 30px;">总重量：<span class="red-text">{{ summaryStats.totalNetWeight || 0 }}</span></span>
         </div>
         <div class="table">
-          <el-table ref="table" :data="tableData" highlight-current-row :height="height" style="width: 100%">
+          <el-table ref="table" :data="tableData" border highlight-current-row :height="height" style="width: 100%">
             <el-table-column
               v-for="item in currentTableKeys"
               :prop="item.prop"

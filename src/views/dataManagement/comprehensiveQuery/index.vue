@@ -20,7 +20,7 @@
           </div>
         </div>
         <div class="table">
-          <el-table ref="table" :data="tableData" highlight-current-row :height="height" style="width: 100%">
+          <el-table ref="table" :data="tableData" border highlight-current-row :height="height" style="width: 100%">
             <el-table-column
               v-for="(item, idx) in visibleTableKeys"
               :prop="item.prop"

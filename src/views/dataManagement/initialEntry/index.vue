@@ -17,6 +17,7 @@
             ref="table"
             v-loading="listLoading"
             :data="tableData"
+            border
             highlight-current-row
             :height="height"
             style="width: 100%"

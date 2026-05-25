@@ -6,8 +6,8 @@ import { getAllTransferBasisList } from '@/views/task/inbound/components/api.js'
 export const allTableColumns = [
   { label: '容器号', prop: 'containerCode', minWidth: 120 },
   { label: '材料名称', prop: 'goodName', minWidth: 120 },
-  { label: '入库信息', prop: 'inboundInfo', minWidth: 180, type: 'slot' },
-  { label: '出库信息', prop: 'outboundInfo', minWidth: 180, type: 'slot' },
+  { label: '入库信息', prop: 'inboundInfo', minWidth: 200, type: 'slot' },
+  { label: '出库信息', prop: 'outboundInfo', minWidth: 200, type: 'slot' },
   { label: '位置', prop: 'location', minWidth: 120 },
   { label: '封记类型1', prop: 'sealType1', minWidth: 100 },
   { label: '封记编码1', prop: 'sealCode1', minWidth: 120 },

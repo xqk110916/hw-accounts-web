@@ -19,7 +19,7 @@
       <div class="manage-operation">
         <div :class="['btn', 'primary']" @click="handleAdd">新增</div>
       </div>
-      <el-table v-loading="loading" :data="tableData" height="420" style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" border height="420" style="width: 100%">
         <el-table-column prop="templateName" label="模板名称" min-width="180" show-overflow-tooltip></el-table-column>
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip></el-table-column>
         <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip></el-table-column>

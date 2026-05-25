@@ -35,6 +35,7 @@
           <el-table
             ref="table"
             :data="tableData"
+            border
             highlight-current-row
             :height="height"
             style="width: 100%"
