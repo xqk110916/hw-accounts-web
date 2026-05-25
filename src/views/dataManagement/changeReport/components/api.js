@@ -1,16 +1,25 @@
-export const listChangeReport = params => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        code: 1,
-        data: {
-          list: [
-            { id: 1, type: 'in', materialCode: 'XXXXXXXX', materialName: '材料A', time: '2025-10-10', changeAmount: '+10', stockLocation: '位置A' },
-            { id: 2, type: 'out', materialCode: 'XXXXXXXX', materialName: '材料B', time: '2025-10-11', changeAmount: '-5', stockLocation: '位置B' },
-          ],
-          pagination: { total: 200 }
-        }
-      })
-    }, 500)
-  })
+import request from '@/utils/request'
+
+export const listChangeSummary = data => {
+  return request({ url: '/busin/statist/change/summary', method: 'post', data })
+}
+
+export const listChangeDetail = data => {
+  return request({ url: '/busin/statist/change/detail', method: 'post', data })
+}
+
+export const getChangeStatistics = data => {
+  return request({ url: '/busin/statist/change/summary/statistics', method: 'post', data })
+}
+
+export const exportChangeSummary = data => {
+  return request({ url: '/busin/statist/change/summary/export', method: 'post', data, responseType: 'blob' })
+}
+
+export const exportChangeDetail = data => {
+  return request({ url: '/busin/statist/change/detail/export', method: 'post', data, responseType: 'blob' })
+}
+
+export const getChangeSummaryDetail = (goodsCode, data) => {
+  return request({ url: `/busin/statist/change/summary/detail/${goodsCode}`, method: 'post', data })
 }

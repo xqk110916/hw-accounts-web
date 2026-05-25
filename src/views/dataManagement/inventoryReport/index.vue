@@ -2,46 +2,43 @@
   <div class="wrapper">
     <div class="content">
       <div class="right">
-        <!-- 红色大字看板 -->
-        <div class="kanban">
-          <span>当前总数量：<span class="red-text">{{ extra.totalStock }}</span></span>
-          <span style="margin-left: 30px;">总重：<span class="red-text">{{ extra.totalWeight }}</span></span>
-        </div>
-        
         <search-filter class="search" :options="search.options" :form="search.params">
-          <div slot="footer" class="footer">
-            <div :class="['btn', 'text']" @click="getTableList">查询</div>
+          <div slot="footer" class="footer" style="padding-top: 4px;">
+            <div :class="['btn', 'text']" @click="handleQuery">查询</div>
             <div class="partition"></div>
             <div :class="['btn', 'text']" @click="resetSearchParams">重置</div>
           </div>
         </search-filter>
-        <div class="operation-bar" v-if="btns.operation && btns.operation.length">
-          <div
-            v-for="item in btns.operation"
-            :key="item.label"
-            :class="['btn', item.type === 'primary' ? 'primary' : 'default-btn']"
-            @click="handleBtnClick(item)"
-          >
-            {{ item.label }}
-          </div>
+        <div class="tab-bar">
+          <el-tabs v-model="activeTab" class="report-tabs" @tab-click="handleTabChange">
+            <el-tab-pane label="汇总" name="summary" />
+            <el-tab-pane label="明细" name="detail" />
+          </el-tabs>
+          <el-button size="small" @click="handleExport">导出</el-button>
+        </div>
+        <div class="statistics" v-if="activeTab === 'summary'">
+          <span>容器总数：<span class="red-text">{{ summaryStats.totalContainerCount || 0 }}</span></span>
+          <span style="margin-left: 30px;">总重量：<span class="red-text">{{ summaryStats.totalNetWeight || 0 }}</span></span>
         </div>
         <div class="table">
           <el-table ref="table" :data="tableData" highlight-current-row :height="height" style="width: 100%">
             <el-table-column
-              v-for="item in tableKeys"
+              v-for="item in currentTableKeys"
               :prop="item.prop"
               :label="item.label"
               :key="item.prop"
               show-overflow-tooltip
-              :width="item.width"
+              :min-width="item.minWidth"
             >
               <template slot-scope="scope">
-                <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'stock' || item.prop === 'totalWeight'" class="red-text">
-                    {{ scope.row[item.prop] }}
-                  </span>
+                <div>{{ scope.row[item.prop] }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="activeTab === 'summary'" label="操作" width="80" fixed="right">
+              <template slot-scope="scope">
+                <div class="table_operation">
+                  <div class="btn text" @click="openDetail(scope.row)">详情</div>
                 </div>
-                <div v-else>{{ scope.row[item.prop] }}</div>
               </template>
             </el-table-column>
           </el-table>
@@ -54,99 +51,124 @@
               :page-size="search.params.pageSize"
               background
               layout="total, sizes, prev, pager, next"
-              :total="search.params.totoal"
-            >
-            </el-pagination>
+              :total="search.params.total"
+            />
           </div>
         </div>
       </div>
     </div>
+    <summary-detail-dialog ref="summaryDetailDialog" />
   </div>
 </template>
 
 <script>
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
+import SummaryDetailDialog from './components/SummaryDetailDialog.vue'
+import { configSummary, configDetail, searchConfig, requestFun, getDefaultOptions, buildQueryParams } from './components/index.js'
+import { blobSaveExcel } from '@/utils'
 
 export default {
   name: 'InventoryReport',
+  components: { SummaryDetailDialog },
   data() {
     return {
+      activeTab: 'summary',
       search: {
-        params: {
-          currentPage: 1,
-          pageSize: 20,
-          totoal: 0,
-        },
+        params: { currentPage: 1, pageSize: 20, total: 0 },
         options: [],
       },
       tableData: [],
-      extra: {
-        totalStock: '0',
-        totalWeight: '0'
-      },
+      summaryStats: {},
       height: 0,
-      tableKeys: [],
-      btns
+      btns: {},
     }
   },
+  computed: {
+    currentTableKeys() {
+      return this.activeTab === 'summary' ? configSummary.table : configDetail.table
+    },
+  },
   async created() {
-    await getDefaultOptions()
-    this.handleData()
+    this.initSearchOptions()
+    await getDefaultOptions(this)
     this.getTableList()
   },
   mounted() {
-    setTimeout(() => {
-      this.computedTableHeight()
-    }, 0)
+    setTimeout(() => { this.computedTableHeight() }, 0)
     window.addEventListener('resize', this.computedTableHeight)
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.computedTableHeight)
   },
   methods: {
-    computedTableHeight() {
-      let rightDom = document.querySelector('.right')
-      let rightDomHeight = rightDom ? rightDom.clientHeight : 0
-      let kanbanDom = document.querySelector('.kanban')
-      let kanbanDomHeight = kanbanDom ? kanbanDom.clientHeight : 0
-      let searchDom = document.querySelector('.search')
-      let searchDomHeight = searchDom ? searchDom.clientHeight : 0
-      let operationDom = document.querySelector('.operation-bar')
-      let operationDomHeight = operationDom ? operationDom.clientHeight : 0
-
-      this.height = rightDomHeight - kanbanDomHeight - searchDomHeight - operationDomHeight - 90
-    },
-    async handleData() {
-      this.tableKeys = config.table
-      config.search.forEach(item => {
-        this.search.options.push(item)
-        this.$set(this.search.params, item.prop, '')
-        if (item.option && Object.prototype.toString.call(item.option) !== '[object Array]') {
-          item.option.then(res => {
-            item.option = Array.isArray(res.data) ? res.data : res.data.list
-          })
+    initSearchOptions() {
+      searchConfig.forEach(item => {
+        this.search.options.push({ ...item })
+        if (item.type !== 'daterange') {
+          this.$set(this.search.params, item.prop, item.multiple ? [] : '')
+        } else {
+          this.$set(this.search.params, item.prop, [])
         }
       })
       this.search.options.push({ type: 'slot', slotName: 'footer', col: 6 })
     },
-    handleBtnClick(item, payload) {
-      if (item.execute === 'export') {
-        this.$message.success('已加入导出队列')
-      }
+    computedTableHeight() {
+      const rightDom = document.querySelector('.right')
+      const rightH = rightDom ? rightDom.clientHeight : 0
+      const searchDom = document.querySelector('.search')
+      const searchH = searchDom ? searchDom.clientHeight : 0
+      const tabsDom = document.querySelector('.tab-bar')
+      const tabsH = tabsDom ? tabsDom.clientHeight : 0
+      const statsDom = document.querySelector('.statistics')
+      const statsH = statsDom ? statsDom.clientHeight : 0
+      this.height = rightH - searchH - tabsH - statsH - 90
+    },
+    handleQuery() {
+      this.search.params.currentPage = 1
+      this.getTableList()
+    },
+    handleTabChange() {
+      this.search.params.currentPage = 1
+      this.tableData = []
+      this.getTableList()
     },
     getTableList() {
-      this.tableData = []
-      return requestFun.list(this.search.params).then(res => {
+      const params = buildQueryParams(this.search.params)
+      const fn = this.activeTab === 'summary' ? requestFun.summaryList : requestFun.detailList
+      fn(params).then(res => {
         if (res.code === 1) {
-          let data = res.data.list || []
-          let page = res.data.pagination || {}
-          this.extra = res.data.extra || { totalStock: '0', totalWeight: '0' }
-          if (handleTbaleMap) data = handleTbaleMap(data)
-          this.tableData = data
-          this.search.params.totoal = page.total
-          return data
+          this.tableData = res.data?.list || []
+          this.search.params.total = res.data?.pagination?.total || 0
         }
       })
+      if (this.activeTab === 'summary') {
+        this.getSummaryStatistics(params)
+      }
+    },
+    getSummaryStatistics(params) {
+      requestFun.summaryStatistics(params).then(res => {
+        if (res.code === 1) {
+          this.summaryStats = res.data || {}
+        }
+      }).catch(() => {
+        this.summaryStats = {}
+      })
+    },
+    handleExport() {
+      const params = buildQueryParams(this.search.params)
+      const fn = this.activeTab === 'summary' ? requestFun.summaryExport : requestFun.detailExport
+      fn(params).then(res => {
+        const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+        const disposition = res.headers && res.headers['content-disposition']
+        let fileName = this.activeTab === 'summary' ? '存量汇总报表' : '存量明细报表'
+        if (disposition) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
+          if (match && match[1]) fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+        }
+        blobSaveExcel(blob, fileName)
+      })
+    },
+    openDetail(row) {
+      this.$refs.summaryDetailDialog.open(row.goodsCode)
     },
     handleSizeChange(value) {
       this.search.params.pageSize = value
@@ -157,12 +179,10 @@ export default {
       this.getTableList()
     },
     resetSearchParams() {
-      this.search.params.currentPage = 1
-      config.search.forEach(item => {
-        this.search.params[item.prop] = ''
-      })
+      this.search.params = { currentPage: 1, pageSize: this.search.params.pageSize, total: 0 }
+      this.initSearchOptions()
       this.getTableList()
-    }
+    },
   },
 }
 </script>
@@ -187,15 +207,6 @@ export default {
       flex-direction: column;
       overflow: hidden;
 
-      .kanban {
-        font-size: 16px;
-        font-weight: bold;
-        margin-bottom: 16px;
-        .red-text {
-          color: #d32f2f;
-        }
-      }
-
       .search {
         .footer {
           height: 34px;
@@ -217,13 +228,34 @@ export default {
         margin-bottom: 6px;
         text-align: right;
       }
-      .table {
-        margin-top: 10px;
-        flex: 1;
+
+      .tab-bar {
+        position: relative;
+        .report-tabs {
+          ::v-deep .el-tabs__header {
+            margin-bottom: 8px;
+          }
+        }
+        .el-button {
+          position: absolute;
+          right: 0;
+          top: 0;
+        }
+      }
+
+      .statistics {
+        font-size: 15px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        padding: 8px 0;
         .red-text {
           color: #d32f2f;
-          font-weight: 500;
+          font-weight: 600;
         }
+      }
+
+      .table {
+        flex: 1;
         .pagination {
           display: flex;
           justify-content: flex-end;
@@ -257,10 +289,7 @@ export default {
     font-size: 14px;
     line-height: 22px;
     cursor: pointer;
-
-    &.text {
-      color: #246fe5;
-    }
+    &.text { color: #246fe5; }
     &.primary {
       padding: 5px 16px;
       border-radius: 3px;
@@ -271,9 +300,14 @@ export default {
       padding: 5px 16px;
       border-radius: 3px;
       background: #fff;
-      border: 1px solid #c4c9cf;
-      color: #333;
+      border: 1px solid #246fe5;
+      color: #246fe5;
     }
   }
+}
+
+.table_operation {
+  display: flex;
+  flex-wrap: wrap;
 }
 </style>

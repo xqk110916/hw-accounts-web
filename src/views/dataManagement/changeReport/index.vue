@@ -2,44 +2,46 @@
   <div class="wrapper">
     <div class="content">
       <div class="right">
-        <el-tabs v-model="activeView" @tab-click="handleTabClick">
-          <el-tab-pane label="明细视图" name="detail"></el-tab-pane>
-          <el-tab-pane label="汇总视图" name="summary"></el-tab-pane>
-        </el-tabs>
-        
         <search-filter class="search" :options="search.options" :form="search.params">
-          <div slot="footer" class="footer">
-            <div :class="['btn', 'text']" @click="getTableList">查询</div>
+          <div slot="footer" class="footer" style="padding-top: 4px;">
+            <div :class="['btn', 'text']" @click="handleQuery">查询</div>
             <div class="partition"></div>
             <div :class="['btn', 'text']" @click="resetSearchParams">重置</div>
           </div>
         </search-filter>
-        
-        <div class="operation-bar">
-          <div class="btn default-btn" @click="$message.success('已加入导出队列')">导出</div>
+        <div class="tab-bar">
+          <el-tabs v-model="activeTab" class="report-tabs" @tab-click="handleTabChange">
+            <el-tab-pane label="汇总" name="summary" />
+            <el-tab-pane label="明细" name="detail" />
+          </el-tabs>
+          <el-button size="small" @click="handleExport">导出</el-button>
         </div>
-
+        <div class="statistics" v-if="activeTab === 'summary'">
+          <span>总入库：<span class="stat-value">{{ summaryStats.inboundCount || 0 }}（{{ summaryStats.inboundWeight || 0 }}）</span></span>
+          <span style="margin-left: 30px;">总出库：<span class="stat-value">{{ summaryStats.outboundCount || 0 }}（{{ summaryStats.outboundWeight || 0 }}）</span></span>
+        </div>
         <div class="table">
           <el-table ref="table" :data="tableData" highlight-current-row :height="height" style="width: 100%">
             <el-table-column
-              v-for="item in tableKeys"
+              v-for="item in currentTableKeys"
               :prop="item.prop"
               :label="item.label"
               :key="item.prop"
               show-overflow-tooltip
+              :min-width="item.minWidth"
             >
               <template slot-scope="scope">
-                <div v-if="item.type === 'slot'">
-                  <span v-if="item.prop === 'type'">
-                    <el-tag :type="scope.row.type === 'in' ? 'success' : 'danger'" size="small">
-                      {{ scope.row.type === 'in' ? '入库' : '出库' }}
-                    </el-tag>
-                  </span>
-                  <span v-else-if="item.prop === 'changeAmount'" :style="{ color: scope.row.type === 'in' ? '#2e7d32' : '#d32f2f', fontWeight: 'bold' }">
-                    {{ scope.row.changeAmount }}
-                  </span>
-                </div>
+                <el-tag v-if="item.type === 'tag'" :type="scope.row.type === 1 ? 'success' : 'danger'" size="small">
+                  {{ scope.row[item.prop] }}
+                </el-tag>
                 <div v-else>{{ scope.row[item.prop] }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="activeTab === 'summary'" label="操作" width="80" fixed="right">
+              <template slot-scope="scope">
+                <div class="table_operation">
+                  <div class="btn text" @click="openDetail(scope.row)">详情</div>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -52,85 +54,123 @@
               :page-size="search.params.pageSize"
               background
               layout="total, sizes, prev, pager, next"
-              :total="search.params.totoal"
-            >
-            </el-pagination>
+              :total="search.params.total"
+            />
           </div>
         </div>
       </div>
     </div>
+    <summary-detail-dialog ref="summaryDetailDialog" />
   </div>
 </template>
 
 <script>
-import { configDetail, requestFun, getDefaultOptions } from './components/index.js'
+import SummaryDetailDialog from './components/SummaryDetailDialog.vue'
+import { configSummary, configDetail, searchConfig, requestFun, getDefaultOptions, buildQueryParams } from './components/index.js'
+import { blobSaveExcel } from '@/utils'
 
 export default {
   name: 'ChangeReport',
+  components: { SummaryDetailDialog },
   data() {
     return {
-      activeView: 'detail',
+      activeTab: 'summary',
       search: {
-        params: {
-          currentPage: 1,
-          pageSize: 20,
-          totoal: 0,
-        },
+        params: { currentPage: 1, pageSize: 20, total: 0 },
         options: [],
       },
       tableData: [],
+      summaryStats: {},
       height: 0,
-      tableKeys: [],
     }
   },
+  computed: {
+    currentTableKeys() {
+      return this.activeTab === 'summary' ? configSummary.table : configDetail.table
+    },
+  },
   async created() {
-    await getDefaultOptions()
-    this.handleData()
+    this.initSearchOptions()
+    await getDefaultOptions(this)
     this.getTableList()
   },
   mounted() {
-    setTimeout(() => {
-      this.computedTableHeight()
-    }, 0)
+    setTimeout(() => { this.computedTableHeight() }, 0)
     window.addEventListener('resize', this.computedTableHeight)
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.computedTableHeight)
   },
   methods: {
-    handleTabClick() {
-      this.getTableList()
-    },
-    computedTableHeight() {
-      let rightDom = document.querySelector('.right')
-      let rightDomHeight = rightDom ? rightDom.clientHeight : 0
-      let tabsDom = document.querySelector('.el-tabs')
-      let tabsDomHeight = tabsDom ? tabsDom.clientHeight : 0
-      let searchDom = document.querySelector('.search')
-      let searchDomHeight = searchDom ? searchDom.clientHeight : 0
-      let operationDom = document.querySelector('.operation-bar')
-      let operationDomHeight = operationDom ? operationDom.clientHeight : 0
-
-      this.height = rightDomHeight - tabsDomHeight - searchDomHeight - operationDomHeight - 90
-    },
-    async handleData() {
-      this.tableKeys = configDetail.table
-      configDetail.search.forEach(item => {
-        this.search.options.push(item)
-        this.$set(this.search.params, item.prop, '')
+    initSearchOptions() {
+      searchConfig.forEach(item => {
+        this.search.options.push({ ...item })
+        if (item.type !== 'daterange') {
+          this.$set(this.search.params, item.prop, item.multiple ? [] : '')
+        } else {
+          this.$set(this.search.params, item.prop, [])
+        }
       })
       this.search.options.push({ type: 'slot', slotName: 'footer', col: 6 })
     },
-    getTableList() {
+    computedTableHeight() {
+      const rightDom = document.querySelector('.right')
+      const rightH = rightDom ? rightDom.clientHeight : 0
+      const searchDom = document.querySelector('.search')
+      const searchH = searchDom ? searchDom.clientHeight : 0
+      const tabsDom = document.querySelector('.tab-bar')
+      const tabsH = tabsDom ? tabsDom.clientHeight : 0
+      const statsDom = document.querySelector('.statistics')
+      const statsH = statsDom ? statsDom.clientHeight : 0
+      this.height = rightH - searchH - tabsH - statsH - 90
+    },
+    handleQuery() {
+      this.search.params.currentPage = 1
+      this.getTableList()
+    },
+    handleTabChange() {
+      this.search.params.currentPage = 1
       this.tableData = []
-      // Mock logic: pass view type
-      let p = { ...this.search.params, view: this.activeView }
-      return requestFun.list(p).then(res => {
+      this.getTableList()
+    },
+    getTableList() {
+      const params = buildQueryParams(this.search.params)
+      const fn = this.activeTab === 'summary' ? requestFun.summaryList : requestFun.detailList
+      fn(params).then(res => {
         if (res.code === 1) {
-          this.tableData = res.data.list || []
-          this.search.params.totoal = res.data.pagination.total
+          this.tableData = res.data?.list || []
+          this.search.params.total = res.data?.pagination?.total || 0
         }
       })
+      if (this.activeTab === 'summary') {
+        this.getSummaryStatistics(params)
+      }
+    },
+    getSummaryStatistics(params) {
+      requestFun.summaryStatistics(params).then(res => {
+        if (res.code === 1) {
+          this.summaryStats = res.data || {}
+        }
+      }).catch(() => {
+        this.summaryStats = {}
+      })
+    },
+    handleExport() {
+      const params = buildQueryParams(this.search.params)
+      const fn = this.activeTab === 'summary' ? requestFun.summaryExport : requestFun.detailExport
+      fn(params).then(res => {
+        const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+        const disposition = res.headers && res.headers['content-disposition']
+        let fileName = this.activeTab === 'summary' ? '变化量汇总报表' : '变化量明细报表'
+        if (disposition) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
+          if (match && match[1]) fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+        }
+        blobSaveExcel(blob, fileName)
+      })
+    },
+    openDetail(row) {
+      this.$refs.summaryDetailDialog.open(row.goodsCode)
     },
     handleSizeChange(value) {
       this.search.params.pageSize = value
@@ -141,18 +181,15 @@ export default {
       this.getTableList()
     },
     resetSearchParams() {
-      this.search.params.currentPage = 1
-      configDetail.search.forEach(item => {
-        this.search.params[item.prop] = ''
-      })
+      this.search.params = { currentPage: 1, pageSize: this.search.params.pageSize, total: 0 }
+      this.initSearchOptions()
       this.getTableList()
-    }
+    },
   },
 }
 </script>
 
 <style lang="scss" scoped>
-// 省略标准 wrapper/content/table 相关样式，使用常规代码即可
 .wrapper {
   width: 100%;
   height: 100%;
@@ -171,10 +208,19 @@ export default {
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      
-      .el-tabs {
-        margin-bottom: 0px;
+
+      .tab-bar {
+        position: relative;
+        .report-tabs {
+          ::v-deep .el-tabs__header { margin-bottom: 8px; }
+        }
+        .el-button {
+          position: absolute;
+          right: 0;
+          top: 0;
+        }
       }
+
       .search {
         .footer {
           height: 34px;
@@ -189,14 +235,19 @@ export default {
           }
         }
       }
-      .operation-bar {
-        height: 32px;
-        margin-top: 4px;
-        margin-bottom: 6px;
-        text-align: right;
+
+      .statistics {
+        font-size: 15px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        padding: 8px 0;
+        .stat-value {
+          color: #d32f2f;
+          font-weight: 600;
+        }
       }
+
       .table {
-        margin-top: 10px;
         flex: 1;
         .pagination {
           display: flex;
@@ -218,6 +269,9 @@ export default {
           background: #f1f4f6;
           color: #626c78;
         }
+        ::v-deep .el-table td.el-table__cell {
+          color: #1b2129;
+        }
       }
     }
   }
@@ -232,9 +286,14 @@ export default {
       padding: 5px 16px;
       border-radius: 3px;
       background: #fff;
-      border: 1px solid #c4c9cf;
-      color: #333;
+      border: 1px solid #246fe5;
+      color: #246fe5;
     }
   }
+}
+
+.table_operation {
+  display: flex;
+  flex-wrap: wrap;
 }
 </style>

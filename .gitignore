@@ -21,6 +21,7 @@ selenium-debug.log
 .playwright-mcp
 .history
 .gemini
+.antigravitycli
 
 package-lock.json
 yarn.lock

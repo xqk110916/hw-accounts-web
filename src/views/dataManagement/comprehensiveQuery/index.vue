@@ -21,14 +21,13 @@
         </div>
         <div class="table">
           <el-table ref="table" :data="tableData" highlight-current-row :height="height" style="width: 100%">
-            
             <el-table-column
-              v-for="item in tableKeys"
+              v-for="(item, idx) in visibleTableKeys"
               :prop="item.prop"
               :label="item.label"
-              :key="item.prop"
+              :key="'col_' + item.prop + '_' + idx"
               show-overflow-tooltip
-              :width="item.width"
+              :min-width="item.minWidth"
             >
               <template slot-scope="scope">
                 <div v-if="item.type === 'slot'">
@@ -61,81 +60,108 @@
               :page-size="search.params.pageSize"
               background
               layout="total, sizes, prev, pager, next"
-              :total="search.params.totoal"
-            >
-            </el-pagination>
+              :total="search.params.total"
+            />
           </div>
         </div>
       </div>
     </div>
-    <detail ref="detail"></detail>
-    
+    <detail ref="detail" />
+    <column-manage-dialog
+      ref="columnManage"
+      :columns="allTableColumns"
+      @confirm="handleColumnConfirm"
+    />
   </div>
 </template>
 
 <script>
 import detail from './components/detail.vue'
-import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
+import ColumnManageDialog from './components/ColumnManageDialog.vue'
+import { config, allTableColumns, requestFun, btns, getDefaultOptions, buildQueryParams, handleTbaleMap } from './components/index.js'
+import { exportSummaryQuery } from './components/api.js'
+import { blobSaveExcel } from '@/utils'
+
+const COLUMN_STORAGE_KEY = 'column_visible_comprehensiveQuery'
 
 export default {
   name: 'ComprehensiveQuery',
-  components: { detail },
+  components: { detail, ColumnManageDialog },
   data() {
     return {
       search: {
         params: {
           currentPage: 1,
           pageSize: 20,
-          type: 'all',
-          totoal: 0,
+          total: 0,
         },
         options: [],
       },
       tableData: [],
       height: 0,
-      tableKeys: [],
-      btns
+      allTableColumns,
+      visibleColumnProps: [],
+      btns,
     }
   },
+  computed: {
+    visibleTableKeys() {
+      if (!this.visibleColumnProps.length) return this.allTableColumns
+      return this.visibleColumnProps
+        .map(prop => this.allTableColumns.find(col => col.prop === prop))
+        .filter(Boolean)
+    },
+  },
   async created() {
-    await getDefaultOptions()
-    this.handleData()
+    this.initSearchOptions()
+    await getDefaultOptions(this)
+    this.loadColumnConfig()
     this.getTableList()
   },
   mounted() {
-    setTimeout(() => {
-      this.computedTableHeight()
-    }, 0)
+    setTimeout(() => { this.computedTableHeight() }, 0)
     window.addEventListener('resize', this.computedTableHeight)
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.computedTableHeight)
   },
   methods: {
-    computedTableHeight() {
-      let rightDom = document.querySelector('.right')
-      let rightDomHeight = rightDom ? rightDom.clientHeight : 0
-      let searchDom = document.querySelector('.search')
-      let searchDomHeight = searchDom ? searchDom.clientHeight : 0
-      let operationDom = document.querySelector('.operation-bar')
-      let operationDomHeight = operationDom ? operationDom.clientHeight : 0
-
-      this.height = rightDomHeight - searchDomHeight - operationDomHeight - 90
-    },
-    async handleData() {
-      this.tableKeys = config.table
+    initSearchOptions() {
       config.search.forEach(item => {
-        this.search.options.push(item)
-        if (item.prop !== 'type') {
+        this.search.options.push({ ...item })
+        if (item.type !== 'daterange') {
           this.$set(this.search.params, item.prop, '')
-        }
-        if (item.option && Object.prototype.toString.call(item.option) !== '[object Array]') {
-          item.option.then(res => {
-            item.option = Array.isArray(res.data) ? res.data : res.data.list
-          })
+        } else {
+          this.$set(this.search.params, item.prop, [])
         }
       })
       this.search.options.push({ type: 'slot', slotName: 'footer', col: 6 })
+    },
+    loadColumnConfig() {
+      const saved = localStorage.getItem(COLUMN_STORAGE_KEY)
+      if (saved) {
+        try {
+          this.visibleColumnProps = JSON.parse(saved)
+        } catch {
+          this.visibleColumnProps = this.allTableColumns.map(c => c.prop)
+        }
+      } else {
+        this.visibleColumnProps = this.allTableColumns.map(c => c.prop)
+      }
+    },
+    handleColumnConfirm(selectedProps) {
+      this.visibleColumnProps = [...selectedProps]
+      localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(selectedProps))
+      this.$nextTick(() => { this.$forceUpdate() })
+    },
+    computedTableHeight() {
+      const rightDom = document.querySelector('.right')
+      const rightH = rightDom ? rightDom.clientHeight : 0
+      const searchDom = document.querySelector('.search')
+      const searchH = searchDom ? searchDom.clientHeight : 0
+      const operationDom = document.querySelector('.operation-bar')
+      const operationH = operationDom ? operationDom.clientHeight : 0
+      this.height = rightH - searchH - operationH - 90
     },
     handleBtnClick(item, payload) {
       if (item.fn) {
@@ -146,25 +172,38 @@ export default {
             this.$refs.detail.open(payload)
             break
           case 'export':
-            this.$message.success('导出任务已加入后台队列')
+            this.handleExport()
             break
           case 'columnManage':
-            this.$message.info('列头管理弹窗待接入')
+            this.$refs.columnManage.open(this.visibleColumnProps)
             break
         }
       }
     },
     getTableList() {
       this.tableData = []
-      return requestFun.list(this.search.params).then(res => {
+      const params = buildQueryParams(this.search.params)
+      return requestFun.list(params).then(res => {
         if (res.code === 1) {
           let data = res.data.list || []
-          let page = res.data.pagination || {}
+          const page = res.data.pagination || {}
           if (handleTbaleMap) data = handleTbaleMap(data)
           this.tableData = data
-          this.search.params.totoal = page.total
-          return data
+          this.search.params.total = page.total
         }
+      })
+    },
+    handleExport() {
+      const params = buildQueryParams(this.search.params)
+      exportSummaryQuery(params).then(res => {
+        const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+        const disposition = res.headers && res.headers['content-disposition']
+        let fileName = '综合查询导出'
+        if (disposition) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
+          if (match && match[1]) fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+        }
+        blobSaveExcel(blob, fileName)
       })
     },
     handleSizeChange(value) {
@@ -176,10 +215,11 @@ export default {
       this.getTableList()
     },
     resetSearchParams() {
-      this.search.params = this.$options.data().search.params
-      this.search.params.type = 'all'
+      const defaultParams = { currentPage: 1, pageSize: this.search.params.pageSize, total: 0 }
+      this.search.params = defaultParams
+      this.initSearchOptions()
       this.getTableList()
-    }
+    },
   },
 }
 </script>
@@ -223,7 +263,7 @@ export default {
         height: 32px;
         margin-top: 4px;
         margin-bottom: 6px;
-        text-align: right; 
+        text-align: right;
       }
       .table {
         margin-top: 10px;
