@@ -43,11 +43,11 @@ export const reportConfigs = {
     tableNo: 'X材料R01表',
     formatNo: 'X管办94R01号',
     search: [
-      { label: '任务类型', prop: 'taskType', type: 'select', col: 6, option: [
+      { label: '任务类型', prop: 'taskType', type: 'select', col: 5, option: [
         { label: '入库', value: 1 }, { label: '出库', value: 2 },
       ] },
-      { label: '日期区间', prop: 'dateRange', type: 'daterange', col: 7 },
-      { label: '选择任务', prop: 'taskId', type: 'select', col: 6, option: [], actionBtn: '接入报表' },
+      { label: '日期区间', prop: 'dateRange', type: 'daterange', col: 8 },
+      { label: '选择任务', prop: 'taskId', type: 'select', col: 11, option: [], actionBtn: '接入报表' },
       { label: '从历史中选择', prop: 'historyIds', type: 'select', col: 12, multiple: true, option: [], newRow: true },
     ],
     columns: [
@@ -73,8 +73,8 @@ export const reportConfigs = {
     tableNo: 'X材料R03表',
     formatNo: 'X管办94R03号',
     search: [
-      { label: '年份', prop: 'year', type: 'year', col: 4 },
-      { label: '季度', prop: 'quarter', type: 'select', col: 4, option: quarterOptions, actionBtn: '统计' },
+      { label: '年份', prop: 'year', type: 'year', col: 11 },
+      { label: '季度', prop: 'quarter', type: 'select', col: 13, option: quarterOptions, actionBtn: '统计' },
       { label: '从历史中选择', prop: 'historyId', type: 'select', col: 8, option: [], newRow: true },
     ],
     columns: [
@@ -104,8 +104,8 @@ export const reportConfigs = {
     tableNo: 'X材料R04表',
     formatNo: 'X管办94R04号',
     search: [
-      { label: '年份', prop: 'year', type: 'year', col: 4 },
-      { label: '季度', prop: 'quarter', type: 'select', col: 4, option: quarterOptions, actionBtn: '统计' },
+      { label: '年份', prop: 'year', type: 'year', col: 11 },
+      { label: '季度', prop: 'quarter', type: 'select', col: 13, option: quarterOptions, actionBtn: '统计' },
       { label: '从历史中选择', prop: 'historyId', type: 'select', col: 8, option: [], newRow: true },
     ],
     columns: [
@@ -130,8 +130,8 @@ export const reportConfigs = {
     tableNo: 'X材料R05表',
     formatNo: 'X管办94R05号',
     search: [
-      { label: '年份', prop: 'year', type: 'year', col: 4 },
-      { label: '季度', prop: 'quarter', type: 'select', col: 4, option: quarterOptions, actionBtn: '统计' },
+      { label: '年份', prop: 'year', type: 'year', col: 11 },
+      { label: '季度', prop: 'quarter', type: 'select', col: 13, option: quarterOptions, actionBtn: '统计' },
       { label: '从历史中选择', prop: 'historyId', type: 'select', col: 8, option: [], newRow: true },
     ],
     columns: [
@@ -164,7 +164,7 @@ export const reportConfigs = {
     tableNo: 'X材料R06表',
     formatNo: 'X管办94R06号',
     search: [
-      { label: '查询日期', prop: 'dateRange', type: 'daterange', col: 7, actionBtn: '统计' },
+      { label: '查询日期', prop: 'dateRange', type: 'daterange', col: 12, actionBtn: '统计' },
       { label: '从历史中选择', prop: 'historyId', type: 'select', col: 8, option: [], newRow: true },
     ],
     columns: [
@@ -185,8 +185,8 @@ export const reportConfigs = {
     tableNo: 'X材料R08表',
     formatNo: 'X管办94R08号',
     search: [
-      { label: '统计日期', prop: 'dateRange', type: 'daterange', col: 7 },
-      { label: '选择材料', prop: 'materialCodes', type: 'select', col: 6, multiple: true, option: [], actionBtn: '生成' },
+      { label: '统计日期', prop: 'dateRange', type: 'daterange', col: 11 },
+      { label: '选择材料', prop: 'materialCodes', type: 'select', col: 13, multiple: true, option: [], actionBtn: '生成' },
       { label: '从历史中选择', prop: 'historyId', type: 'select', col: 8, option: [], newRow: true },
     ],
     columns: [
@@ -216,8 +216,8 @@ export const reportConfigs = {
     tableNo: 'X材料R09表',
     formatNo: 'X管办94R09号',
     search: [
-      { label: '统计日期', prop: 'dateRange', type: 'daterange', col: 7 },
-      { label: '选择材料', prop: 'materialCodes', type: 'select', col: 6, multiple: true, option: [], actionBtn: '生成' },
+      { label: '统计日期', prop: 'dateRange', type: 'daterange', col: 11 },
+      { label: '选择材料', prop: 'materialCodes', type: 'select', col: 13, multiple: true, option: [], actionBtn: '生成' },
       { label: '从历史中选择', prop: 'historyId', type: 'select', col: 8, option: [], newRow: true },
     ],
     columns: [
