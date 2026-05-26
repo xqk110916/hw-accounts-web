@@ -18,13 +18,12 @@
           </div>
         </search-filter>
 
-        <div class="operation-bar">
-          <div class="btn default-btn" @click="handleExport">导出</div>
-        </div>
-
         <!-- Tab 1: 总账 - 单表格 + 标题 -->
         <template v-if="activeTab === 'tab1'">
-          <h2 class="account-title">{{ accountTitle }}</h2>
+          <div class="title-bar">
+            <h2 class="account-title">{{ accountTitle }}</h2>
+            <div class="btn default-btn" @click="handleExport">导出</div>
+          </div>
           <div class="table-area">
             <el-table ref="table" :data="tableData" border highlight-current-row :height="height" style="width: 100%">
               <el-table-column
@@ -53,7 +52,10 @@
 
         <!-- Tab 2-5: 上下分栏 -->
         <template v-else>
-          <h2 class="account-title">{{ accountTitle }}</h2>
+          <div class="title-bar">
+            <h2 class="account-title">{{ accountTitle }}</h2>
+            <div class="btn default-btn" @click="handleExport">导出</div>
+          </div>
           <div class="split-container">
             <div class="split-top">
               <div class="split-header">
@@ -139,7 +141,7 @@ export default {
           this.$set(this.search.params, item.prop, [])
         }
       })
-      this.search.options.push({ type: 'slot', slotName: 'footer', col: 6 })
+      this.search.options.push({ type: 'slot', slotName: 'footer', col: 4 })
     },
     rebuildSearchOptions() {
       this.search.options = []
@@ -154,12 +156,10 @@ export default {
       const tabsH = tabsDom ? tabsDom.clientHeight : 0
       const searchDom = document.querySelector('.search')
       const searchH = searchDom ? searchDom.clientHeight : 0
-      const opDom = document.querySelector('.operation-bar')
-      const opH = opDom ? opDom.clientHeight : 0
-      const titleDom = document.querySelector('.account-title')
-      const titleH = titleDom ? titleDom.clientHeight : 0
+      const titleBarDom = document.querySelector('.title-bar')
+      const titleBarH = titleBarDom ? titleBarDom.clientHeight : 0
 
-      const available = rightH - tabsH - searchH - opH - titleH - 100
+      const available = rightH - tabsH - searchH - titleBarH - 100
 
       if (this.activeTab === 'tab1') {
         this.height = available
@@ -288,12 +288,13 @@ export default {
         }
       }
 
-      .operation-bar {
-        height: 32px; margin-top: 4px; margin-bottom: 6px; text-align: right;
-      }
-
-      .account-title {
-        text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #303133;
+      .title-bar {
+        position: relative; display: flex; justify-content: center; align-items: center;
+        height: 36px; margin-top: 4px; margin-bottom: 6px;
+        .account-title {
+          font-size: 18px; font-weight: bold; color: #303133; margin: 0;
+        }
+        .btn { position: absolute; right: 0; }
       }
 
       .table-area {

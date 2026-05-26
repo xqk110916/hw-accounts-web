@@ -40,14 +40,14 @@
           @change="handleDateFilter"
         ></el-date-picker>
         
-        <el-button 
+        <!-- <el-button 
           type="primary" 
           size="small" 
           icon="el-icon-download"
           @click="handleExport"
         >
           导出位置图
-        </el-button>
+        </el-button> -->
       </div>
     </div>
 

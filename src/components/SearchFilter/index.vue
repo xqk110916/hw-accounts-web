@@ -96,6 +96,8 @@ export default {
   },
   computed: {
     showToggle() {
+      const actualFilters = this.options.filter(item => item.type !== 'slot');
+      if (actualFilters.length <= 3) return false;
       let sum = 0;
       this.options.forEach(item => {
         sum += (item.col || 5);
