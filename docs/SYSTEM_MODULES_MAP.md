@@ -29,7 +29,14 @@
 | 综合查询 | `comprehensiveQuery`| `comprehensiveQuery`| 提供跨业务流水的全局综合检索与快照查询能力 |
 | 账目管理 | `accountManagement` | `accountManagement` | 针对实物资产变动产生的关联账务数据处理 |
 
-### 📋 模块 C：任务管理 (Task)
+### 📝 模块 C：表单管理 (Form Management)
+*核心职责：标准报表模板填报、打印与导出*
+
+| 菜单名称 | 路由标示 (path) | 权限标识 (perms) | 业务功能概述 |
+| --- | --- | --- | --- |
+| 表单报送 | `reportSubmit` | `formManagement_reportSubmit` | R01-R09 标准报表的卡片式入口、模板填报、数据列表查看、打印与导出 |
+
+### 📋 模块 D：任务管理 (Task)
 *核心职责：实物库存的现场变动作业驱动*
 
 | 菜单名称 | 路由标示 (path) | 权限标识 (perms) | 业务功能概述 |

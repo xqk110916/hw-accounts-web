@@ -235,22 +235,22 @@ export default {
     },
     handleExport() {
       const params = buildQueryParams(this.search.params)
-      let fn
-      if (this.activeTab === 'tab1') {
-        fn = requestFun.ledgerExport
-      } else {
-        fn = requestFun.detailExport
-      }
-      fn(params).then(res => {
+      const downloadBlob = (res, defaultName) => {
         const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
         const disposition = res.headers && res.headers['content-disposition']
-        let fileName = '账目数据导出'
+        let fileName = defaultName
         if (disposition) {
           const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
           if (match && match[1]) fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
         }
         blobSaveExcel(blob, fileName)
-      })
+      }
+      if (this.activeTab === 'tab1') {
+        requestFun.ledgerExport(params).then(res => downloadBlob(res, '总账导出'))
+      } else {
+        requestFun.summaryExport(params).then(res => downloadBlob(res, '汇总导出'))
+        requestFun.detailExport(params).then(res => downloadBlob(res, '明细导出'))
+      }
     },
     handleSizeChange(value) {
       this.search.params.pageSize = value
