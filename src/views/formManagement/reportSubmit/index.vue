@@ -183,10 +183,10 @@
               >
                 <template v-for="col in currentColumns">
                   <!-- 序号列 -->
-                  <el-table-column v-if="col.type === 'index'" :key="col.label" type="index" :label="col.label" width="55" align="center" />
+                  <el-table-column v-if="col.type === 'index'" :key="'col_index_' + col.label" type="index" :label="col.label" width="55" align="center" />
                   
                   <!-- 操作列 -->
-                  <el-table-column v-else-if="col.type === 'operation'" :key="col.label" :label="col.label" width="100" :fixed="col.fixed" align="center">
+                  <el-table-column v-else-if="col.type === 'operation'" :key="'col_op_' + col.label" :label="col.label" width="100" :fixed="col.fixed" align="center">
                     <template slot-scope="scope">
                       <div class="table_operation">
                         <span v-for="act in col.actions" :key="act" class="btn-text-action" :class="act === '删除' ? 'danger-text' : 'primary-text'" @click="handleRowAction(act, scope.row)">
@@ -197,7 +197,7 @@
                   </el-table-column>
                   
                   <!-- 多级表头 -->
-                  <el-table-column v-else-if="col.children" :key="col.label" :label="col.label" align="center" class-name="group-header">
+                  <el-table-column v-else-if="col.children" :key="'col_children_' + col.label" :label="col.label" align="center" class-name="group-header">
                     <el-table-column
                       v-for="child in col.children"
                       :key="child.prop"
@@ -212,7 +212,7 @@
                   <!-- 普通列 -->
                   <el-table-column
                     v-else
-                    :key="col.prop"
+                    :key="'col_normal_' + col.prop"
                     :prop="col.prop"
                     :label="col.label"
                     :min-width="col.minWidth"
