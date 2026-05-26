@@ -22,6 +22,7 @@ selenium-debug.log
 .history
 .gemini
 .antigravitycli
+.spec-workflow
 
 package-lock.json
 yarn.lock

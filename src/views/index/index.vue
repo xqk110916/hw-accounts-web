@@ -5,30 +5,30 @@
       <el-col :span="14">
         <el-card shadow="hover" class="box-card action-wrapper-card" :body-style="{ padding: '20px' }">
           <div class="action-buttons">
-            <div class="action-card color-1" @click="handleAction('inbound')">
+            <div class="action-card color-1" @click="handleAction('task/inbound')">
               <i class="el-icon-receiving"></i>
               <span>入库管理</span>
             </div>
-            <div class="action-card color-2" @click="handleAction('inventory')">
+            <div class="action-card color-2" @click="handleAction('task/inventory')">
               <i class="el-icon-pie-chart"></i>
               <span>盘存管理</span>
             </div>
-            <div class="action-card color-3" @click="handleAction('outbound')">
+            <div class="action-card color-3" @click="handleAction('task/outbound')">
               <i class="el-icon-sell"></i>
               <span>出库管理</span>
             </div>
-            <div class="action-card color-4" @click="handleAction('data')">
+            <div class="action-card color-4" @click="handleAction('dataManagement/comprehensiveQuery')">
               <i class="el-icon-data-analysis"></i>
               <span>数据管理</span>
             </div>
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :span="10">
         <el-card shadow="hover" class="box-card todo-card">
           <div slot="header" class="todo-header">
-            <span :class="activeTodoTab === 'todo' ? 'active-tab' : 'inactive-tab'" @click="changeTodoTab('todo')">待办</span> / 
+            <span :class="activeTodoTab === 'todo' ? 'active-tab' : 'inactive-tab'" @click="changeTodoTab('todo')">待办</span> /
             <span :class="activeTodoTab === 'done' ? 'active-tab' : 'inactive-tab'" @click="changeTodoTab('done')">已办</span>
           </div>
           <div class="todo-content" v-loading="loadingTodos">
@@ -79,25 +79,25 @@
       </el-col>
     </el-row>
 
-    <!-- Bottom Row: Warehouse Capacity and Product Statistics -->
+    <!-- Bottom Row: Warehouse Capacity and Material Statistics -->
     <el-row :gutter="20" class="row-container">
-      <!-- Left: Warehouse Capacity -->
       <el-col :span="12">
         <el-card shadow="hover" class="box-card stats-card">
           <div slot="header" class="section-header">
             <span class="section-title">库房容量</span>
           </div>
           <div class="warehouse-capacity-list">
-            <div 
-              v-for="wh in warehouseStats" 
-              :key="wh.id" 
+            <div
+              v-for="(wh, index) in warehouseStats"
+              :key="wh.id"
               class="warehouse-capacity-item"
             >
-              <div class="wh-name">{{ wh.name }}</div>
+              <div class="wh-rank" :class="'rank-' + (index + 1)">{{ index + 1 }}</div>
+              <div class="wh-name" :title="wh.name">{{ wh.name }}</div>
               <div class="wh-progress">
-                <el-progress 
-                  :percentage="wh.usageRate" 
-                  :stroke-width="8" 
+                <el-progress
+                  :percentage="wh.usageRate"
+                  :stroke-width="8"
                   :show-text="false"
                   color="#1862df"
                 ></el-progress>
@@ -109,15 +109,11 @@
         </el-card>
       </el-col>
 
-      <!-- Right: Product Statistics Pie Chart -->
       <el-col :span="12">
         <el-card shadow="hover" class="box-card stats-card">
           <div slot="header" class="section-header">
             <div class="header-left">
-              <span class="section-title">产品统计</span>
-              <el-select v-model="pieChartProduct" size="small" class="filter-select">
-                <el-option label="全部" value="all"></el-option>
-              </el-select>
+              <span class="section-title">材料统计</span>
             </div>
             <div class="header-right">
               <el-radio-group v-model="pieChartType" size="small" @change="handlePieChartChange">
@@ -130,7 +126,7 @@
               </el-radio-group>
             </div>
           </div>
-          <div class="chart-container pie-container" ref="pieChart" v-loading="loadingPieChart"></div>
+          <div class="chart-container pie-container" ref="pieChart" v-loading="loadingProductStats"></div>
         </el-card>
       </el-col>
     </el-row>
@@ -139,8 +135,7 @@
 
 <script>
 import * as echarts from 'echarts';
-// 这里复用 warehouseConfig.js 中的模拟数据作为底部统计的数据源
-import { getWarehouseList, getWarehouseById } from '../warehouse/warehouse/config/warehouseConfig';
+import { getProductStatistics } from '@/api/warehouse/warehouse';
 
 export default {
   name: 'Index',
@@ -151,53 +146,30 @@ export default {
       activeTodoTab: 'todo',
       mockTodos: [],
       loadingTodos: false,
-      
+
       // Middle row filters
       inOutStatus: 'all',
       inOutProduct: 'all',
       lineChartType: 'quantity',
       lineChartInstance: null,
       loadingLineChart: false,
-      
-      // Bottom row filters
-      pieChartProduct: 'all',
+
+      // Bottom row
       pieChartType: 'quantity',
       pieChartInstance: null,
-      loadingPieChart: false,
-      
+      loadingProductStats: false,
+      productStatsData: [],
+
       // Warehouse state
-      warehouseList: [],
       warehouseStats: []
     };
-  },
-  computed: {
-    productPieData() {
-      // Return dynamically based on pieChartType toggle
-      if (this.pieChartType === 'quantity') {
-        return [
-          { name: '产品1', value: 100 },
-          { name: '产品2', value: 150 },
-          { name: '产品3', value: 212 },
-          { name: '产品4', value: 198 },
-          { name: '产品5', value: 218 }
-        ];
-      } else {
-        return [
-          { name: '产品1', value: 5400 },
-          { name: '产品2', value: 8500 },
-          { name: '产品3', value: 11200 },
-          { name: '产品4', value: 9200 },
-          { name: '产品5', value: 12800 }
-        ];
-      }
-    }
   },
   async activated() {
     this.resizeCharts();
   },
   async created() {
-    this.warehouseList = await getWarehouseList();
-    this.calculateWarehouseStats();
+    this.warehouseStats = this.getDefaultStats();
+    this.fetchProductStats();
     this.fetchTodoData();
   },
   mounted() {
@@ -219,101 +191,50 @@ export default {
     window.removeEventListener('resize', this.resizeCharts);
   },
   watch: {
-    productPieData: {
-      handler() {
-        if (this.pieChartInstance) {
-          this.updatePieChart();
-        }
-      },
-      deep: true
+    pieChartType() {
+      this.fetchProductStats();
+    },
+    productStatsData() {
+      this.$nextTick(() => this.updatePieChart());
     }
   },
   methods: {
-    handleAction(type) {
-      this.$message.info(`Clicked ${type}`);
-    },
-
-    async calculateWarehouseStats() {
-      if (!this.warehouseList || this.warehouseList.length === 0) {
-        this.warehouseStats = this.getDefaultStats();
-        return;
-      }
-
-      const nameMap = {
-        'wh001': '库房A',
-        'wh002': '库房B',
-        'wh003': '库房C',
-        'wh004': '库房D',
-        'wh005': '库房E',
-        'wh006': '库房F',
-      };
-      
-      try {
-        const statsPromises = this.warehouseList.map(async whConfig => {
-          const warehouse = await getWarehouseById(whConfig.id);
-          if (!warehouse) return null;
-          
-          let capacity = 0;
-          let stock = 0;
-          const shelves = warehouse.shelves || [];
-          
-          shelves.forEach(shelf => {
-            if (shelf.layers) {
-              shelf.layers.forEach(layer => {
-                if (layer.containers) {
-                  layer.containers.forEach(container => {
-                    capacity++;
-                    if (container.materialCode) {
-                      stock++;
-                    }
-                  });
-                }
-              });
-            }
-          });
-          
-          return {
-            id: warehouse.id,
-            name: nameMap[warehouse.id] || warehouse.name,
-            capacity,
-            stock,
-            usageRate: capacity > 0 ? Math.round((stock / capacity) * 100) : 0
-          };
-        });
-
-        let stats = (await Promise.all(statsPromises)).filter(Boolean);
-
-        // Pad to 6
-        const required = ['库房A', '库房B', '库房C', '库房D', '库房E', '库房F'];
-        if (stats.length < 6) {
-          let i = stats.length;
-          while (stats.length < 6) {
-            stats.push({
-              id: 'mock_wh_' + i,
-              name: required[i],
-              capacity: 253,
-              stock: 120,
-              usageRate: 60
-            });
-            i++;
-          }
-        }
-        this.warehouseStats = stats;
-      } catch (e) {
-        console.error('Failed to calculate stats', e);
-        this.warehouseStats = this.getDefaultStats();
-      }
+    handleAction(path) {
+      this.$router.push('/' + path);
     },
 
     getDefaultStats() {
-      const required = ['库房A', '库房B', '库房C', '库房D', '库房E', '库房F'];
+      const required = ['库房A', '库房B', '库房C', '库房D', '库房E', '库房F', '库房G', '库房H'];
       return required.map((name, i) => ({
-        id: 'mock_wh_' + i,
-        name: name,
+        id: 'wh_' + i,
+        name,
         capacity: 253,
-        stock: 120,
-        usageRate: 60
-      }));
+        stock: 120 - i * 12,
+        usageRate: Math.round(((120 - i * 12) / 253) * 100)
+      })).sort((a, b) => b.usageRate - a.usageRate);
+    },
+
+    // 材料统计 - 调用 /busin/warehouse/product/statistic
+    async fetchProductStats() {
+      this.loadingProductStats = true;
+      try {
+        const res = await getProductStatistics({
+          statisticType: this.pieChartType === 'quantity' ? 2 : 1
+        });
+        const list = res.data || res || [];
+        const arr = Array.isArray(list) ? list : [list];
+        this.productStatsData = arr.map(item => ({
+          name: item.goodsName || item.goodsCode || '未知',
+          value: this.pieChartType === 'quantity'
+            ? (item.totalQuantity || 0)
+            : (Number(item.totalGrossWeight) || 0)
+        })).filter(item => item.value > 0);
+      } catch (e) {
+        console.error('获取材料统计失败', e);
+        this.productStatsData = [];
+      } finally {
+        this.loadingProductStats = false;
+      }
     },
 
     changeTodoTab(tab) {
@@ -324,7 +245,6 @@ export default {
 
     fetchTodoData() {
       this.loadingTodos = true;
-      // Simulate network request refresh
       setTimeout(() => {
         if (this.activeTodoTab === 'todo') {
           this.mockTodos = [
@@ -355,23 +275,18 @@ export default {
     },
 
     handlePieChartChange() {
-      this.loadingPieChart = true;
-      setTimeout(() => {
-        // Computed property productPieData updates automatically
-        // Which triggers the watcher -> calls updatePieChart
-        this.loadingPieChart = false;
-      }, 300);
+      // pieChartType watch triggers fetchProductStats
     },
-    
+
     initLineChart() {
       if (!this.$refs.lineChart) return;
       this.lineChartInstance = echarts.init(this.$refs.lineChart);
       this.updateLineChart();
     },
-    
+
     updateLineChart() {
       if (!this.lineChartInstance) return;
-      
+
       const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
       let data1, data2;
 
@@ -379,7 +294,6 @@ export default {
         data1 = [100, 140, 230, 100, 130, 150, 160, 220, 210, 100, 170, 130];
         data2 = [250, 240, 430, 240, 230, 320, 320, 380, 410, 240, 280, 360];
       } else {
-        // Mock weight data (larger numbers conceptually)
         data1 = [1500, 2100, 3450, 1500, 1950, 2250, 2400, 3300, 3150, 1500, 2550, 1950];
         data2 = [3750, 3600, 6450, 3600, 3450, 4800, 4800, 5700, 6150, 3600, 4200, 5400];
       }
@@ -445,19 +359,19 @@ export default {
           }
         ]
       };
-      
+
       this.lineChartInstance.setOption(option);
     },
-    
+
     initPieChart() {
       if (!this.$refs.pieChart) return;
       this.pieChartInstance = echarts.init(this.$refs.pieChart);
       this.updatePieChart();
     },
-    
+
     updatePieChart() {
       if (!this.pieChartInstance) return;
-      
+
       const option = {
         tooltip: {
           trigger: 'item',
@@ -466,11 +380,11 @@ export default {
         color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'],
         series: [
           {
-            name: '产品统计',
+            name: '材料统计',
             type: 'pie',
             radius: ['15%', '85%'],
             center: ['50%', '50%'],
-            data: this.productPieData,
+            data: this.productStatsData,
             label: {
               formatter: '{b}\n{c}',
               fontSize: 12,
@@ -485,7 +399,7 @@ export default {
       };
       this.pieChartInstance.setOption(option);
     },
-    
+
     resizeCharts() {
       if (this.lineChartInstance) this.lineChartInstance.resize();
       if (this.pieChartInstance) this.pieChartInstance.resize();
@@ -500,10 +414,10 @@ export default {
   padding: 20px;
   background-color: #f0f2f5;
   overflow-x: hidden;
-  
+
   .row-container {
     margin-bottom: 20px;
-    
+
     &:last-child {
       margin-bottom: 0;
     }
@@ -514,7 +428,7 @@ export default {
   border-radius: 6px;
   border: none;
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08) !important;
-  
+
   ::v-deep .el-card__header {
     border-bottom: 1px solid #f0f0f0;
     padding: 15px 20px;
@@ -528,7 +442,6 @@ export default {
   justify-content: center;
 }
 
-/* Base header layout */
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -538,7 +451,7 @@ export default {
     display: flex;
     align-items: center;
   }
-  
+
   .section-title {
     font-size: 16px;
     font-weight: 600;
@@ -546,7 +459,7 @@ export default {
     margin-right: 20px;
     position: relative;
     padding-left: 10px;
-    
+
     &::before {
       content: '';
       position: absolute;
@@ -559,12 +472,12 @@ export default {
       border-radius: 2px;
     }
   }
-  
+
   .filter-select {
     width: 100px;
     margin-right: 15px;
   }
-  
+
   .filter-select-lg {
     width: 140px;
   }
@@ -577,7 +490,7 @@ export default {
   grid-template-rows: repeat(2, 1fr);
   gap: 16px;
   height: 100%;
-  
+
   .action-card {
     border-radius: 8px;
     display: flex;
@@ -592,18 +505,18 @@ export default {
     position: relative;
     overflow: hidden;
     height: 78px;
-    
+
     &:hover {
       transform: translateY(-3px);
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
     }
-    
+
     i {
       font-size: 28px;
       margin-right: 12px;
       opacity: 0.9;
     }
-    
+
     &::after {
       content: "⚡";
       position: absolute;
@@ -613,7 +526,7 @@ export default {
       opacity: 0.4;
     }
   }
-  
+
   .color-1 { background: linear-gradient(135deg, #74aefc 0%, #468dfa 100%); }
   .color-2 { background: linear-gradient(135deg, #81befd 0%, #68a5f8 100%); }
   .color-3 { background: linear-gradient(135deg, #7fcbd8 0%, #61b3c4 100%); }
@@ -624,7 +537,7 @@ export default {
   height: 220px;
   display: flex;
   flex-direction: column;
-  
+
   ::v-deep .el-card__body {
     flex: 1;
     overflow: hidden;
@@ -632,7 +545,7 @@ export default {
     display: flex;
     flex-direction: column;
   }
-  
+
   .todo-header {
     font-size: 15px;
     .active-tab {
@@ -647,43 +560,36 @@ export default {
       &:hover { color: #606266; }
     }
   }
-  
+
   .todo-content {
     flex: 1;
     padding: 15px 20px;
     overflow-y: auto;
-    
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-    &::-webkit-scrollbar-thumb {
-      background: #ddd;
-      border-radius: 3px;
-    }
-    
+
+    &::-webkit-scrollbar { width: 6px; }
+    &::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+
     .todo-items {
       list-style: none;
       padding: 0;
       margin: 0;
-      
+
       li {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 16px;
         font-size: 13px;
-        
-        &:last-child {
-          margin-bottom: 0;
-        }
-        
+
+        &:last-child { margin-bottom: 0; }
+
         .todo-left {
           display: flex;
           align-items: center;
           flex: 1;
           overflow: hidden;
           margin-right: 15px;
-          
+
           .dot {
             width: 6px;
             height: 6px;
@@ -693,9 +599,9 @@ export default {
             flex-shrink: 0;
           }
           .done-dot {
-            background-color: #67C23A; // Green for "done"
+            background-color: #67C23A;
           }
-          
+
           .todo-title {
             color: #606266;
             cursor: pointer;
@@ -703,13 +609,11 @@ export default {
             overflow: hidden;
             text-overflow: ellipsis;
             transition: color 0.2s;
-            
-            &:hover { 
-              color: #409EFF;
-            }
+
+            &:hover { color: #409EFF; }
           }
         }
-        
+
         .todo-time {
           color: #909399;
           font-size: 12px;
@@ -731,7 +635,7 @@ export default {
   height: 340px;
   display: flex;
   flex-direction: column;
-  
+
   ::v-deep .el-card__body {
     flex: 1;
     display: flex;
@@ -744,7 +648,13 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  overflow-y: auto;
+  max-height: 250px;
+  padding-right: 6px;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: #e4e7ed; border-radius: 2px; }
+  &::-webkit-scrollbar-track { background: transparent; }
 }
 
 .warehouse-capacity-item {
@@ -752,16 +662,42 @@ export default {
   align-items: center;
   font-size: 13px;
   color: #606266;
-  
-  .wh-name {
-    width: 60px;
-    font-weight: 500;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f7fa;
+  flex-shrink: 0;
+
+  &:last-child { border-bottom: none; }
+
+  .wh-rank {
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    color: #909399;
+    background-color: #f4f4f5;
+    margin-right: 8px;
+    flex-shrink: 0;
+
+    &.rank-1 { color: #fff; background-color: #f56c6c; }
+    &.rank-2 { color: #fff; background-color: #e6a23c; }
+    &.rank-3 { color: #fff; background-color: #409eff; }
   }
-  
+
+  .wh-name {
+    width: 110px;
+    font-weight: 500;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
   .wh-progress {
     flex: 1;
     margin: 0 15px;
-    
+
     ::v-deep .el-progress-bar__outer {
       border-radius: 4px;
       background-color: #ebeef5;
@@ -771,14 +707,14 @@ export default {
       transition: width 0.6s ease;
     }
   }
-  
+
   .wh-percentage {
     width: 40px;
     text-align: right;
     font-weight: 500;
     margin-right: 15px;
   }
-  
+
   .wh-ratio {
     width: 65px;
     text-align: right;

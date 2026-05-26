@@ -15,7 +15,7 @@
   >
     <transition name="sidebarLogoFade">
       <router-link class="sidebar-logo-link" key="collapse" to="/userCenter/index">
-        <img class="sidebar-avatar" :style="{ 'margin-right': collapse ? '0' : '12px' }" :src="userInfo.headIcon" />
+        <!-- <img class="sidebar-avatar" :style="{ 'margin-right': collapse ? '0' : '12px' }" :src="userInfo.headIcon" /> -->
         <span class="sidebar-name">{{ userInfo.realName }}</span>
       </router-link>
     </transition>

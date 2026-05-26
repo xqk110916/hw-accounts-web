@@ -39,15 +39,14 @@
           style="width: 260px"
           @change="handleDateFilter"
         ></el-date-picker>
-        
-        <!-- <el-button 
-          type="primary" 
-          size="small" 
-          icon="el-icon-download"
-          @click="handleExport"
-        >
-          导出位置图
-        </el-button> -->
+
+        <!-- 统计信息弹窗 -->
+        <StatisticsPanel
+          v-if="currentLevel === 'shelf'"
+          :warehouse-list="warehouseList"
+          :current-warehouse="currentWarehouse"
+          :shelves="shelves"
+        />
       </div>
     </div>
 
@@ -141,18 +140,6 @@
       </div>
 
     </div>
-
-    <!-- 右上角悬浮统计面板（仅在货架层级显示） -->
-    <StatisticsPanel
-      v-if="currentLevel === 'shelf'"
-      :date-color-map="dateColorMap"
-      :container-stats="containerStats"
-      :warehouse-list="warehouseList"
-      :current-warehouse="currentWarehouse"
-      :shelves="shelves"
-      @filter-date="handleFilterDate"
-      @filter-clear="handleFilterClear"
-    />
 
     <!-- 容器详情弹窗 -->
     <ContainerDetailDialog
