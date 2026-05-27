@@ -57,6 +57,9 @@ export function getDictionaryDetail(id) {
 ### 获取 Token
 使用 MCP 工具 `mcp__cdp-bridge__browser_cookies` 获取浏览器 Cookies 中的 `tokenName` 和 `tokenValue`。如果未登录，请先登录系统。
 
+### 设置 Token
+请求头为动态 key，即 `headers[tokenName] = tokenValue`，**不要**写死为 `Authorization`。`tokenName` 是后端登录接口返回的自定义 header 名称（如 `Authorization`、`X-Token` 等），具体值由运行环境决定。
+
 ### 关键规则
 
 - **dictType 区分**：
