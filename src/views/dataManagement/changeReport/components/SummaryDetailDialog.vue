@@ -45,7 +45,7 @@ export default {
     loadData() {
       getChangeSummaryDetail(this.goodsCode, { currentPage: 1, pageSize: 999 }).then(res => {
         if (res.code === 1) {
-          this.detailData = res.data?.list || []
+          this.detailData = (res.data && res.data.list) || []
         }
       })
     },

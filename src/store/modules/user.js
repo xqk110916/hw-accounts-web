@@ -23,7 +23,7 @@ const user = {
     theme: {},
     userInfo: {},
     menuList: [],
-    isUserLogin: isUserLogin ? isUserLogin?.isUserLoginFlag : true,
+    isUserLogin: isUserLogin ? (isUserLogin && isUserLogin.isUserLoginFlag) : true,
   },
   mutations: {
     SET_TOKENNAME: (state, tokenName) => {

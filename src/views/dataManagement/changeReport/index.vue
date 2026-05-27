@@ -138,8 +138,8 @@ export default {
       const fn = this.activeTab === 'summary' ? requestFun.summaryList : requestFun.detailList
       fn(params).then(res => {
         if (res.code === 1) {
-          this.tableData = res.data?.list || []
-          this.search.params.total = res.data?.pagination?.total || 0
+          this.tableData = (res.data && res.data.list) || []
+          this.search.params.total = (res.data && res.data.pagination && res.data.pagination.total) || 0
         }
       })
       if (this.activeTab === 'summary') {

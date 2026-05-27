@@ -545,7 +545,7 @@ export default {
     },
     getDetails(id) {
       return requestFun.detail(id).then(res => {
-        let data = res.data?.operation || res.data || {}
+        let data = (res.data && res.data.operation) || res.data || {}
         config.detail.forEach(item => {
           if (data[item.prop] !== undefined && data[item.prop] !== null) {
             let val = data[item.prop]
@@ -562,9 +562,9 @@ export default {
         if (data.goodCodes) this.$set(this.form, 'goodCodes', data.goodCodes)
         if (data.securityLevel) this.$set(this.form, 'classify', data.securityLevel)
         // 加载明细
-        this.detailList = res.data?.goodsList || data.details || []
+        this.detailList = (res.data && res.data.goodsList) || data.details || []
         // 加载修改记录（审核时用于高亮显示修改内容）
-        this.modifyRecords = res.data?.modifyRecords || []
+        this.modifyRecords = (res.data && res.data.modifyRecords) || []
         return data
       })
     },

@@ -47,8 +47,8 @@ export default {
       const query = { ...params, currentPage: this.page.currentPage, pageSize: this.page.pageSize }
       return apiFn(query).then(res => {
         if (res.code === 1) {
-          this.tableData = res.data?.list || []
-          this.page.total = res.data?.pagination?.total || 0
+          this.tableData = (res.data && res.data.list) || []
+          this.page.total = (res.data && res.data.pagination && res.data.pagination.total) || 0
         }
       })
     },

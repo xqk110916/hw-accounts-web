@@ -473,7 +473,7 @@ export default {
       }
       this.$emit('move-container', {
         warehouseId: this.targetWarehouseId,
-        warehouseName: this.targetWarehouse?.warehouseName || this.targetWarehouse?.nodeName || this.targetWarehouse?.name || '',
+        warehouseName: (this.targetWarehouse && this.targetWarehouse.warehouseName) || (this.targetWarehouse && this.targetWarehouse.nodeName) || (this.targetWarehouse && this.targetWarehouse.name) || '',
         positionId: this.targetPositionId,
         shelfCode: this.targetPosition.shelfCode || '',
         rowCode: this.targetPosition.rowCode || '',

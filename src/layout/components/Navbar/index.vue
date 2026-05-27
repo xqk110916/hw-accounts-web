@@ -54,7 +54,7 @@ export default {
     },
     largeScreenShow: {
       get() {
-        const hasMenu = this.$store.getters?.menuList?.length > 0;
+        const hasMenu = this.$store.getters && this.$store.getters.menuList && this.$store.getters.menuList.length > 0;
         if (hasMenu) {
           let flag = false;
           this.$store.getters.menuList.map(item => {

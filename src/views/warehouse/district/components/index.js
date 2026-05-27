@@ -17,10 +17,10 @@ function getBalanceAreaTypeText(value) {
 
 function fetchDictByCategory(keyword, withAll = false) {
   return getDictionaryList({ keyword }).then(res => {
-    const parent = (res.data?.list || []).find(d => d.fullName === keyword && d.parentId === '0');
+    const parent = ((res.data && res.data.list) || []).find(d => d.fullName === keyword && d.parentId === '0');
     if (!parent) return { data: withAll ? [{ label: '全部', value: '' }] : [] };
     return getDictionaryList({ parentId: parent.id }).then(childRes => {
-      const list = (childRes.data?.list || []).map(d => ({ label: d.fullName, value: normalizeBalanceAreaType(d.dictValue || d.fullName) }));
+      const list = ((childRes.data && childRes.data.list) || []).map(d => ({ label: d.fullName, value: normalizeBalanceAreaType(d.dictValue || d.fullName) }));
       return { data: withAll ? [{ label: '全部', value: '' }, ...list] : list };
     });
   });

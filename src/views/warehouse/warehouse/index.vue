@@ -460,7 +460,7 @@ export default {
         this.selectedContainer.rowCode,
         this.selectedContainer.columnCode
       ].filter(Boolean).join('-') || this.selectedShelf.name;
-      return `${this.currentWarehouse?.name || '库房'} - ${position}`;
+      return `${(this.currentWarehouse && this.currentWarehouse.name) || '库房'} - ${position}`;
     },
 
     viewContainerHistory() {

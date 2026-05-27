@@ -28,8 +28,8 @@ router.beforeEach((to, from, next) => {
     if (to.path === '/login') {
       next({ path: '/' });
     } else {
-      const hasMenu = store.getters?.menuList?.length > 0;
-      const hasUserID = store.getters?.userInfo?.id;
+      const hasMenu = store.getters && store.getters.menuList && store.getters.menuList.length > 0;
+      const hasUserID = store.getters && store.getters.userInfo && store.getters.userInfo.id;
       if (hasMenu) {
         next();
       } else if (hasUserID && !hasMenu) {

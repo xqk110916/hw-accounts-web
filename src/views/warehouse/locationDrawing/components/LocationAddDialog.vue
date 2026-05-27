@@ -239,7 +239,7 @@ export default {
     async fetchDictOptions(parentId, optionsKey) {
       try {
         const res = await getDictionaryList({ parentId, currentPage: 1, pageSize: 999 });
-        const children = res.data?.list || [];
+        const children = (res.data && res.data.list) || [];
         this[optionsKey] = normalizeShelfTypeOptions(children).map(d => ({
           label: d.label,
           value: d.value,

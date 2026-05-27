@@ -367,7 +367,7 @@ export default {
             this.inventoryFormMap = {}
             let firstTab = ''
             Object.keys(resData).forEach((wId, index) => {
-              const wName = resData[wId][0]?.warehouseName || `库房 ${wId}`
+              const wName = (resData[wId][0] && resData[wId][0].warehouseName) || `库房 ${wId}`
               this.tabList.push({ id: wId, name: wName })
               this.$set(this.inventoryFormMap, wId, {
                 inventoryTime: '',
@@ -418,7 +418,7 @@ export default {
           
           // 如果是全部库房，或者特定库房，根据返回的键值构建 tabs
           Object.keys(resData).forEach((wId, index) => {
-            const wName = resData[wId][0]?.warehouseName || `库房 ${wId}` // 尝试从明细中获取库名，或者回退
+            const wName = (resData[wId][0] && resData[wId][0].warehouseName) || `库房 ${wId}` // 尝试从明细中获取库名，或者回退
             this.tabList.push({ id: wId, name: wName })
             
             // 初始化每个库房的表单数据
@@ -515,7 +515,7 @@ export default {
           
           wareList.push({
             warehouseId: wId,
-            warehouseName: this.tabList.find(t => t.id === wId)?.name || '',
+            warehouseName: (this.tabList.find(t => t.id === wId) && this.tabList.find(t => t.id === wId).name) || '',
             ...wForm,
             goodsList: wGoods.map(g => ({
               warehouseId: g.warehouseId,
@@ -599,7 +599,7 @@ export default {
       const wForm = this.inventoryFormMap[wId] || {}
       return {
         warehouseId: warehouse.warehouseId || wId,
-        warehouseName: warehouse.warehouseName || this.tabList.find(t => t.id === wId)?.name || '',
+        warehouseName: warehouse.warehouseName || (this.tabList.find(t => t.id === wId) && this.tabList.find(t => t.id === wId).name) || '',
         inventoryMan: wForm.inventoryUser || '',
         inventoryUser: wForm.inventoryUser || '',
         inventoryTime: wForm.inventoryTime || '',
@@ -652,7 +652,7 @@ export default {
           ...this.buildWarehouseSubmitData(w, wId),
           goodsList: goods.map(g => ({
             warehouseId: g.warehouseId || w.warehouseId || wId,
-            warehouseName: g.warehouseName || w.warehouseName || this.tabList.find(t => t.id === wId)?.name || '',
+            warehouseName: g.warehouseName || w.warehouseName || (this.tabList.find(t => t.id === wId) && this.tabList.find(t => t.id === wId).name) || '',
             containerCode: g.containerCode || '',
             goodCode: g.goodCode || '',
             goodName: g.goodName || '',

@@ -75,7 +75,7 @@ export const getDefaultOptions = async (vm) => {
     value: item.warehouseName,
   }))
 
-  const transferData = Array.isArray(transferRes.data) ? transferRes.data : (transferRes.data?.list || [])
+  const transferData = Array.isArray(transferRes.data) ? transferRes.data : ((transferRes.data && transferRes.data.list) || [])
   const transferOptions = transferData.map(item => ({
     label: item.documentNo || item.name || item.id,
     value: item.id,

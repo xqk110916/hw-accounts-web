@@ -37,7 +37,7 @@ export default {
         next();
       }
     }
-    if (to.params?.applicationId && to.params?.workSheetId && to.params?.viewId) {
+    if (to.params && to.params.applicationId && to.params.workSheetId && to.params.viewId) {
       next();
     }
   },

@@ -282,7 +282,7 @@ export default {
       const params = buildQueryParams(this.activeReport, this.searchParams)
       fn.list(params).then(res => {
         if (res.code === 1) {
-          this.tableData = res.data?.list || res.data || []
+          this.tableData = (res.data && res.data.list) || res.data || []
         }
       })
     },

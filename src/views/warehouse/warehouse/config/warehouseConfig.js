@@ -845,9 +845,9 @@ export async function getBalanceAreaList() {
           ...item,
           id: item.id,
           name: item.name,
-          position: balanceAreaConfig[index]?.position || { x: (index - 1) * 6, y: 0, z: 0 },
-          color: balanceAreaConfig[index]?.color || colors[index % colors.length],
-          warehouseIds: typeof item.warehouseIds !== 'undefined' ? item.warehouseIds : balanceAreaConfig[index]?.warehouseIds || []
+          position: (balanceAreaConfig[index] && balanceAreaConfig[index].position) || { x: (index - 1) * 6, y: 0, z: 0 },
+          color: (balanceAreaConfig[index] && balanceAreaConfig[index].color) || colors[index % colors.length],
+          warehouseIds: typeof item.warehouseIds !== 'undefined' ? item.warehouseIds : (balanceAreaConfig[index] && balanceAreaConfig[index].warehouseIds) || []
         }));
       }
     } catch (err) {
@@ -888,8 +888,8 @@ export async function getWarehouseList(balanceAreaId) {
           width: w.width || 20,
           height: w.height || 15,
           description: w.remark || w.description,
-          position: warehouseData[index % warehouseData.length]?.position || { x: (index - 1) * 3.5, y: 0, z: -2 },
-          shelfLayout: warehouseData[index % warehouseData.length]?.shelfLayout || { rows: 2, cols: 3 }
+          position: (warehouseData[index % warehouseData.length] && warehouseData[index % warehouseData.length].position) || { x: (index - 1) * 3.5, y: 0, z: -2 },
+          shelfLayout: (warehouseData[index % warehouseData.length] && warehouseData[index % warehouseData.length].shelfLayout) || { rows: 2, cols: 3 }
         }));
         return normalized;
       }
@@ -909,7 +909,7 @@ export async function getWarehouseList(balanceAreaId) {
           width: 20,
           height: 15,
           description: item.remark,
-          position: warehouseData[index % warehouseData.length]?.position || { x: (index - 1) * 3.5, y: 0, z: -2 },
+          position: (warehouseData[index % warehouseData.length] && warehouseData[index % warehouseData.length].position) || { x: (index - 1) * 3.5, y: 0, z: -2 },
           shelfLayout: { rows: 2, cols: 3 }
         }));
       return normalized;
@@ -961,7 +961,7 @@ export async function getWarehouseById(warehouseId) {
       const warehouse = {
         ...detail,
         id: detail.id || warehouseId,
-        name: detail.warehouseName || detail.nodeName || positions[0]?.warehouseName || '库房',
+        name: detail.warehouseName || detail.nodeName || (positions[0] && positions[0].warehouseName) || '库房',
         width: gridCols,
         height: gridRows,
         shelves,

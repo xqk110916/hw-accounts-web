@@ -60,7 +60,7 @@ const permission = {
           if (item.menuType !== 'A') {
             item.component = 'Layouts';
 
-            const pathList = item.path?.split('/');
+            const pathList = item.path && item.path.split('/');
             if (pathList.includes('zcstLowCodePreview') && !item.children.length) {
               item.component = 'app/preview';
             }
