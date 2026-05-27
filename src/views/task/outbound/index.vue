@@ -276,7 +276,7 @@ export default {
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 1) {
-        if (isPendingAudit) {
+        if (isPendingAudit && this.$auth.hasPermi('task_outbound_audit')) {
           btns.push({ label: '审核', type: 'text', execute: 'audit' })
           return btns
         }
@@ -285,7 +285,9 @@ export default {
       }
 
       if (dataStatus !== 4 && dataStatus !== 2 && (isPendingAudit || dataStatus === 0)) {
-        btns.push({ label: '审核', type: 'text', execute: 'audit' })
+        if (this.$auth.hasPermi('task_outbound_audit')) {
+          btns.push({ label: '审核', type: 'text', execute: 'audit' })
+        }
       }
 
       return btns

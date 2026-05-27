@@ -328,7 +328,9 @@ export default {
         btns.push({ label: '录入结果', type: 'text', execute: 'inputResult' })
         btns.push({ label: '删除', type: 'text', execute: 'delete' })
       } else if (dataStatus === 0) {
-        btns.push({ label: '审核', type: 'text', execute: 'audit' })
+        if (this.$auth.hasPermi('task_inventory_audit')) {
+          btns.push({ label: '审核', type: 'text', execute: 'audit' })
+        }
       } else if (dataStatus === 1) {
         // 审核通过，只显示详情
       } else if (dataStatus === 2) {

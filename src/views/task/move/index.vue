@@ -257,11 +257,11 @@ export default {
         return rowBtns
       }
       if (dataStatus === 1) {
-        if (isPendingAudit) rowBtns.push({ label: '审核', type: 'text', execute: 'audit' })
+        if (isPendingAudit && this.$auth.hasPermi('task_move_audit')) rowBtns.push({ label: '审核', type: 'text', execute: 'audit' })
         else rowBtns.push({ label: '修改', type: 'text', execute: 'modify' })
         return rowBtns
       }
-      if (isPendingAudit || dataStatus === 0) rowBtns.push({ label: '审核', type: 'text', execute: 'audit' })
+      if ((isPendingAudit || dataStatus === 0) && this.$auth.hasPermi('task_move_audit')) rowBtns.push({ label: '审核', type: 'text', execute: 'audit' })
       return rowBtns
     },
   },

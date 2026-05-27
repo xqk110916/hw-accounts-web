@@ -340,7 +340,9 @@ export default {
 
       // 待审核：显示 审核
       if (dataStatus !== 2 && auditStatus === 7) {
-        btns.push({ label: '审核', type: 'text', execute: 'audit' })
+        if (this.$auth.hasPermi('task_inbound_audit')) {
+          btns.push({ label: '审核', type: 'text', execute: 'audit' })
+        }
       }
 
       return btns
