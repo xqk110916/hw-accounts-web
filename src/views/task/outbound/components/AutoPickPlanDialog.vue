@@ -202,7 +202,7 @@
           <el-table-column prop="containerCode" label="容器号" width="125" show-overflow-tooltip />
           <el-table-column prop="productionUnit" label="出方单位" width="125" show-overflow-tooltip />
           <el-table-column prop="warehouseName" label="库房" width="110" show-overflow-tooltip />
-          <el-table-column label="位置(排-行-列)" width="130" show-overflow-tooltip>
+          <el-table-column label="位置(列-排-层)" width="130" show-overflow-tooltip>
             <template slot-scope="scope">{{ getPositionText(scope.row) }}</template>
           </el-table-column>
           <el-table-column prop="boxNum" label="货箱号" width="100" show-overflow-tooltip />

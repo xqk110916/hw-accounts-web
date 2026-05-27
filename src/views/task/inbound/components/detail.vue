@@ -184,7 +184,7 @@
           <el-table-column prop="containerCode" label="容器号" width="120" show-overflow-tooltip />
           <el-table-column prop="productionUnit" label="生产单位" width="120" show-overflow-tooltip />
           <el-table-column prop="warehouseName" label="库房" width="100" show-overflow-tooltip />
-          <el-table-column label="位置(排-行-列)" width="120" show-overflow-tooltip>
+          <el-table-column label="位置(列-排-层)" width="120" show-overflow-tooltip>
             <template slot-scope="scope">
               {{ scope.row.shelfCode || '' }}-{{ scope.row.rowCode || '' }}-{{ scope.row.columnCode || '' }}
             </template>

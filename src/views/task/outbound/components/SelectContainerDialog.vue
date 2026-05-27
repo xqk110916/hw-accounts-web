@@ -287,7 +287,7 @@ export default {
         { label: '容器号', prop: 'containerCode', width: 130 },
         { label: '生产单位', prop: 'productionUnit', width: 130 },
         { label: '库房', prop: 'warehouseName', width: 120 },
-        { label: '位置(排-行-列)', prop: 'positionText', width: 130 },
+        { label: '位置(列-排-层)', prop: 'positionText', width: 130 },
         { label: '货箱号', prop: 'boxNum', width: 100 },
         { label: '封记编码1', prop: 'sealCode1', width: 120 },
         { label: '封记类型1', prop: 'sealType1', width: 120 },
