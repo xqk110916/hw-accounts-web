@@ -65,9 +65,9 @@
       </div>
     </div>
     <!--  底部  -->
-    <div class="el-login-footer">
-      <span>Copyright © 2024 河南众诚信息科技股份有限公司</span>
-    </div>
+    <!-- <div class="el-login-footer">
+      <span>Copyright © 2026</span>
+    </div> -->
   </div>
 </template>
 

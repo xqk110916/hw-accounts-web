@@ -32,7 +32,7 @@
     <div class="stats-section product-section">
       <div class="section-title-bar">
         <span class="section-title">材料统计</span>
-        <el-radio-group :value="chartType" size="small" @change="val => $emit('update:chartType', val)">
+        <el-radio-group v-model="localChartType" size="small" @change="handleChartTypeChange">
           <el-radio-button label="quantity">
             <i class="el-icon-s-data"></i> 按数量
           </el-radio-button>
@@ -83,14 +83,26 @@ export default {
   },
   data() {
     return {
-      chartInstance: null
+      chartInstance: null,
+      localChartType: this.chartType
     };
+  },
+  watch: {
+    chartType(val) {
+      this.localChartType = val;
+    },
+    pieChartData: {
+      handler() {
+        this.$nextTick(() => this.updateChart());
+      },
+      deep: true
+    }
   },
   computed: {
     pieChartData() {
       return this.productData.map(item => ({
         name: item.name,
-        value: this.chartType === 'quantity' ? item.quantity : item.weight
+        value: this.localChartType === 'quantity' ? item.quantity : item.weight
       })).filter(item => item.value > 0);
     }
   },
@@ -104,14 +116,6 @@ export default {
       this.chartInstance = null;
     }
     window.removeEventListener('resize', this.resizeChart);
-  },
-  watch: {
-    pieChartData: {
-      handler() {
-        this.$nextTick(() => this.updateChart());
-      },
-      deep: true
-    }
   },
   methods: {
     initChart() {
@@ -148,6 +152,9 @@ export default {
     },
     resizeChart() {
       if (this.chartInstance) this.chartInstance.resize();
+    },
+    handleChartTypeChange(val) {
+      this.$emit('update:chartType', val);
     }
   }
 };

@@ -5,7 +5,7 @@
       size="small"
       type="primary"
       icon="el-icon-data-analysis"
-      @click="dialogVisible = true"
+      @click="openDialog"
     >统计信息</el-button>
 
     <!-- 弹窗 -->
@@ -21,8 +21,8 @@
         :product-data="productStatsData"
         :chart-type.sync="statsType"
         :show-rank="true"
-        :capacity-loading="false"
-        :chart-loading="false"
+        :capacity-loading="capacityLoading"
+        :chart-loading="chartLoading"
       />
     </el-dialog>
   </div>
@@ -30,6 +30,7 @@
 
 <script>
 import WarehouseStatsPanel from '@/components/WarehouseStatsPanel';
+import { getProductStatistics } from '@/api/warehouse/warehouse';
 
 export default {
   name: 'StatisticsPanel',
@@ -59,7 +60,10 @@ export default {
   data() {
     return {
       dialogVisible: false,
-      statsType: 'quantity'
+      statsType: 'quantity',
+      capacityLoading: false,
+      chartLoading: false,
+      productStatsData: []
     };
   },
   computed: {
@@ -92,42 +96,38 @@ export default {
         stock,
         usageRate: capacity > 0 ? Math.round((stock / capacity) * 100) : 0
       }];
-    },
-
-    productStatsData() {
-      const productMap = {};
-
-      this.getContainersFromShelves(this.shelves).forEach(container => {
-        const materialName = container.materialName || container.materialCode;
-        if (materialName) {
-          if (!productMap[materialName]) {
-            productMap[materialName] = { quantity: 0, weight: 0 };
-          }
-          productMap[materialName].quantity += 1;
-          productMap[materialName].weight += Number(container.netWeight || container.grossWeight || 0) || 0;
-        }
-      });
-
-      return Object.keys(productMap).map(name => ({
-        name,
-        quantity: productMap[name].quantity,
-        weight: productMap[name].weight
-      }));
+    }
+  },
+  watch: {
+    statsType() {
+      this.fetchProductStats();
     }
   },
   methods: {
-    getContainersFromShelves(shelves) {
-      const containers = [];
-      (shelves || []).forEach(shelf => {
-        (shelf.layers || []).forEach(layer => {
-          (layer.containers || []).forEach(container => {
-            if (container && (container.materialCode || String(container.status) === '1')) {
-              containers.push(container);
-            }
-          });
+    openDialog() {
+      this.dialogVisible = true;
+      this.fetchProductStats();
+    },
+
+    async fetchProductStats() {
+      this.chartLoading = true;
+      try {
+        const res = await getProductStatistics({
+          statisticType: this.statsType === 'quantity' ? 2 : 1
         });
-      });
-      return containers;
+        const list = res.data || res || [];
+        const arr = Array.isArray(list) ? list : [list];
+        this.productStatsData = arr.map(item => ({
+          name: item.goodsName || item.goodsCode || '未知',
+          quantity: item.totalQuantity || 0,
+          weight: Number(item.totalGrossWeight) || 0
+        }));
+      } catch (e) {
+        console.error('获取材料统计失败', e);
+        this.productStatsData = [];
+      } finally {
+        this.chartLoading = false;
+      }
     }
   }
 };

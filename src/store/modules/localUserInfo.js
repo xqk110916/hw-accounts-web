@@ -10,7 +10,7 @@ export const localUserInfo = {
             "id": "1808408701959147521",
             "mainFlag": 1,
             "orgId": "1",
-            "orgName": "组织全称（河南众诚）",
+            "orgName": "组织全称（组织）",
             "orgTypeCode": null,
             "orgTypeName": null,
             "postId": null,
@@ -903,7 +903,7 @@ export const localUserInfo = {
             "orgIds": [
                 "1"
             ],
-            "orgName": "组织全称（河南众诚）",
+            "orgName": "组织全称（组织）",
             "parentIds": [
                 "1"
             ],
