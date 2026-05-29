@@ -94,8 +94,9 @@
                             collapse-tags
                             size="small"
                             class="modern-select-item"
+                            @change="handleFilterChange(item)"
                           >
-                            <el-option v-for="opt in item.option || []" :key="opt.value" :label="opt.label" :value="opt.value" />
+                            <el-option v-for="opt in getSearchOptions(item)" :key="opt.value" :label="opt.label" :value="opt.value" />
                           </el-select>
                           
                           <el-date-picker
@@ -108,6 +109,7 @@
                             value-format="yyyy-MM-dd"
                             size="small"
                             class="modern-daterange-item"
+                            @change="handleFilterChange(item)"
                           />
                           
                           <el-date-picker
@@ -118,6 +120,7 @@
                             placeholder="选择年份"
                             size="small"
                             class="modern-year-item"
+                            @change="handleFilterChange(item)"
                           />
                           
                           <el-button
@@ -142,8 +145,9 @@
                           filterable
                           size="small"
                           class="modern-select-full"
+                          @change="handleFilterChange(item)"
                         >
-                          <el-option v-for="opt in item.option || []" :key="opt.value" :label="opt.label" :value="opt.value" />
+                          <el-option v-for="opt in getSearchOptions(item)" :key="opt.value" :label="opt.label" :value="opt.value" />
                         </el-select>
                       </el-form-item>
                     </el-col>
@@ -232,7 +236,19 @@
 <script>
 import R01Template from './components/R01Template.vue'
 import CommonTemplate from './components/CommonTemplate.vue'
-import { reportCards, reportConfigs, requestFun, buildQueryParams } from './components/index.js'
+import {
+  reportCards,
+  reportConfigs,
+  requestFun,
+  buildQueryParams,
+  loadDefaultOptions,
+  setTaskOptions,
+  toTaskOptions,
+  buildTaskQueryParams,
+  buildTaskDetailParams,
+  normalizeTaskDetailRows,
+  normalizeDetailData
+} from './components/index.js'
 import { blobSaveExcel } from '@/utils'
 
 export default {
@@ -246,6 +262,7 @@ export default {
       templateData: {},
       tableData: [],
       tableHeight: null, // 不限制表格高度，由内容自动撑开
+      searchOptions: { taskNums: [], historyId: [], historyIds: [], goodsCodes: [] },
     }
   },
   computed: {
@@ -267,24 +284,139 @@ export default {
       this.searchParams = {}
       this.templateData = {}
       this.tableData = []
+      this.searchOptions = { taskNums: [], historyId: [], historyIds: [], goodsCodes: [] }
+      loadDefaultOptions(this, code)
     },
     goBack() {
       this.currentView = 'list'
       this.activeReport = ''
     },
+    getSearchOptions(item) {
+      if (this.searchOptions && this.searchOptions[item.prop] !== undefined && this.searchOptions[item.prop].length > 0) {
+        return this.searchOptions[item.prop]
+      }
+      return item.option || []
+    },
+    async loadR01TaskOptions() {
+      if (this.activeReport !== 'R01') return
+      const params = buildTaskQueryParams(this.searchParams)
+      const fn = requestFun.R01
+      if (fn && fn.taskList) {
+        try {
+          const res = await fn.taskList(params)
+          if (res.code === 1) {
+            const list = (res.data && res.data.list) || res.data || []
+            const options = toTaskOptions(list)
+            this.$set(this.searchOptions, 'taskNums', options)
+            setTaskOptions(this, options)
+          }
+        } catch (e) {
+          console.error('获取R01任务列表失败:', e)
+        }
+      }
+    },
+    async handleFilterChange(item) {
+      const code = this.activeReport
+      if (code === 'R01' && (item.prop === 'type' || item.prop === 'dateRange')) {
+        this.$set(this.searchParams, 'taskNums', [])
+        await this.loadR01TaskOptions()
+        return
+      }
+      if (item.prop === 'historyId' || item.prop === 'historyIds') {
+        const val = this.searchParams[item.prop]
+        let targetId = null
+        if (Array.isArray(val)) {
+          if (val.length > 0) targetId = val[val.length - 1]
+        } else {
+          targetId = val
+        }
+        if (targetId) {
+          const fn = requestFun[code]
+          if (fn && fn.detail) {
+            try {
+              const res = await fn.detail(targetId)
+              if (res.code === 1) {
+                const norm = normalizeDetailData(code, res.data)
+                this.templateData = norm.report
+                this.tableData = norm.detailList
+                if (code === 'R01') {
+                  const taskNum = norm.report.taskNum || ''
+                  if (taskNum) {
+                    const arr = taskNum.split(',').map(s => s.trim()).filter(Boolean)
+                    this.$set(this.searchParams, 'taskNums', arr)
+                  }
+                }
+                this.$message.success('历史报表加载成功')
+              } else {
+                this.$message.error(res.msg || '加载历史详情失败')
+              }
+            } catch (e) {
+              console.error('加载历史报表失败:', e)
+              this.$message.error('加载历史报表失败')
+            }
+          }
+        } else {
+          this.templateData = {}
+          this.tableData = []
+        }
+      }
+    },
     handleAction(btnText) {
       if (btnText === '接入报表') this.loadData()
       else if (btnText === '统计' || btnText === '生成') this.loadData()
     },
-    loadData() {
-      const fn = requestFun[this.activeReport]
-      if (!fn || !fn.list) return
-      const params = buildQueryParams(this.activeReport, this.searchParams)
-      fn.list(params).then(res => {
-        if (res.code === 1) {
-          this.tableData = (res.data && res.data.list) || res.data || []
+    async loadData() {
+      const code = this.activeReport
+      const fn = requestFun[code]
+      if (!fn) return
+
+      if (code === 'R01') {
+        if (!this.searchParams.taskNums || !this.searchParams.taskNums.length) {
+          this.$message.warning('请选择任务')
+          return
         }
-      })
+        const params = buildTaskDetailParams(this.searchParams)
+        try {
+          const res = await fn.taskDetail(params)
+          if (res.code === 1) {
+            const rows = normalizeTaskDetailRows(res.data)
+            this.tableData = rows
+            const firstTask = (res.data && res.data[0]) || {}
+            this.templateData = {
+              inOutType: firstTask.typeName || (firstTask.type === 1 ? '入库' : '出库'),
+              taskNum: this.searchParams.taskNums.join(', '),
+              senderUnitName: firstTask.senderUnitName || '',
+              receiverUnitName: firstTask.receiverUnitName || '',
+              senderMaker: this.$store.state.user?.name || '',
+              receiverMaker: '',
+            }
+            this.$message.success('报表数据接入成功')
+          } else {
+            this.$message.error(res.msg || '数据加载失败')
+          }
+        } catch (e) {
+          console.error('接入报表数据失败:', e)
+          this.$message.error('接入报表数据失败')
+        }
+      } else {
+        if (fn.generate) {
+          const params = buildQueryParams(code, this.searchParams)
+          try {
+            const res = await fn.generate(params)
+            if (res.code === 1) {
+              const norm = normalizeDetailData(code, res.data)
+              this.templateData = norm.report
+              this.tableData = norm.detailList
+              this.$message.success('报表统计成功')
+            } else {
+              this.$message.error(res.msg || '统计失败')
+            }
+          } catch (e) {
+            console.error('报表统计失败:', e)
+            this.$message.error('报表统计失败')
+          }
+        }
+      }
     },
     updateTemplateData(data) {
       this.templateData = { ...this.templateData, ...data }

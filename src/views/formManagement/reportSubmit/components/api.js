@@ -1,41 +1,90 @@
 import request from '@/utils/request'
 
-// R01
-export const listR01Data = data => request({ url: '/busin/report/r01/list', method: 'post', data })
-export const exportR01 = data => request({ url: '/busin/report/r01/export', method: 'post', data, responseType: 'blob' })
-export const saveR01 = data => request({ url: '/busin/report/r01/save', method: 'post', data })
+const reportBase = '/busin/form/report'
 
-// R03
-export const listR03Data = data => request({ url: '/busin/report/r03/list', method: 'post', data })
-export const exportR03 = data => request({ url: '/busin/report/r03/export', method: 'post', data, responseType: 'blob' })
-export const saveR03 = data => request({ url: '/busin/report/r03/save', method: 'post', data })
+const getReportList = code => params => {
+  const listPath = code === 'r01' ? 'listAll' : 'list'
+  return request({
+    url: `${reportBase}/${code}/${listPath}`,
+    method: 'get',
+    params,
+  })
+}
 
-// R04
-export const listR04Data = data => request({ url: '/busin/report/r04/list', method: 'post', data })
-export const exportR04 = data => request({ url: '/busin/report/r04/export', method: 'post', data, responseType: 'blob' })
-export const saveR04 = data => request({ url: '/busin/report/r04/save', method: 'post', data })
+const getReportDetail = code => id => request({
+  url: `${reportBase}/${code}/detail/${id}`,
+  method: 'get',
+})
 
-// R05
-export const listR05Data = data => request({ url: '/busin/report/r05/list', method: 'post', data })
-export const exportR05 = data => request({ url: '/busin/report/r05/export', method: 'post', data, responseType: 'blob' })
-export const saveR05 = data => request({ url: '/busin/report/r05/save', method: 'post', data })
+const exportReport = code => id => request({
+  url: `${reportBase}/${code}/export/${id}`,
+  method: 'get',
+  responseType: 'blob',
+})
 
-// R06
-export const listR06Data = data => request({ url: '/busin/report/r06/list', method: 'post', data })
-export const exportR06 = data => request({ url: '/busin/report/r06/export', method: 'post', data, responseType: 'blob' })
-export const saveR06 = data => request({ url: '/busin/report/r06/save', method: 'post', data })
+const saveReport = code => data => request({
+  url: `${reportBase}/${code}/save`,
+  method: 'post',
+  data,
+})
 
-// R08
-export const listR08Data = data => request({ url: '/busin/report/r08/list', method: 'post', data })
-export const exportR08 = data => request({ url: '/busin/report/r08/export', method: 'post', data, responseType: 'blob' })
-export const saveR08 = data => request({ url: '/busin/report/r08/save', method: 'post', data })
+const queryReport = code => data => request({
+  url: `${reportBase}/${code}/query`,
+  method: 'post',
+  data,
+})
 
-// R09
-export const listR09Data = data => request({ url: '/busin/report/r09/list', method: 'post', data })
-export const exportR09 = data => request({ url: '/busin/report/r09/export', method: 'post', data, responseType: 'blob' })
-export const saveR09 = data => request({ url: '/busin/report/r09/save', method: 'post', data })
+export const listR01History = getReportList('r01')
+export const getR01Detail = getReportDetail('r01')
+export const exportR01 = exportReport('r01')
+export const saveR01 = saveReport('r01')
 
-// 通用：历史记录列表
-export const listHistory = data => request({ url: '/busin/report/history/list', method: 'post', data })
-// 通用：任务列表（R01 用）
-export const listTaskForReport = data => request({ url: '/busin/report/task/list', method: 'post', data })
+export const queryR03Data = data => request({
+  url: '/busin/form/quarter/list',
+  method: 'post',
+  data,
+})
+export const listR03History = getReportList('r03')
+export const getR03Detail = getReportDetail('r03')
+export const exportR03 = exportReport('r03')
+export const saveR03 = saveReport('r03')
+
+export const queryR04Data = queryReport('r04')
+export const listR04History = getReportList('r04')
+export const getR04Detail = getReportDetail('r04')
+export const exportR04 = exportReport('r04')
+export const saveR04 = saveReport('r04')
+
+export const listR05History = getReportList('r05')
+export const getR05Detail = getReportDetail('r05')
+export const exportR05 = exportReport('r05')
+export const saveR05 = saveReport('r05')
+
+export const listR06History = getReportList('r06')
+export const getR06Detail = getReportDetail('r06')
+export const exportR06 = exportReport('r06')
+export const saveR06 = saveReport('r06')
+
+export const queryR08Data = queryReport('r08')
+export const listR08History = getReportList('r08')
+export const getR08Detail = getReportDetail('r08')
+export const exportR08 = exportReport('r08')
+export const saveR08 = saveReport('r08')
+
+export const queryR09Data = queryReport('r09')
+export const listR09History = getReportList('r09')
+export const getR09Detail = getReportDetail('r09')
+export const exportR09 = exportReport('r09')
+export const saveR09 = saveReport('r09')
+
+export const listTaskForReport = data => request({
+  url: '/busin/form/task/list',
+  method: 'post',
+  data,
+})
+
+export const getTaskDetailForReport = data => request({
+  url: '/busin/form/task/detail',
+  method: 'post',
+  data,
+})
