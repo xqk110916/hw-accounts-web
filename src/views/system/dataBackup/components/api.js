@@ -1,48 +1,32 @@
-import request from '@/utils/request';
+import request from '@/utils/request'
 
-// 获取数据备份列表
-export const getDataBackupList = params => {
+// 查询所有备份配置
+export const getBackupConfigList = () => {
   return request({
-    url: '/system/dataBackup/listPage',
-    method: 'post',
-    params
+    url: '/busin/backup/config/list',
+    method: 'get'
   })
 }
 
-// 获取数据备份详情
-export const getDataBackupDetail = params => {
+// 修改备份配置状态（is_back改为1时自动执行备份）
+export const updateBackupConfig = (id, isBack) => {
   return request({
-    url: '/system/dataBackup/getInfoById',
-    method: 'post',
-    params
+    url: `/busin/backup/config/${id}`,
+    method: 'put',
+    params: { isBack }
   })
 }
 
-// 导入数据
-export const importData = data => {
+// 从备份恢复数据（恢复前会删除原表数据）
+export const restoreBackup = (backType) => {
   return request({
-    url: '/system/dataBackup/import',
-    method: 'post',
-    data,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
-}
-
-// 导出数据
-export const exportData = params => {
-  return request({
-    url: '/system/dataBackup/export',
-    method: 'post',
-    params,
-    responseType: 'blob'
+    url: `/busin/backup/restore/${backType}`,
+    method: 'post'
   })
 }
 
 export const dataBackup = {
-  list: getDataBackupList,
-  detail: getDataBackupDetail,
-  import: importData,
-  export: exportData
+  list: getBackupConfigList,
+  update: updateBackupConfig,
+  restore: restoreBackup
 }

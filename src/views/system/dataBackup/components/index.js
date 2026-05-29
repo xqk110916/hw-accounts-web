@@ -1,80 +1,55 @@
 import { dataBackup } from './api.js'
 
-/*
-  config配置:
-  必传:
-    label:<String> 字段名称
-    prop:<String> 字段key
-  ======================================================
-  table 配置
-    type:<String> 字段类型<可选值: text, slot>(默认text)
-  search 配置
-    type:<String> 字段类型<可选值: text, select, date>(默认text)
-    option:<Array> 字段选项<select类型必传>
-    col:<Number> 字段占位<默认5>
-*/
 export const config = {
   table: [
-    { label: '操作时间', prop: 'operateTime', width: 180 },
-    { label: '类型', prop: 'type', width: 120 },
-    { label: '备注', prop: 'remark' },
+    { label: '备份名称', prop: 'backName', width: 160 },
+    { label: '备份类型', prop: 'backTypeDesc', width: 120 },
+    { label: '是否自动备份', prop: 'isBackDesc', width: 120 },
+    { label: '执行时间', prop: 'createTime', width: 180 },
+    { label: '数据最新日期', prop: 'newTime', width: 180 },
   ],
-  search: [
-    { label: '操作时间', prop: 'operateTime', type: 'daterange', col: 6 },
-    { label: '类型', prop: 'type', type: 'select', col: 4, option: [
-      { label: '导入', value: 'import' },
-      { label: '导出', value: 'export' }
-    ]},
-  ],
+  search: [],
   detail: [],
 }
 
-/**
- * 按钮配置
- *  必传:
- *  label:<String> 按钮名称
- *   type:<String> 按钮类型<可选值: primary, success, warning, danger>
- *   fn:<Function> 按钮点击事件
- * 可选:
- * execute:<String> 按钮权限标识(如果传fn会优先执行fn的事件)<可选值: 'add', 'delete', 'update', 'view'>
- * isShow:<Boolean/Function> 是否显示按钮(默认为true)
- */
 export const btns = {
-  operation: [
-    { label: '导入', type: 'primary', fn: 'import' },
-    { label: '导出', type: 'primary', fn: 'export' },
-  ],
+  operation: [],
   table: [
-    { label: '详情', type: 'text', execute: 'view' },
+    { label: '备份', type: 'text', execute: 'backup' },
+    { label: '恢复', type: 'text', execute: 'restore' },
   ]
 }
 
-// 定义crud请求方法
 export const requestFun = dataBackup
 
-// 定义初始查询
-export const getDefaultOptions = async () => {
+export const getDefaultOptions = async () => {}
 
-}
-
-// 定义提交前的参数处理
 export const beforeSubmit = async (data) => {
   return data
 }
 
-// 定义修改复现数据时的处理
 export const beforeRecurrence = (data, that) => {
   return data
 }
 
-// 定义table数据返回值处理
+const backTypeMap = {
+  '1': '实时库存数据',
+  '2': '库位表',
+  '3': '入库数据',
+  '4': '出库数据',
+  '5': '移库数据',
+  '6': '盘存数据',
+}
+
+const isBackMap = {
+  '1': '是',
+  '2': '否',
+}
+
 export const handleTbaleMap = (data) => {
-  const typeMap = {
-    'import': '导入',
-    'export': '导出'
-  }
   return data.map(item => ({
     ...item,
-    type: typeMap[item.type] || item.type
+    backTypeDesc: backTypeMap[item.backType] || item.backType,
+    isBackDesc: isBackMap[item.isBack] || item.isBack,
   }))
 }

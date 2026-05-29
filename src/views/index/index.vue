@@ -56,11 +56,11 @@
           <div slot="header" class="section-header">
             <div class="header-left">
               <span class="section-title">出入库统计</span>
-              <el-select v-model="inOutStatus" size="small" class="filter-select">
-                <el-option label="全部" value="all"></el-option>
+              <el-select v-model="inOutWarehouse" size="small" class="filter-select" placeholder="全部库房" clearable @change="fetchInOutStats">
+                <el-option v-for="wh in warehouseOptions" :key="wh" :label="wh" :value="wh" />
               </el-select>
-              <el-select v-model="inOutProduct" size="small" class="filter-select-lg">
-                <el-option label="选择产品" value="all"></el-option>
+              <el-select v-model="inOutProduct" size="small" class="filter-select-lg" placeholder="全部材料" clearable filterable @change="fetchInOutStats">
+                <el-option v-for="opt in productOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
               </el-select>
             </div>
             <div class="header-right">
@@ -135,7 +135,9 @@
 
 <script>
 import * as echarts from 'echarts';
-import { getProductStatistics } from '@/api/warehouse/warehouse';
+import { getProductStatistics, getInOutStatistics } from '@/api/warehouse/warehouse';
+import { getLocationHierarchy } from '@/views/task/inbound/components/api.js';
+import { listAllMaterialCode } from '@/views/dataManagement/materialManagement/components/api.js';
 
 export default {
   name: 'Index',
@@ -148,11 +150,14 @@ export default {
       loadingTodos: false,
 
       // Middle row filters
-      inOutStatus: 'all',
-      inOutProduct: 'all',
+      inOutWarehouse: '',
+      inOutProduct: '',
       lineChartType: 'quantity',
       lineChartInstance: null,
       loadingLineChart: false,
+      warehouseOptions: [],
+      productOptions: [],
+      inOutStatsData: [],
 
       // Bottom row
       pieChartType: 'quantity',
@@ -169,6 +174,7 @@ export default {
   },
   async created() {
     this.warehouseStats = this.getDefaultStats();
+    this.loadFilterOptions();
     this.fetchProductStats();
     this.fetchTodoData();
   },
@@ -196,6 +202,9 @@ export default {
     },
     productStatsData() {
       this.$nextTick(() => this.updatePieChart());
+    },
+    lineChartType() {
+      this.fetchInOutStats();
     }
   },
   methods: {
@@ -267,11 +276,7 @@ export default {
     },
 
     handleLineChartChange() {
-      this.loadingLineChart = true;
-      setTimeout(() => {
-        this.updateLineChart();
-        this.loadingLineChart = false;
-      }, 300);
+      this.fetchInOutStats();
     },
 
     handlePieChartChange() {
@@ -281,22 +286,60 @@ export default {
     initLineChart() {
       if (!this.$refs.lineChart) return;
       this.lineChartInstance = echarts.init(this.$refs.lineChart);
-      this.updateLineChart();
+      this.fetchInOutStats();
+    },
+
+    async loadFilterOptions() {
+      try {
+        const res = await listAllMaterialCode();
+        const list = res.data || res || [];
+        const arr = Array.isArray(list) ? list : [];
+        this.productOptions = arr.map(item => ({
+          label: `${item.goodCode || ''}${item.goodName ? ' - ' + item.goodName : ''}`,
+          value: item.goodCode,
+        })).filter(item => item.value);
+      } catch (e) {
+        console.error('加载材料列表失败', e);
+      }
+      try {
+        const res = await getLocationHierarchy(2);
+        const list = res.data || res || [];
+        const arr = Array.isArray(list) ? list : [];
+        this.warehouseOptions = arr.map(item => item.warehouseName).filter(Boolean);
+      } catch (e) {
+        console.error('加载库房列表失败', e);
+      }
+    },
+
+    async fetchInOutStats() {
+      this.loadingLineChart = true;
+      try {
+        const params = {
+          statType: this.lineChartType === 'quantity' ? 'COUNT' : 'WEIGHT',
+        };
+        if (this.inOutWarehouse) params.warehouseName = this.inOutWarehouse;
+        if (this.inOutProduct) params.goodsCode = this.inOutProduct;
+
+        const res = await getInOutStatistics(params);
+        const list = res.data || res || [];
+        this.inOutStatsData = Array.isArray(list) ? list : [];
+        this.updateLineChart();
+      } catch (e) {
+        console.error('获取出入库统计失败', e);
+        this.inOutStatsData = [];
+        this.updateLineChart();
+      } finally {
+        this.loadingLineChart = false;
+      }
     },
 
     updateLineChart() {
       if (!this.lineChartInstance) return;
 
-      const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-      let data1, data2;
-
-      if (this.lineChartType === 'quantity') {
-        data1 = [100, 140, 230, 100, 130, 150, 160, 220, 210, 100, 170, 130];
-        data2 = [250, 240, 430, 240, 230, 320, 320, 380, 410, 240, 280, 360];
-      } else {
-        data1 = [1500, 2100, 3450, 1500, 1950, 2250, 2400, 3300, 3150, 1500, 2550, 1950];
-        data2 = [3750, 3600, 6450, 3600, 3450, 4800, 4800, 5700, 6150, 3600, 4200, 5400];
-      }
+      const stats = this.inOutStatsData || [];
+      const months = stats.map(item => item.month || '');
+      const inboundData = stats.map(item => item.inboundValue || 0);
+      const outboundData = stats.map(item => item.outboundValue || 0);
 
       const option = {
         tooltip: { trigger: 'axis' },
@@ -340,7 +383,7 @@ export default {
                 { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
               ])
             },
-            data: data1
+            data: inboundData
           },
           {
             name: '出库',
@@ -355,7 +398,7 @@ export default {
                 { offset: 1, color: 'rgba(115, 220, 209, 0.05)' }
               ])
             },
-            data: data2
+            data: outboundData
           }
         ]
       };

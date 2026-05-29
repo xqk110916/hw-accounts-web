@@ -11,3 +11,7 @@ export function getWarehouseCapacity(balanceAreaId) {
 export function getProductStatistics(data) {
   return request({ url: '/busin/warehouse/product/statistic', method: 'post', data });
 }
+
+export function getInOutStatistics(data) {
+  return request({ url: '/busin/form/stat/in-out', method: 'post', data });
+}

@@ -123,9 +123,7 @@
               </td>
               <td class="label-cell">单位名称</td>
               <td colspan="3">
-                <el-select v-model="form.receiverUnitName" size="mini" filterable placeholder="选择收货单位" class="modern-select no-print">
-                  <el-option v-for="opt in receiverOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-                </el-select>
+                <el-input v-model="form.receiverUnitName" size="mini" placeholder="请输入单位名称" class="modern-input no-print" />
                 <span class="print-only print-text">{{ form.receiverUnitName }}</span>
               </td>
               <!-- 最右侧盖章列，完美跨满收方 6 行，显示在表内，面积放大 -->
@@ -199,10 +197,10 @@
               <td colspan="2" class="align-right-cell">
                 <span class="no-print" style="display: inline-flex; align-items: center; gap: 2px; width: 100%;">
                   <span class="dispatch-text" style="white-space: nowrap;">本份单据发往单位（</span>
-                  <el-input v-model="form.dispatchUnit" size="mini" placeholder="请输入" class="modern-input" style="flex: 1;" />
+                  <el-input v-model="form.postUnit" size="mini" placeholder="请输入" class="modern-input" style="flex: 1;" />
                   <span class="dispatch-text" style="white-space: nowrap;">）</span>
                 </span>
-                <span class="print-only" style="font-family: SimSun, serif; font-size: 11px; color: #000;">本份单据发往单位（ {{ form.dispatchUnit }} ）</span>
+                <span class="print-only" style="font-family: SimSun, serif; font-size: 11px; color: #000;">本份单据发往单位（ {{ form.postUnit }} ）</span>
               </td>
             </tr>
 
@@ -255,13 +253,8 @@ export default {
         receiverUnitName: '', receiverUnitCode: '', receiverLicenseNo: '',
         receiveDate: '', receiveLocation: '', receiver: '',
         reportNo: '', senderTabulator: '', receiverMaker: '',
-        format: '', formNo: '', dispatchUnit: '',
+        format: '', formNo: '', postUnit: '',
       },
-      receiverOptions: [
-        { label: '核工业第一研究所', value: '核工业第一研究所' },
-        { label: '中国原子能科学研究院', value: '中国原子能科学研究院' },
-        { label: '西北核技术研究所', value: '西北核技术研究所' }
-      ],
       copyItems: [
         '1（&nbsp;&nbsp;）发方留存',
         '2（&nbsp;&nbsp;）发方寄X管办',

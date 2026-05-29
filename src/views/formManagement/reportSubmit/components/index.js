@@ -380,7 +380,7 @@ export const normalizeTaskDetailRows = (data = []) => {
 const headerFields = {
   R01: [
     'id', 'checker', 'debitPost', 'debitPostDate', 'debitReturn', 'debitReturnDate',
-    'dispatchUnit', 'formNo', 'format', 'inOutType', 'receiveDate', 'receiveLocation', 'receiver',
+    'postUnit', 'formNo', 'format', 'inOutType', 'receiveDate', 'receiveLocation', 'receiver',
     'receiverLicenseNo', 'receiverMaker', 'receiverSignDate', 'receiverUnitCode',
     'receiverUnitName', 'reportNo', 'securityLevel', 'sendDate', 'sendLocation',
     'sendRemain1', 'sendRemain1Date', 'sendRemain3', 'sendRemain3Date',
