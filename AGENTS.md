@@ -49,3 +49,10 @@ When generating a new page, component, route, menu, or standard List/CRUD interf
   │   └── DetailDialog.vue   # 详情弹窗
   └── ...
   ```
+
+## 浏览器操作规范（项目级）
+
+- **必须使用 CDP-Bridge**：本项目需要登录才能访问（localhost:8080），进行界面调试或获取 Token 时，必须使用 MCP 工具 `CDP-Bridge` 连接本地浏览器
+- **禁止使用 Playwright**：不要使用 Playwright 打开项目页面，因为它无法复用已登录的会话
+- **原因**：项目有登录态，CDP-Bridge 可以连接已登录的 Chrome 浏览器，避免重复登录
+- **调试验证**：调试过程中以 CDP-Bridge 为主进行界面验证和调试，当 CDP-Bridge 无法满足需求时，可调用 `open-computer-use` MCP 工具辅助完成

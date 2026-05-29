@@ -57,3 +57,10 @@ When generating a new page, component, route, menu, or standard List/CRUD interf
 - **直接行动**：Gemini 在执行任务时，对于日常需求（包括但不限于修改文件、调试接口、更新样式、分析文档等），禁止进行冗余的多阶段规划（Planning Mode）或要求用户先批准设计图。直接使用文件读写和命令工具完成修改，行动要果断迅速。
 - **减少打扰**：除非遇到严重冲突或不可恢复的风险，否则不需要向用户反复进行确认和询问。保持自信，一步到位地解决问题。
 
+## 浏览器操作规范（项目级）
+
+- **必须使用 CDP-Bridge**：本项目需要登录才能访问（localhost:8080），进行界面调试或获取 Token 时，必须使用 MCP 工具 `CDP-Bridge` 连接本地浏览器
+- **禁止使用 Playwright**：不要使用 Playwright 打开项目页面，因为它无法复用已登录的会话
+- **原因**：项目有登录态，CDP-Bridge 可以连接已登录的 Chrome 浏览器，避免重复登录
+- **调试验证**：调试过程中以 CDP-Bridge 为主进行界面验证和调试，当 CDP-Bridge 无法满足需求时，可调用 `open-computer-use` MCP 工具辅助完成
+

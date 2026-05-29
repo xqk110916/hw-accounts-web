@@ -129,6 +129,7 @@
                             size="small"
                             icon="el-icon-cpu"
                             class="search-trigger-btn"
+                            :disabled="item.disabled"
                             @click="handleAction(item.actionBtn)"
                           >{{ item.actionBtn }}</el-button>
                         </div>
@@ -160,8 +161,8 @@
           <!-- 报表显示区域 - 不固定高度，由界面内容自动撑开 (Natural height auto wrapper) -->
           <div class="paper-desk-wrapper">
             <div ref="printArea" class="report-paper-container">
-              <r01-template v-if="activeReport === 'R01'" :form-data="templateData" @update="updateTemplateData" />
-              <common-template v-else :code="activeReport" :form-data="templateData" @update="updateTemplateData" />
+              <r01-template v-if="activeReport === 'R01'" :form-data="templateData" :security-options="securityOptions" @update="updateTemplateData" />
+              <common-template v-else :code="activeReport" :form-data="templateData" :security-options="securityOptions" @update="updateTemplateData" />
             </div>
           </div>
 
@@ -179,15 +180,23 @@
             <div class="table-area">
               <el-table
                 ref="table"
+                :key="activeReport + '_' + tableData.length"
                 :data="tableData"
                 border
                 size="small"
+                :max-height="tableHeight"
+                :cell-style="cellStyle"
                 class="modern-table"
                 style="width: 100%"
               >
                 <template v-for="col in currentColumns">
                   <!-- 序号列 -->
-                  <el-table-column v-if="col.type === 'index'" :key="'col_index_' + col.label" type="index" :label="col.label" width="55" align="center" />
+                  <el-table-column v-if="col.type === 'index'" :key="'col_index_' + col.label" :label="col.label" width="55" align="center">
+                    <template slot-scope="scope">
+                      <span v-if="scope.row._isGroupTotal" style="font-weight: bold; color: #b45309;">-</span>
+                      <span v-else>{{ scope.$index + 1 }}</span>
+                    </template>
+                  </el-table-column>
                   
                   <!-- 操作列 -->
                   <el-table-column v-else-if="col.type === 'operation'" :key="'col_op_' + col.label" :label="col.label" width="100" :fixed="col.fixed" align="center">
@@ -241,9 +250,12 @@ import {
   reportConfigs,
   requestFun,
   buildQueryParams,
+  buildSavePayload,
   loadDefaultOptions,
   setTaskOptions,
   toTaskOptions,
+  toHistoryOptions,
+  extractList,
   buildTaskQueryParams,
   buildTaskDetailParams,
   normalizeTaskDetailRows,
@@ -261,8 +273,9 @@ export default {
       searchParams: {},
       templateData: {},
       tableData: [],
-      tableHeight: null, // 不限制表格高度，由内容自动撑开
+      tableHeight: 450, // 限制表格高度，防止大页面无限拉长
       searchOptions: { taskNums: [], historyId: [], historyIds: [], goodsCodes: [] },
+      securityOptions: [],
     }
   },
   computed: {
@@ -281,7 +294,17 @@ export default {
     openReport(code) {
       this.activeReport = code
       this.currentView = 'detail'
-      this.searchParams = {}
+      
+      // 默认选择当前年份与当前季度
+      const now = new Date()
+      const currentYear = String(now.getFullYear())
+      const currentQuarter = Math.floor(now.getMonth() / 3) + 1
+      
+      this.searchParams = {
+        year: currentYear,
+        quarter: currentQuarter,
+      }
+      
       this.templateData = {}
       this.tableData = []
       this.searchOptions = { taskNums: [], historyId: [], historyIds: [], goodsCodes: [] }
@@ -335,8 +358,11 @@ export default {
           if (fn && fn.detail) {
             try {
               const res = await fn.detail(targetId)
-              if (res.code === 1) {
-                const norm = normalizeDetailData(code, res.data)
+              const resCode = res.code !== undefined ? res.code : 1
+              const resData = res.code !== undefined ? res.data : res
+              
+              if (resCode === 1) {
+                const norm = normalizeDetailData(code, resData)
                 this.templateData = norm.report
                 this.tableData = norm.detailList
                 if (code === 'R01') {
@@ -346,6 +372,9 @@ export default {
                     this.$set(this.searchParams, 'taskNums', arr)
                   }
                 }
+                this.$nextTick(() => {
+                  if (this.$refs.table) this.$refs.table.doLayout()
+                })
                 this.$message.success('历史报表加载成功')
               } else {
                 this.$message.error(res.msg || '加载历史详情失败')
@@ -378,18 +407,24 @@ export default {
         const params = buildTaskDetailParams(this.searchParams)
         try {
           const res = await fn.taskDetail(params)
-          if (res.code === 1) {
-            const rows = normalizeTaskDetailRows(res.data)
+          const resCode = res.code !== undefined ? res.code : 1
+          const resData = res.code !== undefined ? res.data : res
+
+          if (resCode === 1) {
+            const rows = normalizeTaskDetailRows(resData)
             this.tableData = rows
-            const firstTask = (res.data && res.data[0]) || {}
+            const firstTask = (resData && resData[0]) || {}
             this.templateData = {
               inOutType: firstTask.typeName || (firstTask.type === 1 ? '入库' : '出库'),
               taskNum: this.searchParams.taskNums.join(', '),
               senderUnitName: firstTask.senderUnitName || '',
               receiverUnitName: firstTask.receiverUnitName || '',
-              senderMaker: this.$store.state.user?.name || '',
+              senderTabulator: this.$store.state.user?.name || '',
               receiverMaker: '',
             }
+            this.$nextTick(() => {
+              if (this.$refs.table) this.$refs.table.doLayout()
+            })
             this.$message.success('报表数据接入成功')
           } else {
             this.$message.error(res.msg || '数据加载失败')
@@ -403,10 +438,16 @@ export default {
           const params = buildQueryParams(code, this.searchParams)
           try {
             const res = await fn.generate(params)
-            if (res.code === 1) {
-              const norm = normalizeDetailData(code, res.data)
+            const resCode = res.code !== undefined ? res.code : 1
+            const resData = res.code !== undefined ? res.data : res
+
+            if (resCode === 1) {
+              const norm = normalizeDetailData(code, resData)
               this.templateData = norm.report
               this.tableData = norm.detailList
+              this.$nextTick(() => {
+                if (this.$refs.table) this.$refs.table.doLayout()
+              })
               this.$message.success('报表统计成功')
             } else {
               this.$message.error(res.msg || '统计失败')
@@ -421,14 +462,41 @@ export default {
     updateTemplateData(data) {
       this.templateData = { ...this.templateData, ...data }
     },
-    handleSave() {
+    async handleSave() {
       const fn = requestFun[this.activeReport]
       if (!fn || !fn.save) return
-      fn.save({ ...this.templateData, searchParams: this.searchParams }).then(res => {
+
+      // 过滤掉前端拼装的分组合计行，防止对数据库存储的数据造成污染
+      const realDetailList = (this.tableData || []).filter(row => !row._isGroupTotal)
+
+      try {
+        const payload = buildSavePayload(this.activeReport, this.templateData, realDetailList)
+        const res = await fn.save(payload)
         if (res.code === 1) {
           this.$message.success('保存成功')
+          this.reloadHistoryOptions()
         }
-      })
+      } catch (e) {
+        console.error('保存报表失败:', e)
+        this.$message.error('保存失败')
+      }
+    },
+    async reloadHistoryOptions() {
+      const code = this.activeReport
+      const fn = requestFun[code]
+      if (!fn || !fn.historyList) return
+      try {
+        const res = await fn.historyList()
+        const options = toHistoryOptions(extractList(res.data), code)
+        const historyProp = code === 'R01' ? 'historyIds' : 'historyId'
+        this.$set(this.searchOptions, historyProp, options)
+        // 同步到 reportConfigs 中的 option
+        const config = reportConfigs[code] || {}
+        const searchItem = (config.search || []).find(item => item.prop === historyProp)
+        if (searchItem) this.$set(searchItem, 'option', options)
+      } catch (e) {
+        console.error('刷新历史列表失败:', e)
+      }
     },
     handleExport() {
       const fn = requestFun[this.activeReport]
@@ -919,6 +987,39 @@ export default {
         if (idx > -1) this.tableData.splice(idx, 1)
       }
     },
+    cellStyle({ row }) {
+      if (!row) return {}
+      
+      // 如果是 R01 报表，我们根据 taskNum 字段对数据进行分组
+      if (this.activeReport === 'R01' && row.taskNum) {
+        const uniqueTaskNums = [...new Set(this.tableData.map(item => item.taskNum).filter(Boolean))]
+        const idx = uniqueTaskNums.indexOf(row.taskNum)
+        if (idx > -1) {
+          // 如果是小计行，赋予高亮微金色底色和加粗深暖金文字，与总体风格呼应
+          if (row._isGroupTotal) {
+            return {
+              background: '#fffbeb',
+              color: '#b45309',
+              fontWeight: '700'
+            }
+          }
+
+          const GROUP_COLORS = [
+            'rgba(230, 240, 255, 0.55)',   // 极淡雅蓝
+            'rgba(255, 243, 224, 0.55)',   // 极淡雅橙
+            'rgba(232, 245, 233, 0.55)',   // 极淡雅绿
+            'rgba(243, 229, 245, 0.55)',   // 极淡雅紫
+            'rgba(224, 247, 250, 0.55)',   // 极淡雅青
+            'rgba(255, 235, 238, 0.55)',   // 极淡雅红
+            'rgba(248, 244, 224, 0.55)',   // 极淡雅黄绿
+            'rgba(232, 240, 254, 0.55)',   // 极淡雅靛蓝
+          ]
+          const colorIdx = idx % GROUP_COLORS.length
+          return { background: GROUP_COLORS[colorIdx] }
+        }
+      }
+      return {}
+    },
   },
 }
 </script>
@@ -1318,6 +1419,16 @@ export default {
       background-color: #246fe5;
       border-color: #246fe5;
       &:hover { background-color: #1d5ec2; border-color: #1d5ec2; }
+      &:disabled, &[disabled] {
+        background-color: #c0c4cc;
+        border-color: #c0c4cc;
+        color: #fff;
+        cursor: not-allowed;
+        &:hover {
+          background-color: #c0c4cc;
+          border-color: #c0c4cc;
+        }
+      }
     }
   }
 }
@@ -1426,6 +1537,18 @@ export default {
       /* 行悬浮 */
       .el-table__row:hover > td {
         background-color: #f1f5f9 !important;
+      }
+
+      /* 合计行美化 */
+      .el-table__footer-wrapper {
+        td.el-table__cell {
+          background-color: #fffbeb !important; /* 优雅暖金 */
+          color: #b45309 !important; /* 优雅深暖金文字 */
+          font-weight: 700 !important;
+          font-size: 12px !important;
+          border-top: 1px solid #fde68a !important;
+          border-bottom: 1px solid #e2e8f0 !important;
+        }
       }
     }
   }

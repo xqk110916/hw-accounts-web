@@ -1,12 +1,12 @@
 // 报表卡片元信息
 export const reportCards = [
-  { code: 'R01', name: 'X材料交接统计报表', desc: '发方与收方对称布局，记录交接信息' },
-  { code: 'R03', name: 'X材料库存变化统计报表', desc: '按季度统计库存变化' },
-  { code: 'R04', name: 'X材料实际库存统计报表', desc: '实际库存盘点统计' },
-  { code: 'R05', name: 'X材料账目报表', desc: '账目衡算数据登记' },
-  { code: 'R06', name: 'X材料注释统计报表', desc: '注释信息统计管理' },
-  { code: 'R08', name: 'X材料库存变化综合统计表', desc: '结算周期材料变动量综合统计' },
-  { code: 'R09', name: 'X材料库存变化综合统计表', desc: '账面与实物对比综合统计' },
+  { code: 'R01', name: '材料交接统计报表', desc: '发方与收方对称布局，记录交接信息' },
+  { code: 'R03', name: '材料库存变化统计报表', desc: '按季度统计库存变化' },
+  { code: 'R04', name: '材料实际库存统计报表', desc: '实际库存盘点统计' },
+  { code: 'R05', name: '材料账目报表', desc: '账目衡算数据登记' },
+  { code: 'R06', name: '材料注释统计报表', desc: '注释信息统计管理' },
+  { code: 'R08', name: '材料库存变化综合统计表', desc: '结算周期材料变动量综合统计' },
+  { code: 'R09', name: '材料库存变化综合统计表', desc: '账面与实物对比综合统计' },
 ]
 
 // 多级表头公共片段
@@ -39,8 +39,8 @@ export const quarterOptions = [
 // 各报表配置
 export const reportConfigs = {
   R01: {
-    title: 'X材料交接统计报表',
-    tableNo: 'X材料R01表',
+    title: '材料交接统计报表',
+    tableNo: '材料R01表',
     formatNo: 'X管办94R01号',
     search: [
       { label: '任务类型', prop: 'type', type: 'select', col: 5, option: [
@@ -48,7 +48,7 @@ export const reportConfigs = {
       ] },
       { label: '日期区间', prop: 'dateRange', type: 'daterange', col: 8 },
       { label: '选择任务', prop: 'taskNums', type: 'select', col: 11, multiple: true, option: [], actionBtn: '接入报表' },
-      { label: '从历史中选择', prop: 'historyIds', type: 'select', col: 12, multiple: true, option: [], newRow: true },
+      { label: '从历史中选择', prop: 'historyIds', type: 'select', col: 12, option: [], newRow: true },
     ],
     columns: [
       { type: 'index', label: '序号', width: 60 },
@@ -69,9 +69,9 @@ export const reportConfigs = {
   },
 
   R03: {
-    title: 'X材料库存变化统计报表',
-    tableNo: 'X材料R03表',
-    formatNo: 'X管办94R03号',
+    title: '材料库存变化统计报表',
+    tableNo: '材料R03表',
+    formatNo: 'X管办01R01号',
     search: [
       { label: '年份', prop: 'year', type: 'year', col: 11 },
       { label: '季度', prop: 'quarter', type: 'select', col: 13, option: quarterOptions, actionBtn: '统计' },
@@ -100,8 +100,8 @@ export const reportConfigs = {
   },
 
   R04: {
-    title: 'X材料实际库存统计报表',
-    tableNo: 'X材料R04表',
+    title: '材料实际库存统计报表',
+    tableNo: '材料R04表',
     formatNo: 'X管办94R04号',
     search: [
       { label: '年份', prop: 'year', type: 'year', col: 11 },
@@ -126,12 +126,12 @@ export const reportConfigs = {
   },
 
   R05: {
-    title: 'X材料账目报表',
-    tableNo: 'X材料R05表',
+    title: '材料账目报表',
+    tableNo: '材料R05表',
     formatNo: 'X管办94R05号',
     search: [
       { label: '年份', prop: 'year', type: 'year', col: 11 },
-      { label: '季度', prop: 'quarter', type: 'select', col: 13, option: quarterOptions, actionBtn: '统计' },
+      { label: '季度', prop: 'quarter', type: 'select', col: 13, option: quarterOptions, actionBtn: '统计', disabled: true },
       { label: '从历史中选择', prop: 'historyId', type: 'select', col: 8, option: [], newRow: true },
     ],
     columns: [
@@ -160,11 +160,11 @@ export const reportConfigs = {
   },
 
   R06: {
-    title: 'X材料注释统计报表',
-    tableNo: 'X材料R06表',
+    title: '材料注释统计报表',
+    tableNo: '材料R06表',
     formatNo: 'X管办94R06号',
     search: [
-      { label: '查询日期', prop: 'dateRange', type: 'daterange', col: 12, actionBtn: '统计' },
+      { label: '查询日期', prop: 'dateRange', type: 'daterange', col: 12, actionBtn: '统计', disabled: true },
       { label: '从历史中选择', prop: 'historyId', type: 'select', col: 8, option: [], newRow: true },
     ],
     columns: [
@@ -181,8 +181,8 @@ export const reportConfigs = {
   },
 
   R08: {
-    title: 'X材料库存变化综合统计表',
-    tableNo: 'X材料R08表',
+    title: '材料库存变化综合统计表',
+    tableNo: '材料R08表',
     formatNo: 'X管办94R08号',
     search: [
       { label: '统计日期', prop: 'dateRange', type: 'daterange', col: 11 },
@@ -204,7 +204,7 @@ export const reportConfigs = {
         { prop: 'otherIncrease', label: '其他增量', minWidth: 90 },
         { prop: 'otherDecrease', label: '其他减量', minWidth: 90 },
         { prop: 'knownLoss', label: '已知损失', minWidth: 90 },
-        { prop: 'closingBalance', label: '期末账面', minWidth: 90 },
+          { prop: 'closingBalance', label: '期末账面', minWidth: 90 },
       ] },
       { prop: 'remarkSymbol', label: '注释符', minWidth: 80 },
       { prop: 'remark', label: '备注', minWidth: 100 },
@@ -212,8 +212,8 @@ export const reportConfigs = {
   },
 
   R09: {
-    title: 'X材料库存变化综合统计表',
-    tableNo: 'X材料R09表',
+    title: '材料库存变化综合统计表',
+    tableNo: '材料R09表',
     formatNo: 'X管办94R09号',
     search: [
       { label: '统计日期', prop: 'dateRange', type: 'daterange', col: 11 },
@@ -247,8 +247,8 @@ export const templateConfigs = {
       { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
       { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
       { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
-      { label: '起止年季', prop: 'yearQuarterRange', type: 'range', placeholders: ['2020.1', '2020.3'] },
-      { label: '实际日期', prop: 'actualDateRange', type: 'range', placeholders: ['2020.1.1', '2020.3.31'] },
+      { label: '起止年季', prop: 'yearQuarterRange', type: 'monthrange', placeholders: ['请选择开始月份', '请选择结束月份'] },
+      { label: '实际日期', prop: 'actualDateRange', type: 'daterange', placeholders: ['请选择开始日期', '请选择结束日期'] },
     ],
   },
   R04: {
@@ -257,8 +257,8 @@ export const templateConfigs = {
       { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
       { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
       { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
-      { label: '账面盘存日期', prop: 'bookInventoryDate', placeholder: '2020.3.31' },
-      { label: '实际日期', prop: 'actualDate', placeholder: '2020.3.31' },
+      { label: '账面盘存日期', prop: 'bookInventoryDate', type: 'date', placeholder: '请选择盘存日期' },
+      { label: '实际日期', prop: 'actualDate', type: 'date', placeholder: '请选择实际日期' },
     ],
   },
   R05: {
@@ -267,8 +267,8 @@ export const templateConfigs = {
       { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
       { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
       { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
-      { label: '起止年季', prop: 'yearQuarterRange', type: 'range', placeholders: ['2020.1', '2020.3'] },
-      { label: '实际日期', prop: 'actualDateRange', type: 'range', placeholders: ['2020.1.1', '2020.3.31'] },
+      { label: '起止年季', prop: 'yearQuarterRange', type: 'monthrange', placeholders: ['请选择开始月份', '请选择结束月份'] },
+      { label: '实际日期', prop: 'actualDateRange', type: 'daterange', placeholders: ['请选择开始日期', '请选择结束日期'] },
     ],
   },
   R06: {
@@ -277,7 +277,7 @@ export const templateConfigs = {
       { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
       { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
       { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
-      { label: '报告日期', prop: 'reportDate', placeholder: '2020.1.31' },
+      { label: '报告日期', prop: 'reportDate', type: 'date', placeholder: '请选择报告日期' },
     ],
   },
   R08: {
@@ -286,8 +286,8 @@ export const templateConfigs = {
       { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
       { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
       { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
-      { label: '起止年季', prop: 'yearQuarterRange', type: 'range', placeholders: ['2020.1', '2020.3'] },
-      { label: '实际日期', prop: 'actualDateRange', type: 'range', placeholders: ['2020.1.1', '2020.3.31'] },
+      { label: '起止年季', prop: 'yearQuarterRange', type: 'monthrange', placeholders: ['请选择开始月份', '请选择结束月份'] },
+      { label: '实际日期', prop: 'actualDateRange', type: 'daterange', placeholders: ['请选择开始日期', '请选择结束日期'] },
     ],
   },
   R09: {
@@ -296,8 +296,8 @@ export const templateConfigs = {
       { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
       { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
       { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
-      { label: '起止年季', prop: 'yearQuarterRange', type: 'range', placeholders: ['2020.1', '2020.3'] },
-      { label: '实际日期', prop: 'actualDateRange', type: 'range', placeholders: ['2020.1.1', '2020.3.31'] },
+      { label: '起止年季', prop: 'yearQuarterRange', type: 'monthrange', placeholders: ['请选择开始月份', '请选择结束月份'] },
+      { label: '实际日期', prop: 'actualDateRange', type: 'daterange', placeholders: ['请选择开始日期', '请选择结束日期'] },
     ],
   },
 }

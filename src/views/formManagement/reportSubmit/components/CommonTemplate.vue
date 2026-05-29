@@ -7,14 +7,15 @@
         <div class="header-meta-row">
           <div class="header-row label-with-select">
             <span class="label">密级：</span>
-            <el-select v-model="form.classification" size="mini" class="modern-select-mini no-print">
-              <el-option label="内部" value="内部" />
-              <el-option label="秘密" value="秘密" />
-              <el-option label="机密" value="机密" />
+            <el-select v-model="form.securityLevel" size="mini" class="modern-select-mini no-print" filterable>
+              <el-option v-for="opt in securityOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
-            <span class="print-only print-text-inline" style="font-weight: bold;">{{ form.classification }}</span>
+            <span class="print-only print-text-inline" style="font-weight: bold;">{{ securityLevelLabel }}</span>
           </div>
-          <div class="header-row format-tag">格式：{{ config.formatNo }}</div>
+          <div class="header-row format-tag">
+              <span class="no-print">格式：</span><el-input v-model="form.format" size="mini" class="tag-input no-print" :placeholder="config.formatNo" />
+              <span class="print-only">格式：{{ form.format || config.formatNo }}</span>
+            </div>
         </div>
         
         <div class="header-title-row">
@@ -23,7 +24,10 @@
         </div>
         
         <div class="header-sub-row">
-          <div class="header-row code-tag">表号：{{ config.tableNo }}</div>
+          <div class="header-row code-tag">
+              <span class="no-print">表号：</span><el-input v-model="form.formNo" size="mini" class="tag-input no-print" :placeholder="config.tableNo" />
+              <span class="print-only">表号：{{ form.formNo || config.tableNo }}</span>
+            </div>
         </div>
       </div>
 
@@ -34,7 +38,65 @@
             <tr v-for="(row, idx) in templateConfig.leftRows" :key="idx">
               <!-- 左侧输入栏 -->
               <td class="label-cell">{{ row.label }}</td>
-              <template v-if="row.type === 'range'">
+              <template v-if="row.type === 'monthrange'">
+                <td style="width: 50%;">
+                  <div class="no-print" style="width: 100%;">
+                    <el-date-picker
+                      v-model="tempRange[row.prop]"
+                      type="monthrange"
+                      size="mini"
+                      range-separator="至"
+                      start-placeholder="开始月份"
+                      end-placeholder="结束月份"
+                      value-format="yyyy-MM-dd"
+                      class="modern-date-picker"
+                      style="width: 100%;"
+                    />
+                  </div>
+                  <div class="print-only" style="font-family: SimSun, serif; font-size: 12px; color: #000;">
+                    {{ form[row.prop + 'Start'] ? formatPrintMonth(form[row.prop + 'Start']) : '' }} 至 {{ form[row.prop + 'End'] ? formatPrintMonth(form[row.prop + 'End']) : '' }}
+                  </div>
+                </td>
+              </template>
+              <template v-else-if="row.type === 'daterange'">
+                <td style="width: 50%;">
+                  <div class="no-print" style="width: 100%;">
+                    <el-date-picker
+                      v-model="tempRange[row.prop]"
+                      type="daterange"
+                      size="mini"
+                      range-separator="至"
+                      start-placeholder="开始日期"
+                      end-placeholder="结束日期"
+                      value-format="yyyy-MM-dd"
+                      class="modern-date-picker"
+                      style="width: 100%;"
+                    />
+                  </div>
+                  <div class="print-only" style="font-family: SimSun, serif; font-size: 12px; color: #000;">
+                    {{ form[row.prop + 'Start'] ? form[row.prop + 'Start'] : '' }} 至 {{ form[row.prop + 'End'] ? form[row.prop + 'End'] : '' }}
+                  </div>
+                </td>
+              </template>
+              <template v-else-if="row.type === 'date'">
+                <td style="width: 50%;">
+                  <div class="no-print" style="width: 100%;">
+                    <el-date-picker
+                      v-model="form[row.prop]"
+                      type="date"
+                      size="mini"
+                      :placeholder="row.placeholder || '请选择日期'"
+                      value-format="yyyy-MM-dd"
+                      class="modern-date-picker"
+                      style="width: 100%;"
+                    />
+                  </div>
+                  <div class="print-only" style="font-family: SimSun, serif; font-size: 12px; color: #000;">
+                    {{ form[row.prop] || '' }}
+                  </div>
+                </td>
+              </template>
+              <template v-else-if="row.type === 'range'">
                 <td style="width: 50%;">
                   <div class="range-input-wrapper">
                     <span class="range-badge">起</span>
@@ -55,7 +117,8 @@
                 <td class="label-cell" style="width: 120px;">负责人</td>
                 <td class="sign-cell">
                   <div class="sign-area-wrapper">
-                    <span class="sign-placeholder">（ 签字 ）</span>
+                    <el-input v-model="form.responsiblePerson" size="mini" placeholder="请输入负责人" class="modern-input inline-input no-print" style="width: 140px;" />
+                    <span class="print-only print-text">{{ form.responsiblePerson }}</span>
                   </div>
                 </td>
               </template>
@@ -63,7 +126,8 @@
                 <td class="label-cell" style="width: 120px;">制表人</td>
                 <td class="sign-cell">
                   <div class="sign-area-wrapper">
-                    <span class="sign-placeholder">（ 签字 ）</span>
+                    <el-input v-model="form.maker" size="mini" placeholder="请输入制表人" class="modern-input inline-input no-print" style="width: 140px;" />
+                    <span class="print-only print-text">{{ form.maker }}</span>
                   </div>
                 </td>
               </template>
@@ -74,7 +138,7 @@
                     <div class="seal-area">
                       <span class="seal-placeholder">（ 盖章处 ）</span>
                     </div>
-                    <div class="date-mark">年&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;日</div>
+                    <div class="date-mark">年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</div>
                   </div>
                 </td>
               </template>
@@ -86,9 +150,18 @@
       <!-- 页脚 -->
       <div class="report-footer">
         <div class="footer-meta">
-          <span class="meta-item">批准机关：国家统计局</span>
-          <span class="meta-item">批准文号：XXX字（xxxx）xxx号</span>
-          <span class="meta-item">制表机关：X材料XX办公室</span>
+          <span class="meta-item no-print" style="display: inline-flex; align-items: center; gap: 2px;">
+            批准机关：<el-input v-model="form.approvalOrg" size="mini" placeholder="请输入" class="modern-input inline-input" style="width: 120px;" />
+          </span>
+          <span class="print-only meta-item">批准机关：{{ form.approvalOrg }}</span>
+          <span class="meta-item no-print" style="display: inline-flex; align-items: center; gap: 2px;">
+            批准文号：<el-input v-model="form.approvalNo" size="mini" placeholder="请输入" class="modern-input inline-input" style="width: 160px;" />
+          </span>
+          <span class="print-only meta-item">批准文号：{{ form.approvalNo }}</span>
+          <span class="meta-item no-print" style="display: inline-flex; align-items: center; gap: 2px;">
+            制表机关：<el-input v-model="form.makeOrg" size="mini" placeholder="请输入" class="modern-input inline-input" style="width: 140px;" />
+          </span>
+          <span class="print-only meta-item">制表机关：{{ form.makeOrg }}</span>
         </div>
       </div>
     </div>
@@ -103,10 +176,12 @@ export default {
   props: {
     code: { type: String, required: true },
     formData: { type: Object, default: () => ({}) },
+    securityOptions: { type: Array, default: () => [] },
   },
   data() {
     return {
-      form: { classification: '内部' },
+      form: { securityLevel: '', format: '', formNo: '', maker: '', approvalOrg: '', approvalNo: '', makeOrg: '', responsiblePerson: '' },
+      tempRange: {},
     }
   },
   computed: {
@@ -119,16 +194,85 @@ export default {
     rowspanCount() {
       return Math.max(this.templateConfig.leftRows.length - 2, 1)
     },
+    securityLevelLabel() {
+      const option = this.securityOptions.find(opt => opt.value === this.form.securityLevel)
+      return option ? option.label : this.form.securityLevel
+    },
   },
   watch: {
     form: {
       deep: true,
-      handler(val) { this.$emit('update', val) },
+      handler(val) {
+        // 反向同步到 tempRange
+        if (this.templateConfig && this.templateConfig.leftRows) {
+          this.templateConfig.leftRows.forEach(row => {
+            if (row.type === 'monthrange' || row.type === 'daterange') {
+              const startVal = val[row.prop + 'Start'] || ''
+              const endVal = val[row.prop + 'End'] || ''
+              if (startVal && endVal) {
+                const temp = this.tempRange[row.prop] || []
+                if (temp[0] !== startVal || temp[1] !== endVal) {
+                  this.$set(this.tempRange, row.prop, [startVal, endVal])
+                }
+              } else {
+                if (this.tempRange[row.prop]) {
+                  this.$set(this.tempRange, row.prop, null)
+                }
+              }
+            }
+          })
+        }
+        this.$emit('update', val)
+      },
     },
     formData: {
       immediate: true,
-      handler(val) { if (val && Object.keys(val).length) Object.assign(this.form, val) },
+      handler(val) {
+        if (val && Object.keys(val).length) {
+          Object.assign(this.form, val)
+        } else {
+          Object.keys(this.form).forEach(key => {
+            this.form[key] = ''
+          })
+        }
+      },
     },
+    tempRange: {
+      deep: true,
+      handler(val) {
+        if (!val) return
+        if (this.templateConfig && this.templateConfig.leftRows) {
+          this.templateConfig.leftRows.forEach(row => {
+            if (row.type === 'monthrange' || row.type === 'daterange') {
+              const arr = val[row.prop]
+              if (Array.isArray(arr) && arr.length === 2) {
+                const sVal = arr[0] || ''
+                const eVal = arr[1] || ''
+                if (this.form[row.prop + 'Start'] !== sVal) {
+                  this.$set(this.form, row.prop + 'Start', sVal)
+                }
+                if (this.form[row.prop + 'End'] !== eVal) {
+                  this.$set(this.form, row.prop + 'End', eVal)
+                }
+              } else {
+                if (this.form[row.prop + 'Start'] !== '') {
+                  this.$set(this.form, row.prop + 'Start', '')
+                }
+                if (this.form[row.prop + 'End'] !== '') {
+                  this.$set(this.form, row.prop + 'End', '')
+                }
+              }
+            }
+          })
+        }
+      }
+    },
+  },
+  methods: {
+    formatPrintMonth(val) {
+      if (!val) return ''
+      return val.length > 7 ? val.substring(0, 7) : val
+    }
   },
 }
 </script>
@@ -231,8 +375,22 @@ export default {
       padding: 2px 6px;
       border-radius: 4px;
       color: #475569;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
       width: fit-content;
+    }
+
+    .tag-input {
+      width: 130px;
+      ::v-deep .el-input__inner {
+        border: none;
+        background: transparent;
+        font-size: 11px;
+        padding: 0 2px;
+        height: 20px;
+        line-height: 20px;
+        color: #475569;
+      }
     }
   }
 
@@ -282,6 +440,11 @@ export default {
         border: 1px solid #cbd5e1;
         white-space: nowrap;
         user-select: none;
+      }
+
+      .el-date-editor.el-input {
+        flex: 1;
+        width: 0; /* 允许 flex 压缩并均分空间 */
       }
     }
 
@@ -365,21 +528,95 @@ export default {
           border-color: #246fe5;
         }
       }
+
+      &.inline-input .el-input__inner {
+        border-bottom: 1px dashed #64748b;
+        border-radius: 0;
+        padding-bottom: 2px;
+        &:focus {
+          border-bottom-style: solid;
+          border-bottom-color: #246fe5;
+        }
+      }
+    }
+
+    .modern-date-picker {
+      &.el-date-editor {
+        border: 1px solid transparent;
+        background-color: transparent;
+        padding: 3px 5px;
+        height: 28px;
+        line-height: 22px;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+
+        .el-range-input {
+          background-color: transparent;
+          color: #0f172a;
+          font-weight: 500;
+          font-size: 12px;
+        }
+
+        .el-range-separator {
+          line-height: 20px;
+          font-size: 11px;
+          color: #64748b;
+        }
+
+        .el-input__icon {
+          line-height: 20px;
+        }
+
+        &:hover {
+          background-color: #f1f5f9;
+          border-color: #cbd5e1;
+        }
+
+        &.is-active, &:focus-within {
+          background-color: #ffffff;
+          border-color: #246fe5;
+        }
+      }
     }
 
     .modern-select-mini {
+      width: 95px; /* 适当放宽，支持更多字符 */
+      transition: all 0.3s ease;
+      
       .el-input__inner {
-        border: 1px solid #cbd5e1;
-        background-color: #ffffff;
+        border: none;
+        border-bottom: 1px dashed #cbd5e1; /* 极简虚线下划线，更具纸质填空感 */
+        background-color: transparent; /* 背景透明，融入纸张 */
         font-size: 11px;
-        border-radius: 4px;
+        font-weight: bold; /* 加粗显示密级 */
+        border-radius: 0; /* 移除圆角以配合下划线样式 */
         height: 22px;
         line-height: 22px;
+        padding-left: 4px;
+        padding-right: 20px; /* 留出箭头空间 */
         color: #334155;
-        &:hover { border-color: #94a3b8; }
-        &:focus { border-color: #246fe5; }
+        transition: all 0.2s ease;
+        
+        &:hover {
+          border-bottom: 1px solid #94a3b8;
+          color: #0f172a;
+        }
+        &:focus {
+          border-bottom: 1px solid #246fe5;
+          background-color: #f8fafc; /* 聚焦时柔和背景 */
+          color: #246fe5;
+        }
       }
-      .el-input__icon { line-height: 22px; }
+      .el-input__icon {
+        line-height: 22px;
+        color: #94a3b8;
+        transition: color 0.2s ease;
+      }
+      &:hover .el-input__icon {
+        color: #64748b;
+      }
     }
   }
 

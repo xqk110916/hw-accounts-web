@@ -59,11 +59,13 @@ export const listR05History = getReportList('r05')
 export const getR05Detail = getReportDetail('r05')
 export const exportR05 = exportReport('r05')
 export const saveR05 = saveReport('r05')
+export const queryR05Data = queryReport('r05')
 
 export const listR06History = getReportList('r06')
 export const getR06Detail = getReportDetail('r06')
 export const exportR06 = exportReport('r06')
 export const saveR06 = saveReport('r06')
+export const queryR06Data = queryReport('r06')
 
 export const queryR08Data = queryReport('r08')
 export const listR08History = getReportList('r08')

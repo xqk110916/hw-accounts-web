@@ -7,23 +7,27 @@
         <div class="header-meta-row">
           <div class="header-row label-with-select">
             <span class="label">密级：</span>
-            <el-select v-model="form.classification" size="mini" class="modern-select-mini no-print">
-              <el-option label="内部" value="内部" />
-              <el-option label="秘密" value="秘密" />
-              <el-option label="机密" value="机密" />
+            <el-select v-model="form.securityLevel" size="mini" class="modern-select-mini no-print" filterable>
+              <el-option v-for="opt in securityOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
-            <span class="print-only print-text-inline" style="font-weight: bold;">{{ form.classification }}</span>
+            <span class="print-only print-text-inline" style="font-weight: bold;">{{ securityLevelLabel }}</span>
           </div>
-          <div class="header-row format-tag">格式：X管办94R01号</div>
+          <div class="header-row format-tag">
+              <span class="no-print">格式：</span><el-input v-model="form.format" size="mini" class="tag-input no-print" placeholder="X管办94R01号" />
+              <span class="print-only">格式：{{ form.format || 'X管办94R01号' }}</span>
+            </div>
         </div>
         
         <div class="header-title-row">
-          <div class="main-title">X材料交接统计报表</div>
+          <div class="main-title">材料交接统计报表</div>
           <div class="title-sub-bar"></div>
         </div>
         
         <div class="header-sub-row">
-          <div class="header-row code-tag">表号：X材料R01表</div>
+          <div class="header-row code-tag">
+              <span class="no-print">表号：</span><el-input v-model="form.formNo" size="mini" class="tag-input no-print" placeholder="材料R01表" />
+              <span class="print-only">表号：{{ form.formNo || '材料R01表' }}</span>
+            </div>
         </div>
       </div>
 
@@ -57,7 +61,7 @@
                   <div class="seal-area">
                     <span class="seal-placeholder">（ 盖章处 ）</span>
                   </div>
-                  <div class="date-mark">年&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;日</div>
+                  <div class="date-mark">年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</div>
                 </div>
               </td>
             </tr>
@@ -97,9 +101,8 @@
             <tr>
               <td class="label-cell">发货人</td>
               <td colspan="3">
-                <div class="sign-area-wrapper">
-                  <span class="sign-placeholder">（ 签字 ）</span>
-                </div>
+                <el-input v-model="form.sender" size="mini" placeholder="请输入发货人" class="modern-input no-print" />
+                <span class="print-only print-text">{{ form.sender }}</span>
               </td>
             </tr>
             <tr>
@@ -107,7 +110,7 @@
               <td colspan="3">
                 <div class="sign-area-wrapper flex-between">
                   <span class="sign-placeholder">（ 签字 ）</span>
-                  <div class="date-mark">年&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;日</div>
+                  <div class="date-mark">年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</div>
                 </div>
               </td>
             </tr>
@@ -132,7 +135,7 @@
                   <div class="seal-area">
                     <span class="seal-placeholder">（ 盖章处 ）</span>
                   </div>
-                  <div class="date-mark">年&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;日</div>
+                  <div class="date-mark">年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</div>
                 </div>
               </td>
             </tr>
@@ -172,9 +175,8 @@
             <tr>
               <td class="label-cell">收货人</td>
               <td colspan="3">
-                <div class="sign-area-wrapper">
-                  <span class="sign-placeholder">（ 签字 ）</span>
-                </div>
+                <el-input v-model="form.receiver" size="mini" placeholder="请输入收货人" class="modern-input no-print" />
+                <span class="print-only print-text">{{ form.receiver }}</span>
               </td>
             </tr>
             <tr>
@@ -182,7 +184,7 @@
               <td colspan="3">
                 <div class="sign-area-wrapper flex-between">
                   <span class="sign-placeholder">（ 签字 ）</span>
-                  <div class="date-mark">年&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;日</div>
+                  <div class="date-mark">年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</div>
                 </div>
               </td>
             </tr>
@@ -195,7 +197,12 @@
                 <span class="print-only print-text" style="font-weight: bold; font-size: 12px; display: block; text-align: left; padding-left: 4px;">{{ form.reportNo }}</span>
               </td>
               <td colspan="2" class="align-right-cell">
-                <span class="dispatch-text">本份单据发往单位（ <span class="placeholder-underline">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> ）</span>
+                <span class="no-print" style="display: inline-flex; align-items: center; gap: 2px; width: 100%;">
+                  <span class="dispatch-text" style="white-space: nowrap;">本份单据发往单位（</span>
+                  <el-input v-model="form.dispatchUnit" size="mini" placeholder="请输入" class="modern-input" style="flex: 1;" />
+                  <span class="dispatch-text" style="white-space: nowrap;">）</span>
+                </span>
+                <span class="print-only" style="font-family: SimSun, serif; font-size: 11px; color: #000;">本份单据发往单位（ {{ form.dispatchUnit }} ）</span>
               </td>
             </tr>
 
@@ -206,7 +213,7 @@
                   <div v-for="(copy, idx) in copyItems" :key="idx" class="copy-flex-card">
                     <div class="copy-badge">第 {{ idx + 1 }} 联</div>
                     <div class="copy-text" v-html="copy"></div>
-                    <div class="date-mark">年&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;日</div>
+                    <div class="date-mark">年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</div>
                   </div>
                 </div>
               </td>
@@ -224,7 +231,8 @@
         </div>
         <div class="footer-item reviewer-field">
           <span class="footer-label">收方制表人：</span>
-          <span class="placeholder-line" style="width: 120px;"></span>
+          <el-input v-model="form.receiverMaker" size="mini" style="width: 140px;" placeholder="请输入" class="modern-input inline-input no-print" />
+          <span class="print-only print-text" style="border-bottom: 1px solid #000000; min-width: 120px; display: inline-block; text-align: center; font-family: SimSun, serif; font-size: 11px;">{{ form.receiverMaker }}</span>
         </div>
       </div>
     </div>
@@ -236,16 +244,18 @@ export default {
   name: 'R01Template',
   props: {
     formData: { type: Object, default: () => ({}) },
+    securityOptions: { type: Array, default: () => [] },
   },
   data() {
     return {
       form: {
-        classification: '内部',
+        securityLevel: '',
         senderUnitName: '', senderUnitCode: '', senderLicenseNo: '',
-        sendDate: '', sendLocation: '',
+        sendDate: '', sendLocation: '', sender: '',
         receiverUnitName: '', receiverUnitCode: '', receiverLicenseNo: '',
-        receiveDate: '', receiveLocation: '',
-        reportNo: '', senderTabulator: '',
+        receiveDate: '', receiveLocation: '', receiver: '',
+        reportNo: '', senderTabulator: '', receiverMaker: '',
+        format: '', formNo: '', dispatchUnit: '',
       },
       receiverOptions: [
         { label: '核工业第一研究所', value: '核工业第一研究所' },
@@ -268,7 +278,21 @@ export default {
     },
     formData: {
       immediate: true,
-      handler(val) { if (val && Object.keys(val).length) Object.assign(this.form, val) },
+      handler(val) {
+        if (val && Object.keys(val).length) {
+          Object.assign(this.form, val)
+        } else {
+          Object.keys(this.form).forEach(key => {
+            this.form[key] = ''
+          })
+        }
+      },
+    },
+  },
+  computed: {
+    securityLevelLabel() {
+      const option = this.securityOptions.find(opt => opt.value === this.form.securityLevel)
+      return option ? option.label : this.form.securityLevel
     },
   },
 }
@@ -372,8 +396,22 @@ export default {
       padding: 2px 6px;
       border-radius: 4px;
       color: #475569;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
       width: fit-content;
+    }
+
+    .tag-input {
+      width: 130px;
+      ::v-deep .el-input__inner {
+        border: none;
+        background: transparent;
+        font-size: 11px;
+        padding: 0 2px;
+        height: 20px;
+        line-height: 20px;
+        color: #475569;
+      }
     }
   }
 
@@ -634,19 +672,41 @@ export default {
     }
 
     .modern-select-mini {
-      width: 75px; /* 强制限制宽度 */
+      width: 95px; /* 适当放宽，支持更多字符 */
+      transition: all 0.3s ease;
+      
       .el-input__inner {
-        border: 1px solid #cbd5e1;
-        background-color: #ffffff;
+        border: none;
+        border-bottom: 1px dashed #cbd5e1; /* 极简虚线下划线，更具纸质填空感 */
+        background-color: transparent; /* 背景透明，融入纸张 */
         font-size: 11px;
-        border-radius: 4px;
+        font-weight: bold; /* 加粗显示密级 */
+        border-radius: 0; /* 移除圆角以配合下划线样式 */
         height: 22px;
         line-height: 22px;
+        padding-left: 4px;
+        padding-right: 20px; /* 留出箭头空间 */
         color: #334155;
-        &:hover { border-color: #94a3b8; }
-        &:focus { border-color: #246fe5; }
+        transition: all 0.2s ease;
+        
+        &:hover {
+          border-bottom: 1px solid #94a3b8;
+          color: #0f172a;
+        }
+        &:focus {
+          border-bottom: 1px solid #246fe5;
+          background-color: #f8fafc; /* 聚焦时柔和背景 */
+          color: #246fe5;
+        }
       }
-      .el-input__icon { line-height: 22px; }
+      .el-input__icon {
+        line-height: 22px;
+        color: #94a3b8;
+        transition: color 0.2s ease;
+      }
+      &:hover .el-input__icon {
+        color: #64748b;
+      }
     }
 
     .modern-date-picker {

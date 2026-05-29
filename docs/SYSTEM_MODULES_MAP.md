@@ -15,6 +15,13 @@
 | 平衡区管理 | `district` | `district` | 库房内部平衡或业务分区的规划与管理 |
 | 位置图管理 | `locationDrawing` | `locationDrawing` | 库内具体位置点的图形化可视化及结构管理 |
 
+### ⚙️ 模块 E：系统管理 (System)
+*核心职责：系统基础配置与运维管理*
+
+| 菜单名称 | 路由标示 (path) | 权限标识 (perms) | 业务功能概述 |
+| --- | --- | --- | --- |
+| 数据备份 | `dataBackup` | `system_dataBackup` | 系统数据的导入导出与备份记录管理 |
+
 ### 📊 模块 B：数据管理 (Data Management)
 *核心职责：主数据维护与多维度统计报表分析*
 

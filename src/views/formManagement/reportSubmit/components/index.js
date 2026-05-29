@@ -1,8 +1,12 @@
 import * as api from './api.js'
 import { reportCards, reportConfigs, templateConfigs } from './reportConfigs.js'
 import { listAllMaterialCode } from '@/views/dataManagement/materialManagement/components/api.js'
+import { getDictionaryList } from '@/api/common/dictionary.js'
 
 export { reportCards, reportConfigs, templateConfigs } from './reportConfigs.js'
+
+// 密级字典项父ID
+const SECURITY_LEVEL_DICT_PARENT_ID = '2046869125529927682'
 
 export const requestFun = {
   R01: {
@@ -31,14 +35,14 @@ export const requestFun = {
   R05: {
     historyList: api.listR05History,
     detail: api.getR05Detail,
-    generate: api.listR05History,
+    generate: api.queryR05Data,
     export: api.exportR05,
     save: api.saveR05,
   },
   R06: {
     historyList: api.listR06History,
     detail: api.getR06Detail,
-    generate: api.listR06History,
+    generate: api.queryR06Data,
     export: api.exportR06,
     save: api.saveR06,
   },
@@ -64,7 +68,8 @@ const historyProps = ['historyId', 'historyIds']
 const pick = (source, fields) => {
   const data = {}
   fields.forEach(field => {
-    if (source[field] !== undefined && source[field] !== null && source[field] !== '') data[field] = source[field]
+    // 只排除 undefined 和 null，保留空字符串，确保后端能接收到字段
+    if (source[field] !== undefined && source[field] !== null) data[field] = source[field]
   })
   return data
 }
@@ -110,16 +115,48 @@ export const buildQueryParams = (code, params = {}) => {
     if (params.year instanceof Date) {
       data.year = params.year.getFullYear()
     } else {
-      data.year = params.year
+      data.year = Number(params.year) || params.year
     }
   }
-  if (params.quarter) data.quarter = params.quarter
+  if (params.quarter) {
+    data.quarter = Number(params.quarter) || params.quarter
+  }
+
+  // 针对需要起止日期的接口（如 R03, R08, R09），在有年份和季度时，自动推算具体的 startTime 与 endTime 作为补充或核心参数
+  if (data.year && data.quarter) {
+    const y = data.year
+    const q = data.quarter
+    let startStr = ''
+    let endStr = ''
+    if (q === 1) {
+      startStr = `${y}-01-01`
+      endStr = `${y}-03-31`
+    } else if (q === 2) {
+      startStr = `${y}-04-01`
+      endStr = `${y}-06-30`
+    } else if (q === 3) {
+      startStr = `${y}-07-01`
+      endStr = `${y}-09-30`
+    } else if (q === 4) {
+      startStr = `${y}-10-01`
+      endStr = `${y}-12-31`
+    }
+    if (startStr && endStr) {
+      data.startTime = startStr
+      data.endTime = endStr
+    }
+  }
+
   if (params.dateRange && params.dateRange.length === 2) {
     data.startTime = formatDate(params.dateRange[0])
     data.endTime = formatDate(params.dateRange[1])
   }
-  if (params.goodsCodes && params.goodsCodes.length) data.goodsCodes = params.goodsCodes
-  if (code === 'R01' && params.type) data.type = params.type
+  if (params.goodsCodes && params.goodsCodes.length) {
+    data.goodsCodes = params.goodsCodes
+  }
+  if (code === 'R01' && params.type) {
+    data.type = params.type
+  }
   return data
 }
 
@@ -141,11 +178,20 @@ export const buildTaskDetailParams = (params = {}) => {
   }
 }
 
-export const toHistoryOptions = list => list.map(item => ({
-  label: item.reportNo || `${item.id || ''}${item.createTime ? ` - ${item.createTime}` : ''}` || '未命名报表',
-  value: item.id,
-  raw: item,
-})).filter(item => item.value !== undefined && item.value !== null)
+export const toHistoryOptions = (list, code) => {
+  if (code === 'R01') {
+    return list.map(item => ({
+      label: `${item.inOutType || ''}${item.inOutType && item.taskNum ? ' - ' : ''}${item.taskNum || ''}` || '未命名报表',
+      value: item.id,
+      raw: item,
+    })).filter(item => item.value !== undefined && item.value !== null)
+  }
+  return list.map(item => ({
+    label: item.reportNo || `${item.id || ''}${item.createTime ? ` - ${item.createTime}` : ''}` || '未命名报表',
+    value: item.id,
+    raw: item,
+  })).filter(item => item.value !== undefined && item.value !== null)
+}
 
 export const toTaskOptions = list => list.map(item => ({
   label: `${item.taskNum || ''}${item.typeName ? ` - ${item.typeName}` : ''}${item.warehouseName ? ` - ${item.warehouseName}` : ''}`,
@@ -159,7 +205,7 @@ export const loadDefaultOptions = async (vm, code) => {
 
   if (fn.historyList) {
     const res = await fn.historyList().catch(() => ({ data: [] }))
-    const options = toHistoryOptions(getList(res.data))
+    const options = toHistoryOptions(getList(res.data), code)
     const historyProp = code === 'R01' ? 'historyIds' : 'historyId'
     setSearchOptions(vm, code, historyProp, options)
   }
@@ -173,6 +219,18 @@ export const loadDefaultOptions = async (vm, code) => {
     })).filter(item => item.value)
     setSearchOptions(vm, code, 'goodsCodes', options)
   }
+
+  // 加载密级字典项
+  const dictRes = await getDictionaryList({ parentId: SECURITY_LEVEL_DICT_PARENT_ID, currentPage: 1, pageSize: 999 }).catch(() => ({ data: { list: [] } }))
+  const dictList = dictRes.data && Array.isArray(dictRes.data.list) ? dictRes.data.list : []
+  const securityOptions = dictList.map(item => ({
+    label: item.fullName || item.name,
+    value: item.dictValue || item.value,
+    raw: item,
+  })).filter(item => item.value)
+  if (securityOptions.length > 0) {
+    vm.securityOptions = securityOptions
+  }
 }
 
 export const setTaskOptions = (vm, options) => {
@@ -181,10 +239,17 @@ export const setTaskOptions = (vm, options) => {
 
 const toTemplateData = (code, report = {}) => {
   const data = { ...report }
-  data.classification = report.securityLevel || report.classification || '内部'
+  data.securityLevel = report.securityLevel || report.classification || ''
 
   if (code === 'R01') {
     data.senderTabulator = report.senderMaker || report.senderTabulator || ''
+  }
+
+  // 兜底清洗数据：若表号 formNo 字段中包含 X材料 开头，则剔除开头的 X，防止由于后端存储有 X 前缀导致界面显示不一致
+  if (data.formNo && typeof data.formNo === 'string') {
+    if (/^[xXＸ]材料/.test(data.formNo)) {
+      data.formNo = data.formNo.substring(1)
+    }
   }
 
   if (report.startYearQuarter || report.endYearQuarter) {
@@ -224,10 +289,41 @@ export const normalizeDetailData = (code, data = {}) => {
   let report = {}
   let detailList = []
 
-  if (detailData.report || detailData.detailList) {
+  // 兼容直接返回明细数组的统计查询接口 (例如 R03, R04, R08, R09 的直接 List 响应)
+  if (Array.isArray(detailData)) {
+    detailList = detailData
+  } else if (detailData.report || detailData.detailList) {
     report = detailData.report ? { ...detailData.report } : { ...detailData }
     detailList = detailData.detailList || []
     delete report.detailList
+  } else if (detailData.list && Array.isArray(detailData.list)) {
+    detailList = detailData.list
+    report = { ...detailData }
+    delete report.list
+  } else if (detailData.records && Array.isArray(detailData.records)) {
+    detailList = detailData.records
+    report = { ...detailData }
+    delete report.records
+  } else if (detailData.data && Array.isArray(detailData.data)) {
+    detailList = detailData.data
+    report = { ...detailData }
+    delete report.data
+  } else if (detailData.goodsList && Array.isArray(detailData.goodsList)) {
+    detailList = detailData.goodsList
+    report = { ...detailData }
+    delete report.goodsList
+  } else {
+    report = { ...detailData }
+  }
+
+  // 兜底智能兼容：遍历对象，寻找任何非空数组字段（例如 goodsList, detailList, customList 等）作为明细列表
+  if (detailList.length === 0 && typeof detailData === 'object' && detailData !== null) {
+    for (const key of Object.keys(detailData)) {
+      if (Array.isArray(detailData[key]) && detailData[key].length > 0) {
+        detailList = detailData[key]
+        break
+      }
+    }
   }
 
   return {
@@ -251,6 +347,32 @@ export const normalizeTaskDetailRows = (data = []) => {
         itemCount: goods.itemCount || goods.containerCount,
       })
     })
+
+    // 如果后端接口返回值中，goodsList 平级有 totalInfo 合计字段，就追加该合计行到分组数据最下方
+    if (task.totalInfo) {
+      const total = task.totalInfo
+      rows.push({
+        _isGroupTotal: true,
+        taskNum: task.taskNum, // 属于当前批次，所以 taskNum 相同
+        containerCode: '小计', // 容器编号位置显示
+        inOutType: '分组合计', // 材料转移类型显示
+        goodsCode: '-',
+        materialTypeCode: '-',
+        weightUnit: goodsList[0]?.weightUnit || 'g',
+        
+        // 使用后端返回的权威合计数据
+        grossWeight: total.totalGrossWeight !== undefined ? total.totalGrossWeight : total.grossWeight,
+        tareWeight: total.totalTareWeight !== undefined ? total.totalTareWeight : total.tareWeight,
+        netWeight: total.totalNetWeight !== undefined ? total.totalNetWeight : total.netWeight,
+        
+        // 累加计算件数
+        itemCount: goodsList.reduce((sum, g) => sum + (Number(g.itemCount) || Number(g.containerCount) || 0), 0),
+        
+        // 累加计算元素量与同位素量
+        elementQuantity: total.elementQuantity !== undefined ? total.elementQuantity : goodsList.reduce((sum, g) => sum + (Number(g.elementQuantity) || 0), 0),
+        isotopeQuantity: total.isotopeQuantity !== undefined ? total.isotopeQuantity : goodsList.reduce((sum, g) => sum + (Number(g.isotopeQuantity) || 0), 0),
+      })
+    }
   })
   return normalizeRowsForDisplay('R01', rows)
 }
@@ -258,7 +380,7 @@ export const normalizeTaskDetailRows = (data = []) => {
 const headerFields = {
   R01: [
     'id', 'checker', 'debitPost', 'debitPostDate', 'debitReturn', 'debitReturnDate',
-    'formNo', 'format', 'inOutType', 'receiveDate', 'receiveLocation', 'receiver',
+    'dispatchUnit', 'formNo', 'format', 'inOutType', 'receiveDate', 'receiveLocation', 'receiver',
     'receiverLicenseNo', 'receiverMaker', 'receiverSignDate', 'receiverUnitCode',
     'receiverUnitName', 'reportNo', 'securityLevel', 'sendDate', 'sendLocation',
     'sendRemain1', 'sendRemain1Date', 'sendRemain3', 'sendRemain3Date',
@@ -352,15 +474,25 @@ const buildHeader = (code, templateData = {}) => {
   const config = reportConfigs[code] || {}
   const data = {
     ...templateData,
-    formNo: templateData.formNo || config.tableNo,
-    format: templateData.format || config.formatNo,
-    securityLevel: templateData.securityLevel || templateData.classification || '内部',
+    formNo: templateData.formNo != null ? templateData.formNo : '',
+    format: templateData.format != null ? templateData.format : '',
+    securityLevel: templateData.securityLevel || templateData.classification || '',
+  }
+
+  // 兜底清洗保存数据：若保存的表号 formNo 包含 X材料 开头，主动剔除 X
+  if (data.formNo && typeof data.formNo === 'string') {
+    if (/^[xXＸ]材料/.test(data.formNo)) {
+      data.formNo = data.formNo.substring(1)
+    }
   }
 
   if (code === 'R01') {
     data.senderMaker = templateData.senderMaker || templateData.senderTabulator
     data.sendDate = formatDate(templateData.sendDate)
     data.receiveDate = formatDate(templateData.receiveDate)
+    // 确保发方和收方单位名称正确传递
+    data.senderUnitName = templateData.senderUnitName || ''
+    data.receiverUnitName = templateData.receiverUnitName || ''
   }
   if (code === 'R03') {
     data.startYearQuarter = templateData.startYearQuarter || templateData.yearQuarterRangeStart
