@@ -396,6 +396,7 @@ export default {
       type: 'add', // add 添加 edit 编辑 view 查看 modify 修改 audit 审核
       updateType: 0,
       deletedGoodIds: [],
+      deletedContainerCodes: [],
       formKeys: [],
       form: {},
       rules: {},
@@ -435,9 +436,6 @@ export default {
       sealTypeOptions: [],
       warehouseOptions: [], // 库房下拉选项
       positionOptions: [],  // 位置下拉选项
-      // 导入
-      updateType: 0,
-      deletedGoodIds: [],
     }
   },
   computed: {
@@ -502,6 +500,7 @@ export default {
       this.row = row || {}
       this.updateType = updateType
       this.deletedGoodIds = []
+      this.deletedContainerCodes = []
       this.resetFormValues()
       if (this.row.id) {
         // mode: 'view' | 'edit' | 'modify'
@@ -576,6 +575,8 @@ export default {
         payload.dtoList = this.detailList.filter(item => !item.id)
         payload.editList = this.detailList.filter(item => item.id)
         payload.goodIds = this.deletedGoodIds.join(',')
+        payload.containerCodes = this.deletedContainerCodes.join(',')
+        delete payload.goodCodes
       } else {
         payload.dtoList = this.detailList
       }
@@ -611,6 +612,8 @@ export default {
       this.resetFormValues()
       this.detailList = []
       this.modifyRecords = []
+      this.deletedGoodIds = []
+      this.deletedContainerCodes = []
       this.$refs.form && this.$refs.form.clearValidate()
     },
     changeFormValue(value, item) {
@@ -916,6 +919,9 @@ export default {
         const removed = this.detailList.splice(index, 1)[0]
         if (removed && removed.id) {
           this.deletedGoodIds.push(removed.id)
+          if (removed.containerCode) {
+            this.deletedContainerCodes.push(removed.containerCode)
+          }
         }
       })
     },

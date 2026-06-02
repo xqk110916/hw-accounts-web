@@ -16,7 +16,8 @@ function normalizePosition(item = {}) {
     materialCode: item.goodsCode,
     materialName: item.goodsName,
     storageDate: item.lastInboundTime,
-    status: String(item.status == null ? 0 : item.status)
+    status: String(item.status == null ? 0 : item.status),
+    warehouseType: String(item.warehouseType || '0')
   };
 }
 
@@ -97,6 +98,7 @@ export function buildShelvesFromWarehouse(warehouseNode, positions = [], shelfTy
         columnCode: columnNode.nodeCode || columnNode.label || `S${columnIndex + 1}`,
         rowCode: rowNode.nodeCode || String(rowIndex + 1),
         shelfType,
+        warehouseType: viewLayers.find(l => l.containers[0] && l.containers[0].warehouseType)?.containers[0].warehouseType || '0',
         typeInfo: parsedType,
         width: parsedType.width,
         height: parsedType.length,

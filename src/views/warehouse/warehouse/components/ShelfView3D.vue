@@ -46,8 +46,8 @@
           <span class="value">{{ tooltip.container.materialCode || '-' }}</span>
         </div>
         <div class="info-row">
-          <span class="label">物料名称:</span>
-          <span class="value">{{ tooltip.container.materialName || '-' }}</span>
+          <span class="label">容器编号:</span>
+          <span class="value">{{ tooltip.container.code || '-' }}</span>
         </div>
         <div class="info-row">
           <span class="label">入库时间:</span>
@@ -64,7 +64,7 @@
 
     <!-- 操作提示 -->
     <div class="control-hint" v-if="layers && layers.length > 0">
-      <span>🖱️ 左键拖拽旋转 | 滚轮缩放 | 右键平移</span>
+      <span>🖱️ 左键拖拽旋转 | 右键拖拽视图 | 滚轮缩放</span>
     </div>
   </div>
 </template>
@@ -83,6 +83,10 @@ export default {
     },
     shelfType: {
       type: String,
+      default: ''
+    },
+    warehouseType: {
+      type: [String, Number],
       default: ''
     },
     layers: {
@@ -190,7 +194,7 @@ export default {
     },
 
     isOldWarehouse() {
-      return this.shelfType && this.shelfType.includes('-1-') && this.shelfType.endsWith('-2-10');
+      return String(this.warehouseType) === '2';
     },
     buildShelf() {
       // 清除旧的货架
@@ -199,9 +203,12 @@ export default {
       const shelfWidth = 6;
       const shelfDepth = 2;
 
-      // 老库：只有底座
+      // 老库：只有底座 + 物料容器
       if (this.isOldWarehouse()) {
         this.createBase(shelfWidth, shelfDepth);
+        this.layers.forEach((layer) => {
+          this.createLayerContainers(layer, 0.1, shelfWidth, shelfDepth);
+        });
         return;
       }
 

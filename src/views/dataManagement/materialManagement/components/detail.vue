@@ -35,6 +35,7 @@
           <el-button type="text" icon="el-icon-plus" @click="addElement">添加元素</el-button>
         </div>
         <el-table :data="form.elements" border stripe size="mini" max-height="300">
+          <el-table-column type="index" label="序号" width="60" align="center" show-overflow-tooltip></el-table-column>
           <el-table-column prop="element" label="元素名称">
             <template slot-scope="scope">
               <el-input v-model="scope.row.element" placeholder="请输入" size="mini" />

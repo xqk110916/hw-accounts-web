@@ -61,8 +61,9 @@
       <div v-if="type !== 'audit' && type !== 'inputResult'" style="padding: 0 20px 20px; text-align: center;">
         <el-button v-if="type === 'add' || type === 'edit'" type="primary" @click="fetchGoodsList" :loading="goodsLoading">生成任务清单</el-button>
         <template v-if="hasGoodsList">
-          <el-button type="success" @click="handleExport" :loading="exportLoading">导出</el-button>
+          <el-button type="success" @click="handleExport" :loading="exportLoading">导出盘存清单</el-button>
           <el-button type="warning" @click="handleExportToPad" :loading="exportPadLoading">导出到PAD</el-button>
+          <el-button type="info" @click="handleDownloadPadStream" :loading="downloadPadLoading">下载PAD盘存数据</el-button>
         </template>
       </div>
 
@@ -116,7 +117,7 @@
 
 <script>
 import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
-import { getGoodsList, submitInventory, editInventory, auditInventory, submitInventoryResult, exportInventory, exportToPad } from './api.js'
+import { getGoodsList, submitInventory, editInventory, auditInventory, submitInventoryResult, exportInventory, exportToPad, exportToPadStream } from './api.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
 import { blobSaveExcel } from '@/utils'
 import { getLocationHierarchy } from '@/views/task/outbound/components/api.js'
@@ -159,6 +160,7 @@ export default {
       goodsLoading: false,
       exportLoading: false,
       exportPadLoading: false,
+      downloadPadLoading: false,
       submitting: false,
       rejectDialogVisible: false,
       rejectRemark: '',
@@ -482,6 +484,24 @@ export default {
         }
       }).finally(() => {
         this.exportPadLoading = false
+      })
+    },
+    handleDownloadPadStream() {
+      if (!this.form.taskNum) return
+      this.downloadPadLoading = true
+      exportToPadStream({ taskNum: this.form.taskNum }).then(res => {
+        const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+        const disposition = res.headers && res.headers['content-disposition']
+        let fileName = `PAD盘存数据_${this.form.taskNum}.json`
+        if (disposition) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
+          if (match && match[1]) {
+            fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+          }
+        }
+        blobSaveExcel(blob, fileName)
+      }).finally(() => {
+        this.downloadPadLoading = false
       })
     },
     handleGoodsSelectionChange(selection) {

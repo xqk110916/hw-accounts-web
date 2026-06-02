@@ -26,7 +26,6 @@
         :props="defaultProps"
         :filter-node-method="filterNode"
         node-key="id"
-        default-expand-all
         :expand-on-click-node="false"
         class="custom-tree"
       >
@@ -128,6 +127,7 @@ export default {
         const res = await getHierarchyTree();
         if (res && res.data) {
           this.treeData = Array.isArray(res.data) ? res.data : [res.data];
+          this.$nextTick(() => this.handleExpandAll());
         }
       } catch (e) {
         console.error('Failed to fetch tree data', e);
@@ -194,7 +194,9 @@ export default {
     },
     handleCollapseAll() {
       const nodes = this.$refs.tree.store._getAllNodes();
-      nodes.forEach(node => { node.expanded = false; });
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        nodes[i].expanded = false;
+      }
     },
     handleAdd() {
       this.$refs.addDialog.open();
@@ -216,7 +218,7 @@ export default {
         warehouseCode: formData.warehouseCode,
         warehouseName: formData.warehouseName,
         warehouseType: formData.warehouseType,
-        materialTypes: formData.materialType,
+        materialTypes: Array.isArray(formData.materialType) ? formData.materialType.join(',') : formData.materialType,
         remark: formData.remark,
         sortOrder: 1,
         shelvesList: []
@@ -279,7 +281,7 @@ export default {
         warehouseCode: data.nodeCode,
         warehouseName: this.cleanNodeName(data.nodeName),
         warehouseType: this.normalizeWarehouseType(data.warehouseType, columns),
-        materialType: data.materialTypes,
+        materialType: data.materialTypes || [],
         remark: data.remark,
         columns: columns.length ? columns : [{ type: '5-3-2-10' }]
       };

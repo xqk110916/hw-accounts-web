@@ -132,6 +132,7 @@
           <ShelfView3D
             :shelf-name="selectedShelf ? selectedShelf.name : ''"
             :shelf-type="selectedShelf ? selectedShelf.shelfType : ''"
+            :warehouse-type="selectedShelf ? selectedShelf.warehouseType : ''"
             :layers="selectedShelfLayers"
             :date-color-map="dateColorMap"
             @container-click="handleContainerClick"

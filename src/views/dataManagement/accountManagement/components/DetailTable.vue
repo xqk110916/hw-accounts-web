@@ -6,6 +6,7 @@
       size="small"
       :height="height"
       style="width: 100%">
+      <el-table-column type="index" label="序号" width="60" align="center" show-overflow-tooltip />
       <el-table-column
         v-for="item in columns"
         :prop="item.prop"

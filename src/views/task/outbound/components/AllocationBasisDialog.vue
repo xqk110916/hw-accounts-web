@@ -2,7 +2,7 @@
   <el-dialog :close-on-click-modal="false"
     :title="form.id ? '编辑调拨依据' : '新增调拨依据'"
     :visible.sync="visible"
-    width="600px"
+    width="850px"
     custom-class="show-footer-dialog"
     append-to-body
     @close="handleClose"
@@ -65,8 +65,8 @@
           <span>材料明细</span>
           <el-button type="text" icon="el-icon-plus" @click="addMaterial">添加材料</el-button>
         </div>
-        <el-table :data="form.goodsList" border stripe size="mini" max-height="250">
-          <el-table-column prop="goodCode" label="材料编码">
+        <el-table :data="form.goodsList" border stripe size="mini" max-height="300">
+          <el-table-column prop="goodCode" label="材料编码" width="140">
             <template slot-scope="scope">
               <el-select
                 v-model="scope.row.goodCode"
@@ -83,29 +83,36 @@
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column prop="goodNum" label="批准件数" width="100">
+          <el-table-column prop="goodWeight" label="批准量" width="90">
             <template slot-scope="scope">
-              <el-input
-                v-model="scope.row.goodNum"
-                :precision="0"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
+              <el-input v-model="scope.row.goodWeight" style="width: 100%" />
             </template>
           </el-table-column>
-          <el-table-column prop="goodWeight" label="批准量" width="100">
+          <el-table-column prop="remainWeight" label="已用量" width="90">
             <template slot-scope="scope">
-              <el-input
-                v-model="scope.row.goodWeight"
-                :precision="3"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
+              <el-input v-model="scope.row.remainWeight" style="width: 100%" />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="100" align="center">
+          <el-table-column prop="goodNum" label="批准数" width="90">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row.goodNum" style="width: 100%" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="remainNum" label="已用数" width="90">
+            <template slot-scope="scope">
+              <el-input v-model="scope.row.remainNum" style="width: 100%" />
+            </template>
+          </el-table-column>
+          <el-table-column label="浮动值">
+            <template slot-scope="scope">
+              <div class="float-cell">
+                <span v-if="getFloatDisplay(scope.row)" class="float-text">{{ getFloatDisplay(scope.row) }}</span>
+                <span v-else class="float-text">-</span>
+                <el-button type="text" size="mini" @click="openFloatDialog(scope.row, scope.$index)">设置</el-button>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" align="center">
             <template slot-scope="scope">
               <el-button type="text" style="color: #f56c6c" @click="removeMaterial(scope.$index)">删除</el-button>
             </template>
@@ -119,33 +126,36 @@
       <el-button size="small" @click="visible = false">取 消</el-button>
       <el-button type="primary" size="small" @click="submit">保 存</el-button>
     </div>
+
+    <FloatValueDialog ref="floatDialog" @confirm="handleFloatConfirm" />
   </el-dialog>
 </template>
 
 <script>
-import { 
-  addTransferBasis, 
-  updateTransferBasis, 
-  getAllTransferBasisList, 
+import {
+  addTransferBasis,
+  updateTransferBasis,
   getTransferBasisDetail,
   addDocNumber,
   deleteDocNumber,
   getAllDocNumberList,
   getMaterialCodeListAll,
   updateDocNumber
-} from './api'
+} from '@/views/task/inbound/components/api'
+import FloatValueDialog from './FloatValueDialog.vue'
 
 export default {
-  name: 'AllocationBasisDialog',
+  name: 'OutboundAllocationBasisDialog',
+  components: { FloatValueDialog },
   data() {
     return {
       loading: false,
       visible: false,
-      isAddingNew: false,
       form: {
         id: '',
         documentNoId: '',
-        type: '0',
+        documentNo: '',
+        type: '1',
         status: 0,
         goodsList: []
       },
@@ -163,7 +173,7 @@ export default {
       this.visible = true
       this.fetchDocNumbers()
       this.fetchMaterialCodes()
-      
+
       if (data && data.id) {
         this.loading = true
         getTransferBasisDetail(data.id).then(res => {
@@ -172,12 +182,21 @@ export default {
             this.form = {
               ...this.form,
               ...detail,
-              // 确保 ID 同步到 documentNoId 供下拉框回显
-              documentNoId: detail.documentNoId || detail.documentNo
+              type: '1',
+              documentNoId: detail.documentNoId || detail.documentNo,
+              goodsList: (detail.goodsList || []).map(item => ({
+                goodCode: item.goodCode || '',
+                goodWeight: item.goodWeight || '',
+                remainWeight: item.remainWeight || '',
+                goodNum: item.goodNum || '',
+                remainNum: item.remainNum || '',
+                floatMax: item.floatMax || '',
+                floatMin: item.floatMin || '',
+                floatUnit: item.floatUnit || ''
+              }))
             }
           }
         }).finally(() => {
-          this.loading = true
           this.loading = false
         })
       }
@@ -187,7 +206,7 @@ export default {
         id: '',
         documentNo: '',
         documentNoId: '',
-        type: '0',
+        type: '1',
         status: 0,
         goodsList: []
       }
@@ -197,11 +216,7 @@ export default {
     },
     handleDocNumberChange(id) {
       const doc = this.docNumberOptions.find(i => i.id === id)
-      if (doc) {
-        this.form.documentNo = doc.docName
-      } else {
-        this.form.documentNo = ''
-      }
+      this.form.documentNo = doc ? doc.docName : ''
     },
     fetchDocNumbers() {
       return getAllDocNumberList().then(res => {
@@ -259,9 +274,6 @@ export default {
         updateDocNumber({ id: item.id, docCode: value, docName: value }).then(res => {
           if (res.code === 1) {
             this.fetchDocNumbers()
-            if (this.form.documentNoId === item.id) {
-              // 更新完成可能 ID 不变，但这里为了逻辑严谨刷新下
-            }
           }
         })
       })
@@ -283,12 +295,37 @@ export default {
     addMaterial() {
       this.form.goodsList.push({
         goodCode: '',
-        goodNum: '1',
-        goodWeight: '0'
+        goodWeight: '',
+        remainWeight: '',
+        goodNum: '',
+        remainNum: '',
+        floatMax: '',
+        floatMin: '',
+        floatUnit: ''
       })
     },
     removeMaterial(index) {
       this.form.goodsList.splice(index, 1)
+    },
+    getFloatDisplay(row) {
+      const upper = row.floatMax
+      const lower = row.floatMin
+      const unit = row.floatUnit
+      if (!upper && !lower) return ''
+      const parts = []
+      if (upper) parts.push(`+${upper}`)
+      if (lower) parts.push(`-${lower}`)
+      return parts.join(' / ') + (unit ? ` / ${unit}` : '')
+    },
+    openFloatDialog(row, index) {
+      this.$refs.floatDialog.open(row, index)
+    },
+    handleFloatConfirm(data, index) {
+      if (index >= 0 && index < this.form.goodsList.length) {
+        this.$set(this.form.goodsList[index], 'floatMax', data.floatMax)
+        this.$set(this.form.goodsList[index], 'floatMin', data.floatMin)
+        this.$set(this.form.goodsList[index], 'floatUnit', data.floatUnit)
+      }
     },
     submit() {
       this.$refs.form.validate(valid => {
@@ -307,9 +344,7 @@ export default {
           const apiMethod = this.form.id ? updateTransferBasis : addTransferBasis
           const payload = {
             ...this.form,
-            type: '0',
-            documentNo: this.form.documentNo, // 传名称
-            documentNoId: this.form.documentNoId // 传 ID
+            type: '1'
           }
           apiMethod(payload).then(res => {
             if (res.code === 1) {
@@ -349,7 +384,19 @@ export default {
   text-align: center;
   padding-top: 10px;
 }
-
+.float-cell {
+  display: flex;
+  align-items: center;
+  .float-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: #606266;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
 .doc-option {
   display: flex;
   justify-content: space-between;
@@ -367,10 +414,6 @@ export default {
   .el-input__inner {
     border: none;
     padding: 0 5px;
-  }
-  .el-input-number.is-controls-right .el-input__inner {
-    padding-left: 5px;
-    padding-right: 30px;
   }
 }
 </style>

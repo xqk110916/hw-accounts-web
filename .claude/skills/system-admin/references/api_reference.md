@@ -2,7 +2,7 @@
 
 ## 基础配置
 
-- **前端地址**: `http://127.0.0.1:8082`
+- **前端地址**: `http://localhost:8080`
 - **API 代理**: 前端 devServer 代理 `/base/*` 请求到后端
 - **认证方式**: Cookie 中存储 `tokenName`（请求头名称）和 `tokenValue`（请求头值）
 - **请求头**: `headers[tokenName] = tokenValue`

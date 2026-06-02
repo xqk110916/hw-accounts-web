@@ -25,7 +25,7 @@
         <div v-if="showShelfEnterHint" class="tooltip-hint">点击进入货架视图</div>
       </div>
       <div class="control-hint">
-        <span>🖱️ 左键拖拽旋转 | 滚轮缩放 | 点击货架查看详情</span>
+        <span>🖱️ 左键拖拽旋转 | 右键拖拽视图 | 滚轮缩放 | 点击货架查看详情</span>
       </div>
     </div>
 
@@ -167,10 +167,12 @@ export default {
     getRoomSize() {
       const grid = (this.layout && this.layout.grid) || { cols: 20, rows: 12 };
       const scale = 0.7;
+      const scaleZ = 1.75; // 0.7 * 2.5，将行方向（Z轴）的间距拓宽 2.5 倍，确保多行排布时，后排货架容器不被前排遮挡
       return {
         scale,
+        scaleZ,
         width: Math.max(28, (grid.cols || 20) * scale + 4),
-        depth: Math.max(22, (grid.rows || 12) * scale + 4),
+        depth: Math.max(22, (grid.rows || 12) * scaleZ + 4),
         cols: grid.cols || 20,
         rows: grid.rows || 12
       };
@@ -232,14 +234,18 @@ export default {
       const aisles = layout.aisles || [];
       const grid = layout.grid || { cols: 20, rows: 12 };
       if (!aisles.length) return;
-      const { scale } = this.getRoomSize();
+      const { scale, scaleZ } = this.getRoomSize();
       const originX = -(grid.cols * scale) / 2;
-      const originZ = -(grid.rows * scale) / 2;
+      const originZ = -(grid.rows * scaleZ) / 2;
       aisles.forEach(item => {
-        const geo = new THREE.BoxGeometry(item.w * scale, 0.04, item.h * scale);
+        const geo = new THREE.BoxGeometry(item.w * scale, 0.04, item.h * scaleZ);
         const mat = new THREE.MeshStandardMaterial({ color: 0xb9c0ca, roughness: 0.85, transparent: true, opacity: 0.9 });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(originX + item.x * scale + item.w * scale / 2, 0.05, originZ + item.y * scale + item.h * scale / 2);
+        mesh.position.set(
+          originX + item.x * scale + (item.w * scale) / 2,
+          0.05,
+          originZ + item.y * scaleZ + (item.h * scaleZ) / 2
+        );
         mesh.receiveShadow = true;
         this.scene.add(mesh);
       });
@@ -250,9 +256,9 @@ export default {
       const shelfW = 3.0, shelfD = 1.4, shelfH = 3.0;
       const layout = this.layout || {};
       const grid = layout.grid || { cols: 20, rows: 12 };
-      const { scale } = this.getRoomSize();
+      const { scale, scaleZ } = this.getRoomSize();
       const originX = -(grid.cols * scale) / 2;
-      const originZ = -(grid.rows * scale) / 2;
+      const originZ = -(grid.rows * scaleZ) / 2;
 
       this.shelves.forEach((shelf, idx) => {
         let x;
@@ -263,13 +269,13 @@ export default {
           w = Math.max((shelf.width || 2) * scale, 1.2);
           d = Math.max((shelf.height || 1) * scale, 0.8);
           x = originX + shelf.position.x * scale + w / 2;
-          z = originZ + shelf.position.y * scale + d / 2;
+          z = originZ + shelf.position.y * scaleZ + d / 2;
         } else {
           const cols = this.shelfLayout.cols || 3;
           const row = Math.floor(idx / cols);
           const col = idx % cols;
           x = (col - 1) * 4;
-          z = row * 3;
+          z = row * 7; // 兜底无网格位置信息时，也将行间距从 5.0 拓宽到 7.0
         }
         this.createShelf3D(shelf, x, z, w, d, shelfH);
       });
@@ -281,8 +287,8 @@ export default {
       group.userData = { type: 'shelf', shelf };
 
       const layerCount = shelf.layers ? shelf.layers.length : 3;
-      const isOldWarehouse = shelf.shelfType && shelf.shelfType.includes('-1-') && shelf.shelfType.endsWith('-2-10');
-      const displayH = isOldWarehouse ? 0.5 : h;
+      const isOldWarehouse = String(shelf.warehouseType) === '2';
+      const displayH = isOldWarehouse ? 1.0 : h;
 
       if (isOldWarehouse) {
         // 老库：只渲染底座
@@ -292,6 +298,47 @@ export default {
         base.position.set(0, 0.1, 0);
         base.receiveShadow = true;
         group.add(base);
+
+        // 渲染底座上的物料容器（老库房为平台模式且只有一层）
+        if (shelf.layers) {
+          shelf.layers.forEach((layer) => {
+            const baseY = 0.2; // 放在底座顶面
+            const containers = layer.containers || [];
+            const containerCount = containers.length;
+            if (containerCount === 0) return;
+
+            const spacing = (w - 0.2) / containerCount;
+            const startCX = -(w - 0.2) / 2 + spacing / 2;
+
+            containers.forEach((container, cIdx) => {
+              if (!container.materialCode) return;
+
+              const cx = startCX + cIdx * spacing;
+              const radius = Math.min(spacing * 0.35, d * 0.3, 0.28);
+              const cylH = 0.65; // 与新库房（layerH = 1.0 时 cylH = 0.65）一致
+
+              let color = 0xe0e0e0;
+              if (container.storageDate) {
+                const hexColor = this.dateColorMap[container.storageDate] || getColorByDate(container.storageDate);
+                color = parseInt(hexColor.replace('#', ''), 16);
+              }
+
+              const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 12);
+              const cylMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
+              const cyl = new THREE.Mesh(cylGeo, cylMat);
+              cyl.position.set(cx, baseY + cylH / 2, 0);
+              cyl.castShadow = true;
+              cyl.receiveShadow = true;
+              group.add(cyl);
+
+              const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 12);
+              const lidMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
+              const lid = new THREE.Mesh(lidGeo, lidMat);
+              lid.position.set(cx, baseY + cylH + 0.02, 0);
+              group.add(lid);
+            });
+          });
+        }
       } else {
         // 新库：渲染完整货架（立柱+层板）
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, metalness: 0.5, roughness: 0.5 });

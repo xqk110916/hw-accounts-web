@@ -33,17 +33,17 @@
           </div>
           <div class="todo-content" v-loading="loadingTodos">
             <ul class="todo-items">
-              <li v-for="(item, index) in mockTodos" :key="index">
+              <li v-for="(item, index) in todoList" :key="index">
                 <div class="todo-left">
                   <span class="dot" :class="{ 'done-dot': activeTodoTab === 'done' }"></span>
-                  <span class="todo-title" :title="'【' + item.type + '】' + item.desc">
-                    【{{ item.type }}】{{ item.desc }}
+                  <span class="todo-title" :title="'【' + item.typeName + '】' + item.taskNum" @click="handleTodoClick(item)">
+                    【{{ item.typeName }}】{{ item.taskNum }}
                   </span>
                 </div>
-                <span class="todo-time">{{ item.time }}</span>
+                <span class="todo-time">{{ item.createTime || '' }}</span>
               </li>
             </ul>
-            <el-empty v-if="mockTodos.length === 0" description="暂无数据"></el-empty>
+            <el-empty v-if="todoList.length === 0" description="暂无数据"></el-empty>
           </div>
         </el-card>
       </el-col>
@@ -138,6 +138,15 @@ import * as echarts from 'echarts';
 import { getProductStatistics, getInOutStatistics } from '@/api/warehouse/warehouse';
 import { getLocationHierarchy } from '@/views/task/inbound/components/api.js';
 import { listAllMaterialCode } from '@/views/dataManagement/materialManagement/components/api.js';
+import { getAuditTaskList } from './api.js';
+
+// 业务类型 -> 路由路径 映射
+const BIZ_TYPE_ROUTE_MAP = {
+  1: 'task/inbound',       // 入库
+  2: 'task/outbound',      // 出库
+  3: 'task/move',          // 位置移动
+  4: 'task/inventory',     // 实物盘存
+};
 
 export default {
   name: 'Index',
@@ -146,7 +155,7 @@ export default {
     return {
       // Todo Tab State
       activeTodoTab: 'todo',
-      mockTodos: [],
+      todoList: [],
       loadingTodos: false,
 
       // Middle row filters
@@ -252,27 +261,33 @@ export default {
       this.fetchTodoData();
     },
 
+    // 点击待办/已办条目，跳转到对应任务页面并代入任务编号查询
+    handleTodoClick(item) {
+      const route = BIZ_TYPE_ROUTE_MAP[item.type];
+      if (!route) {
+        this.$message.warning('未知的业务类型');
+        return;
+      }
+      this.$router.push({
+        path: '/' + route,
+        query: { taskNum: item.taskNum },
+      });
+    },
+
     fetchTodoData() {
       this.loadingTodos = true;
-      setTimeout(() => {
-        if (this.activeTodoTab === 'todo') {
-          this.mockTodos = [
-            { type: '入库信息修改', desc: '任务编号+时间', time: '1分钟前' },
-            { type: '出库信息修改', desc: '任务编号+时间', time: '2小时前' },
-            { type: '出库审核', desc: '任务编号+时间', time: '1分钟前' },
-            { type: '实物盘存', desc: '任务编号+时间', time: '2小时前' },
-            { type: 'PAD盘存', desc: '任务编号+时间', time: '2小时前' }
-          ];
+      const auditType = this.activeTodoTab === 'todo' ? 0 : 1; // 0=待审核, 1=已审核
+      getAuditTaskList({ currentPage: 1, pageSize: 50, auditType }).then(res => {
+        if (res.code === 1) {
+          this.todoList = res.data.list || [];
         } else {
-          this.mockTodos = [
-            { type: '系统权限审批', desc: '已通过审核，待通知', time: '1天前' },
-            { type: '安全检查记录', desc: '消防隐患排查已完成', time: '1天前' },
-            { type: '季度库房盘点', desc: '盘点报告已归档保存', time: '3天前' },
-            { type: '资产入库核收', desc: '完成接收并记录编号', time: '5天前' }
-          ];
+          this.todoList = [];
         }
+      }).catch(() => {
+        this.todoList = [];
+      }).finally(() => {
         this.loadingTodos = false;
-      }, 300);
+      });
     },
 
     handleLineChartChange() {

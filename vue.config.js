@@ -31,14 +31,15 @@ module.exports = {
 
   // webpack-dev-server 相关配置
   devServer: {
-    // host: 'localhost',
+    host: '0.0.0.0',
     port: port,
     hot: true,
     compress: true,
     client: {
       overlay: false,
+      webSocketURL: 'auto://0.0.0.0:0/ws'
     },
-    host: '0.0.0.0',
+    allowedHosts: 'all',
     open: true,
     proxy: {
       '/lowcodeui': {
@@ -173,8 +174,6 @@ module.exports = {
         from: path.resolve(__dirname, './public/robots.txt'), //防爬虫文件
         to: './', //到根目录下
       };
-    } else {
-      config.entry('app').clear().add(path.resolve(__dirname, './src/main.js'));
     }
   },
   css: {

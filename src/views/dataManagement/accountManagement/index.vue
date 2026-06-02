@@ -26,6 +26,7 @@
           </div>
           <div class="table-area">
             <el-table ref="table" :data="tableData" border highlight-current-row :height="height" style="width: 100%">
+              <el-table-column type="index" label="序号" width="80" align="center" show-overflow-tooltip></el-table-column>
               <el-table-column
                 v-for="item in tab1Config.table"
                 :prop="item.prop"

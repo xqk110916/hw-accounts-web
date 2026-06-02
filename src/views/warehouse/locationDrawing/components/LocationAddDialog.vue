@@ -43,8 +43,8 @@
 
       <el-row :gutter="20">
         <el-col :span="24">
-          <el-form-item label="物料类型" prop="materialType">
-            <el-select v-model="form.materialType" placeholder="请选择物料类型" style="width: 100%" :disabled="isReadonly">
+          <el-form-item label="材料名称" prop="materialType">
+            <el-select v-model="form.materialType" placeholder="请选择材料名称" style="width: 100%" :disabled="isReadonly" multiple collapse-tags>
               <el-option
                 v-for="item in materialTypeOptions"
                 :key="item.value"
@@ -140,10 +140,10 @@
 <script>
 import { getBalanceAreaPageList } from '@/api/warehouse/balanceArea';
 import { getDictionaryList } from '@/api/common/dictionary';
+import { listAllMaterialCode } from '@/views/dataManagement/materialManagement/components/api.js';
 import { normalizeShelfTypeOptions } from '../../warehouse/utils/locationLayoutStorage';
 
 const DICT_PARENT_IDS = {
-  materialType: '2046471902119919617',
   shelfType: '2046473482554638338',
   oldShelfType: '2051955496598659073'
 };
@@ -161,7 +161,7 @@ export default {
         warehouseName: '',
         warehouseCode: '',
         warehouseType: '0',
-        materialType: '',
+        materialType: [],
         remark: '',
         columns: [],
         rawNode: null
@@ -171,7 +171,7 @@ export default {
         warehouseName: [{ required: true, message: '请输入库房名称', trigger: 'blur' }],
         warehouseCode: [{ required: true, message: '请输入库房编号', trigger: 'blur' }],
         warehouseType: [{ required: true, message: '请选择库房类型', trigger: 'change' }],
-        materialType: [{ required: true, message: '请选择物料类型', trigger: 'change' }]
+        materialType: [{ required: true, message: '请选择材料名称', trigger: 'change' }]
       },
       balanceAreaOptions: [],
       materialTypeOptions: [],
@@ -181,7 +181,7 @@ export default {
   },
   created() {
     this.fetchBalanceAreas();
-    this.fetchDictOptions(DICT_PARENT_IDS.materialType, 'materialTypeOptions');
+    this.fetchMaterialTypes();
     this.fetchDictOptions(DICT_PARENT_IDS.shelfType, 'shelfTypeOptions');
     this.fetchDictOptions(DICT_PARENT_IDS.oldShelfType, 'oldShelfTypeOptions');
   },
@@ -211,14 +211,7 @@ export default {
   },
   watch: {
     'form.warehouseType'(val) {
-      const defaultType = val === '2' ? '5-1-2-10' : '5-3-2-10';
-      this.form.columns.forEach(col => {
-        if (val === '2' && !col.type.includes('-0-')) {
-          col.type = defaultType;
-        } else if (val === '0' && col.type.includes('-0-')) {
-          col.type = defaultType;
-        }
-      });
+      // 库房类型切换时不再自动修改已有列的类型
     }
   },
   methods: {
@@ -234,6 +227,20 @@ export default {
         }
       } catch (e) {
         console.error('Failed to fetch balance areas', e);
+      }
+    },
+    async fetchMaterialTypes() {
+      try {
+        const res = await listAllMaterialCode();
+        if (res && res.data) {
+          const list = Array.isArray(res.data) ? res.data : [];
+          this.materialTypeOptions = list.map(item => ({
+            label: item.goodName || item.goodCode,
+            value: item.goodCode
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to fetch material types', e);
       }
     },
     async fetchDictOptions(parentId, optionsKey) {
@@ -253,28 +260,35 @@ export default {
       this.mode = options.mode || (data ? 'edit' : 'add');
       this.isEdit = this.mode === 'edit';
       this.isParentFixed = !!options.isParentFixed;
-      
+
       if (data) {
         this.resetForm();
+        // materialType 后端返回逗号分隔字符串，多选需要转为数组
+        if (data.materialType && typeof data.materialType === 'string') {
+          data.materialType = data.materialType.split(',').filter(Boolean);
+        }
         this.form = { ...this.form, ...data };
       } else if (options.prefill) {
         this.resetForm();
         this.form = { ...this.form, ...options.prefill };
+        // 新增时默认6列，类型为空
+        this.form.columns = Array.from({ length: 6 }, (item, index) => ({ code: `S${index + 1}`, type: '' }));
       } else {
         this.resetForm();
+        // 新增时默认6列，类型为空
+        this.form.columns = Array.from({ length: 6 }, (item, index) => ({ code: `S${index + 1}`, type: '' }));
       }
       this.visible = true;
     },
     resetForm() {
-      const defaultType = this.form.warehouseType === '2' ? '5-1-2-10' : '5-3-2-10';
       this.form = {
         balanceArea: '',
         warehouseName: '',
         warehouseCode: '',
         warehouseType: this.form.warehouseType || '0',
-        materialType: '',
+        materialType: [],
         remark: '',
-        columns: Array.from({ length: 6 }, (item, index) => ({ code: `S${index + 1}`, type: defaultType })),
+        columns: [],
         rawNode: null
       };
       this.$nextTick(() => {
@@ -284,8 +298,7 @@ export default {
       });
     },
     addColumn() {
-      const defaultType = this.form.warehouseType === '2' ? '5-1-2-10' : '5-3-2-10';
-      this.form.columns.push({ code: `S${this.form.columns.length + 1}`, type: defaultType });
+      this.form.columns.push({ code: `S${this.form.columns.length + 1}`, type: '' });
     },
     removeColumn(index) {
       if (this.form.columns.length > 1) {

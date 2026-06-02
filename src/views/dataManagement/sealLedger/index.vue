@@ -31,6 +31,7 @@
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55"></el-table-column>
+            <el-table-column type="index" label="序号" width="80" align="center" show-overflow-tooltip></el-table-column>
             <el-table-column
               v-for="item in tableKeys"
               :key="item.prop"

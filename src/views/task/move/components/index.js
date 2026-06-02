@@ -12,9 +12,9 @@ export const config = {
   table: [
     { label: '任务编号', prop: 'moveTaskNum', isTitle: true, width: 160 },
     { label: '容器数量', prop: 'containerCount', width: 100 },
-    { label: '移动时间', prop: 'moveTime', width: 170 },
-    { label: '创建时间', prop: 'createTime', width: 170 },
-    { label: '状态', prop: 'auditStatus', type: 'slot', width: 180 },
+    { label: '移动时间', prop: 'moveTime', width: 240 },
+    { label: '创建时间', prop: 'createTime', width: 240 },
+    { label: '状态', prop: 'auditStatus', type: 'slot' },
   ],
   search: [
     { label: '任务编号', prop: 'taskNum', type: 'text', col: 4 },
@@ -54,7 +54,7 @@ export const btns = {
 import { move } from './api.js'
 export const requestFun = move
 
-export const getDefaultOptions = async () => {}
+export const getDefaultOptions = async () => { }
 
 export const beforeSubmit = async data => data
 

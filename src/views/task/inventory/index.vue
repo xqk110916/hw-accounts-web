@@ -123,7 +123,16 @@ export default {
   async created() {
     await getDefaultOptions()
     this.handleData()
+    if (this.$route.query && this.$route.query.taskNum) {
+      this.$set(this.search.params, 'taskNum', this.$route.query.taskNum)
+    }
     this.getTableList()
+  },
+  activated() {
+    if (this.$route.query && this.$route.query.taskNum) {
+      this.$set(this.search.params, 'taskNum', this.$route.query.taskNum)
+      this.getTableList()
+    }
   },
   mounted() {
     setTimeout(() => {

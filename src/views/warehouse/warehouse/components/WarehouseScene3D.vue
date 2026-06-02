@@ -15,7 +15,7 @@
     </div>
 
     <div class="control-hint">
-      <span>🖱️ 左键拖拽旋转 | 滚轮缩放 | 点击库房进入内部</span>
+      <span>🖱️ 左键拖拽旋转 | 右键拖拽视图 | 滚轮缩放 | 点击库房进入内部</span>
     </div>
   </div>
 </template>

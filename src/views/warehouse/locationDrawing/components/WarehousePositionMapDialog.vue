@@ -131,17 +131,22 @@ export default {
       this.editing = false;
       this.viewMode = '2d';
       try {
-        const [detailRes, treeRes, positionRes, dictRes] = await Promise.all([
+        const [detailRes, treeRes, positionRes, dictRes, oldDictRes] = await Promise.all([
           getHierarchyDetail(row.id),
           getHierarchyTree(),
           getPositionMap({ nodeId: row.id, nodeType: '2' }),
-          getDictionaryList({ parentId: SHELF_TYPE_PARENT_ID, currentPage: 1, pageSize: 999 })
+          getDictionaryList({ parentId: SHELF_TYPE_PARENT_ID, currentPage: 1, pageSize: 999 }),
+          getDictionaryList({ parentId: '2051955496598659073', currentPage: 1, pageSize: 999 })
         ]);
         this.detail = detailRes.data || row || {};
         const tree = Array.isArray(treeRes.data) ? treeRes.data : [treeRes.data].filter(Boolean);
         this.warehouseNode = findNodeById(tree, row.id, 2) || row;
         this.positions = Array.isArray(positionRes.data) ? positionRes.data : [];
-        this.shelfTypeOptions = normalizeShelfTypeOptions((dictRes.data && dictRes.data.list) || []);
+        
+        const newDictList = (dictRes.data && dictRes.data.list) || [];
+        const oldDictList = (oldDictRes.data && oldDictRes.data.list) || [];
+        this.shelfTypeOptions = normalizeShelfTypeOptions([...newDictList, ...oldDictList]);
+        
         this.shelves = buildShelvesFromWarehouse(this.warehouseNode, this.positions, this.shelfTypeOptions);
         this.initLayout();
       } catch (error) {

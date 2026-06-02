@@ -154,10 +154,11 @@ export const getTransferBasisPageList = data => {
 }
 
 // 14. 查询所有调拨依据列表（下拉选择用）
-export const getAllTransferBasisList = () => {
+export const getAllTransferBasisList = (params) => {
   return request({
     url: '/busin/transfer-basis/list-all',
     method: 'get',
+    params: params || {}
   })
 }
 

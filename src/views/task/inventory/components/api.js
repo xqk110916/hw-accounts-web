@@ -90,6 +90,16 @@ export const exportToPad = params => {
   })
 }
 
+// 10.1 下载PAD盘存数据
+export const exportToPadStream = params => {
+  return request({
+    url: '/busin/inventory/exportToPad/stream',
+    method: 'get',
+    params,
+    responseType: 'blob',
+  })
+}
+
 // 11. 标记异常
 export const markError = data => {
   return request({

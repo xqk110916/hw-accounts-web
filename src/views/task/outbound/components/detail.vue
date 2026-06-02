@@ -228,7 +228,7 @@
 <script>
 import { deepClone } from '@/utils'
 import { config, requestFun, beforeSubmit, beforeRecurrence } from './index.js'
-import AllocationBasisListDialog from '@/views/task/inbound/components/AllocationBasisListDialog.vue'
+import AllocationBasisListDialog from './AllocationBasisListDialog.vue'
 import SelectContainerDialog from './SelectContainerDialog.vue'
 import AutoPickPlanDialog from './AutoPickPlanDialog.vue'
 import { getDictionaryList } from '@/api/common/dictionary.js'
@@ -723,7 +723,9 @@ export default {
     },
     autoAllocate() {
       if (this.type === 'modify') return
-      this.$refs.autoPickPlanDialog.open([], this.detailList.length > 0)
+      const goodCodes = (this.form.goodCodes || '').split(',').filter(Boolean)
+      const materials = goodCodes.map(code => ({ goodCode: code }))
+      this.$refs.autoPickPlanDialog.open(materials, this.detailList.length > 0)
     },
   },
 }

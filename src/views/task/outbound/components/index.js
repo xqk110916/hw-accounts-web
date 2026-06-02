@@ -1,4 +1,7 @@
 import { getAllTransferBasisList } from '@/views/task/inbound/components/api.js'
+
+// 出库调拨依据只查调出类型
+const getAllOutboundTransferBasisList = () => getAllTransferBasisList({ type: '1' })
 import { getLocationHierarchy } from './api.js'
 
 export const statusOptions = [
@@ -66,7 +69,7 @@ export const config = {
       prop: '_transferSelected', // 少用于级联组件绑定，不提交到后端
       type: 'cascader',
       showMaintenance: true,
-      option: () => getAllTransferBasisList().then(res => {
+      option: () => getAllOutboundTransferBasisList().then(res => {
         return (res.data || []).map(item => ({
           label: item.documentNo,
           value: item.id,

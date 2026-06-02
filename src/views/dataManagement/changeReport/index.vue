@@ -22,6 +22,7 @@
         </div>
         <div class="table">
           <el-table ref="table" :data="tableData" border highlight-current-row :height="height" style="width: 100%">
+            <el-table-column type="index" label="序号" width="80" align="center" show-overflow-tooltip></el-table-column>
             <el-table-column
               v-for="item in currentTableKeys"
               :prop="item.prop"
@@ -170,7 +171,7 @@ export default {
       })
     },
     openDetail(row) {
-      this.$refs.summaryDetailDialog.open(row.goodsCode)
+      this.$refs.summaryDetailDialog.open(row.goodsCode, row.batchNum, row.type)
     },
     handleSizeChange(value) {
       this.search.params.pageSize = value

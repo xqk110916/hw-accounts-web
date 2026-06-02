@@ -85,7 +85,7 @@
 <script>
 import detail from './components/detail.vue'
 import { config, requestFun, btns, handleTbaleMap, getDefaultOptions, handleSearchParams } from './components/index.js'
-import AllocationBasisListDialog from '@/views/task/inbound/components/AllocationBasisListDialog.vue'
+import AllocationBasisListDialog from './components/AllocationBasisListDialog.vue'
 
 export default {
   name: 'OutboundManage',
@@ -109,7 +109,16 @@ export default {
   async created() {
     await getDefaultOptions()
     this.handleData()
+    if (this.$route.query && this.$route.query.taskNum) {
+      this.$set(this.search.params, 'taskNum', this.$route.query.taskNum)
+    }
     this.getTableList()
+  },
+  activated() {
+    if (this.$route.query && this.$route.query.taskNum) {
+      this.$set(this.search.params, 'taskNum', this.$route.query.taskNum)
+      this.getTableList()
+    }
   },
   mounted() {
     setTimeout(() => {

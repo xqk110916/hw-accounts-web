@@ -8,6 +8,7 @@
     :cell-style="cellStyle"
     :span-method="mergeMethod"
     style="width: 100%">
+    <el-table-column type="index" label="序号" width="60" align="center" show-overflow-tooltip />
     <el-table-column prop="date" label="日期" min-width="100" show-overflow-tooltip>
       <template slot="header"><span>日期</span></template>
       <template slot-scope="{ row }">
@@ -80,9 +81,9 @@ export default {
       return {}
     },
     mergeMethod({ row, columnIndex }) {
-      if (row.isTotal && columnIndex <= 2) {
+      if (row.isTotal && columnIndex <= 3) {
         return columnIndex === 0
-          ? { rowspan: 1, colspan: 3 }
+          ? { rowspan: 1, colspan: 4 }
           : { rowspan: 0, colspan: 0 }
       }
     },

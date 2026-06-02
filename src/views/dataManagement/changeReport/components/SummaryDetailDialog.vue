@@ -6,7 +6,8 @@
     width="900px"
     :before-close="handleClose">
     <div class="detail-content">
-      <el-table :data="detailData" border size="small" max-height="400">
+      <el-table :data="pageData" border size="small" max-height="400">
+        <el-table-column type="index" label="序号" width="60" align="center" show-overflow-tooltip />
         <el-table-column prop="taskNum" label="任务编号" min-width="140" show-overflow-tooltip />
         <el-table-column prop="containerCode" label="容器号" min-width="120" show-overflow-tooltip />
         <el-table-column prop="goodsCode" label="材料代码" min-width="120" show-overflow-tooltip />
@@ -18,6 +19,19 @@
         <el-table-column prop="tareWeight" label="皮重" min-width="100" />
         <el-table-column prop="netWeight" label="净重" min-width="100" />
       </el-table>
+      <div class="pagination">
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="currentPage"
+          :page-sizes="[10, 20, 50, 100]"
+          :page-size="pageSize"
+          background
+          layout="total, sizes, prev, pager, next"
+          :total="detailData.length"
+        >
+        </el-pagination>
+      </div>
     </div>
     <span slot="footer">
       <el-button size="small" @click="handleClose">关 闭</el-button>
@@ -34,16 +48,30 @@ export default {
       visible: false,
       detailData: [],
       goodsCode: '',
+      taskNum: '',
+      type: '',
+      currentPage: 1,
+      pageSize: 10,
+    }
+  },
+  computed: {
+    pageData() {
+      const start = (this.currentPage - 1) * this.pageSize
+      const end = this.currentPage * this.pageSize
+      return this.detailData.slice(start, end)
     }
   },
   methods: {
-    open(goodsCode) {
+    open(goodsCode, taskNum, type) {
       this.goodsCode = goodsCode
+      this.taskNum = taskNum || ''
+      this.type = type !== undefined && type !== null ? type : ''
       this.visible = true
+      this.currentPage = 1
       this.loadData()
     },
     loadData() {
-      getChangeSummaryDetail(this.goodsCode, { currentPage: 1, pageSize: 999 }).then(res => {
+      getChangeSummaryDetail(this.goodsCode, { currentPage: 1, pageSize: 999, taskNum: this.taskNum, type: this.type }).then(res => {
         if (res.code === 1) {
           this.detailData = (res.data && res.data.list) || []
         }
@@ -52,6 +80,16 @@ export default {
     handleClose() {
       this.visible = false
       this.detailData = []
+      this.taskNum = ''
+      this.type = ''
+      this.currentPage = 1
+    },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.currentPage = 1
+    },
+    handleCurrentChange(val) {
+      this.currentPage = val
     },
   },
 }
@@ -60,5 +98,22 @@ export default {
 <style scoped>
 .detail-content {
   padding: 10px;
+}
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 15px;
+  color: #626c78;
+}
+.pagination ::v-deep .el-pager .number {
+  background: #fff;
+  border: 1px solid #c4c9cf;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.pagination ::v-deep .el-pager .active {
+  background: #cce6ff;
+  color: #246fe5;
+  border: 1px solid #246fe5;
 }
 </style>

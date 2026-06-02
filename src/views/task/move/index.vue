@@ -4,7 +4,7 @@
       <div class="right">
         <search-filter class="search" :options="search.options" :form="search.params">
           <div slot="footer" class="footer">
-            <div :class="['btn', 'text']" @click="getTableList">查询</div>
+            <div :class="['btn', 'text']" @click="getTableList">查询000</div>
             <div class="partition"></div>
             <div :class="['btn', 'text']" @click="resetSearchParams">重置</div>
           </div>
@@ -103,7 +103,16 @@ export default {
   async created() {
     await getDefaultOptions()
     this.handleData()
+    if (this.$route.query && this.$route.query.taskNum) {
+      this.$set(this.search.params, 'taskNum', this.$route.query.taskNum)
+    }
     this.getTableList()
+  },
+  activated() {
+    if (this.$route.query && this.$route.query.taskNum) {
+      this.$set(this.search.params, 'taskNum', this.$route.query.taskNum)
+      this.getTableList()
+    }
   },
   mounted() {
     setTimeout(() => {

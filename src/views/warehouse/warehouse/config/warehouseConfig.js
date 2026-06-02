@@ -6,8 +6,9 @@
 import { getAllBalanceAreas } from '@/api/warehouse/balanceArea';
 import { getWarehouseListByBalanceArea } from '@/api/warehouse/warehouse';
 import { getHierarchyDetail, getHierarchyListByNodeType, getPositionMap } from '@/api/warehouse/locationMap';
-import { normalizeExtra, getLocalExtra, parseShelfType } from '../utils/locationLayoutStorage';
-import { generateInitialLayout, applyLayoutToShelves } from '../utils/locationLayoutAdapter';
+import { getDictionaryList } from '@/api/common/dictionary';
+import { normalizeExtra, getLocalExtra, parseShelfType, SHELF_TYPE_PARENT_ID, normalizeShelfTypeOptions } from '../utils/locationLayoutStorage';
+import { generateInitialLayout, applyLayoutToShelves, buildShelfTypeMap } from '../utils/locationLayoutAdapter';
 
 // ==================== 默认本地布局/样式配置 ====================
 
@@ -772,11 +773,12 @@ function normalizePosition(item = {}) {
     grossWeight: normalizedGoods.grossWeight,
     tareWeight: normalizedGoods.tareWeight,
     netWeight: normalizedGoods.netWeight,
-    weightUnit: normalizedGoods.weightUnit
+    weightUnit: normalizedGoods.weightUnit,
+    warehouseType: String(item.warehouseType || '0')
   };
 }
 
-function buildShelvesFromPositions(positions = []) {
+function buildShelvesFromPositions(positions = [], shelfTypeMap = {}) {
   const grouped = new Map();
 
   positions.map(normalizePosition).forEach(position => {
@@ -784,7 +786,8 @@ function buildShelvesFromPositions(positions = []) {
     const rowId = position.rowId == null || position.rowId === '' ? 'unknownRow' : position.rowId;
     const shelfKey = `${shelfId}-${rowId}`;
     if (!grouped.has(shelfKey)) {
-      const shelfType = position.shelfType || '';
+      const rawType = position.shelfType || '';
+      const shelfType = shelfTypeMap[String(rawType)] || rawType;
       const parsedType = parseShelfType(shelfType);
       grouped.set(shelfKey, {
         id: shelfKey,
@@ -794,6 +797,7 @@ function buildShelvesFromPositions(positions = []) {
         columnCode: position.shelfCode,
         rowCode: position.rowCode,
         shelfType,
+        warehouseType: position.warehouseType || '0',
         typeInfo: parsedType,
         width: parsedType.width,
         height: parsedType.length,
@@ -941,9 +945,17 @@ export async function getWarehouseById(warehouseId) {
 
   const pending = (async () => {
     try {
-      const positionRes = await getPositionMap({ nodeId: warehouseId, nodeType: '2' });
+      // 同时拉取位置数据和新旧库房货架字典
+      const [positionRes, newDictRes, oldDictRes] = await Promise.all([
+        getPositionMap({ nodeId: warehouseId, nodeType: '2' }),
+        getDictionaryList({ parentId: SHELF_TYPE_PARENT_ID, currentPage: 1, pageSize: 999 }),
+        getDictionaryList({ parentId: '2051955496598659073', currentPage: 1, pageSize: 999 })
+      ]);
       const positions = Array.isArray(positionRes.data) ? positionRes.data : [];
-      const baseShelves = buildShelvesFromPositions(positions);
+      const newDictList = (newDictRes.data && newDictRes.data.list) || [];
+      const oldDictList = (oldDictRes.data && oldDictRes.data.list) || [];
+      const shelfTypeMap = buildShelfTypeMap(normalizeShelfTypeOptions([...newDictList, ...oldDictList]));
+      const baseShelves = buildShelvesFromPositions(positions, shelfTypeMap);
 
       let detail = { id: warehouseId };
       try {

@@ -6,7 +6,15 @@
       "mcp__zai-mcp-server__analyze_image",
       "Bash(node scripts/dict-seed.js satoken 3f22ff25a1e7488793446ba53d2d096a)",
       "Bash(node scripts/dict-seed.js token 3f22ff25a1e7488793446ba53d2d096a)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(cp \"C:/Users/Administrator/.claude/projects/F--testCode-hw-accounts-web/40e14020-7d73-47ed-8f9a-dd77b11c5ac0/tool-results/b4a0ye484.txt\" /tmp/menu_tree_full.json)",
+      "Bash(python /tmp/gen_payloads.py)",
+      "mcp__cdp-bridge__browser_get_tabs",
+      "mcp__cdp-bridge__browser_switch_tab",
+      "mcp__cdp-bridge__browser_execute_js",
+      "mcp__cdp-bridge__browser_wait",
+      "mcp__cdp-bridge__browser_screenshot",
+      "mcp__cdp-bridge__browser_scan"
     ]
   }
 }

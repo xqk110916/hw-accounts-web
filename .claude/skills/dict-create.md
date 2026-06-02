@@ -129,6 +129,5 @@ async function findParentId(keyword) {
 
 | 分类 | bizCode | 子项 |
 |------|---------|------|
-| 物料类型 | materialType | 原材料(raw)、成品(product)、半成品(semi-product) |
 | 货架类型 | shelfType | 5排3层2m*10m(5-3-2-10)、5排4层2m*10m(5-4-2-10)、5排5层2m*10m(5-5-2-10)、5排6层2m*10m(5-6-2-10) |
 | 平衡区类型 | balanceAreaType | 本地(local)、代存(proxy) |

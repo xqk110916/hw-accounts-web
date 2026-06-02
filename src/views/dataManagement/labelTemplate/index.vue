@@ -26,6 +26,7 @@
             @selection-change="handleSelectionChange"
           >
             <!-- <el-table-column type="selection" width="55"></el-table-column> -->
+            <el-table-column type="index" label="序号" width="80" align="center" show-overflow-tooltip></el-table-column>
             <el-table-column prop="templateId" label="模板名称" min-width="140" show-overflow-tooltip>
               <template slot-scope="scope">{{ templateMap[scope.row.templateId] || '' }}</template>
             </el-table-column>

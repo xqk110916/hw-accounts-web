@@ -25,11 +25,8 @@ export const config = {
     { label: '生产单位', prop: 'productionUnit', type: 'text', col: 6 },
     { label: '收方单位', prop: 'receiveUnit', type: 'text', col: 6 },
     { label: '材料代码', prop: 'goodCode', type: 'select', col: 6, option: [] },
-    { label: '入库时间', prop: 'inboundTimeRange', type: 'daterange', col: 7 },
-    { label: '出库时间', prop: 'outboundTimeRange', type: 'daterange', col: 7 },
     { label: '库房', prop: 'warehouseId', type: 'select', col: 6, option: [] },
     { label: '调拨依据', prop: 'transferId', type: 'select', col: 6, option: [] },
-    { label: '封记号', prop: 'sealCode', type: 'text', col: 6 },
     {
       label: '类型',
       prop: 'type',
@@ -40,6 +37,9 @@ export const config = {
         { label: '库存', value: 2 },
       ],
     },
+    { label: '封记号', prop: 'sealCode', type: 'text', col: 6 },
+    { label: '入库时间', prop: 'inboundTimeRange', type: 'daterange', col: 8 },
+    { label: '出库时间', prop: 'outboundTimeRange', type: 'daterange', col: 8 },
   ],
 }
 

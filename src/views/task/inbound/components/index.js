@@ -21,6 +21,9 @@
 
 import { getAllTransferBasisList, getLocationHierarchy } from './api.js'
 
+// 入库调拨依据只查调入类型
+const getAllInboundTransferBasisList = () => getAllTransferBasisList({ type: '0' })
+
 // 状态枚举
 export const statusOptions = [
   { label: '待确认', value: 'pending' },
@@ -87,7 +90,7 @@ export const config = {
       prop: '_transferSelected', // 少用于级联组件绑定，不提交到后端
       type: 'cascader',
       showMaintenance: true,
-      option: () => getAllTransferBasisList().then(res => {
+      option: () => getAllInboundTransferBasisList().then(res => {
         return (res.data || []).map(item => ({
           label: item.documentNo,
           value: item.id,

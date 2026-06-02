@@ -24,6 +24,7 @@
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55"></el-table-column>
+            <el-table-column type="index" label="序号" width="80" align="center" show-overflow-tooltip></el-table-column>
             <el-table-column prop="operationType" label="数据类型" min-width="120" show-overflow-tooltip></el-table-column>
             <el-table-column prop="createTime" label="导入时间" min-width="170" show-overflow-tooltip></el-table-column>
             <el-table-column prop="createUname" label="导入人" min-width="100" show-overflow-tooltip></el-table-column>

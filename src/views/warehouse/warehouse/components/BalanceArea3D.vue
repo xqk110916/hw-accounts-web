@@ -14,7 +14,7 @@
     </div>
 
     <div class="control-hint">
-      <span>🖱️ 左键拖拽旋转 | 滚轮缩放 | 点击平衡区进入</span>
+      <span>🖱️ 左键拖拽旋转 | 右键拖拽视图 | 滚轮缩放 | 点击平衡区进入</span>
     </div>
   </div>
 </template>

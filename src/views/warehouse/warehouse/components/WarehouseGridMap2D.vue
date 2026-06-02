@@ -31,14 +31,17 @@
           <el-button :type="tool === 'aisle' ? 'primary' : 'default'" icon="el-icon-s-operation" @click="tool = 'aisle'">过道</el-button>
           <el-button :type="tool === 'erase' ? 'primary' : 'default'" icon="el-icon-delete" @click="tool = 'erase'">擦除</el-button>
         </el-button-group>
+        <span class="zoom-indicator">{{ zoomPercent }}%</span>
+        <el-button size="mini" :disabled="zoom === 1" @click="resetZoom">重置缩放</el-button>
+        <span class="zoom-hint">Ctrl + 滚轮缩放</span>
         <el-button v-if="editable" size="mini" icon="el-icon-refresh-left" @click="$emit('reset-layout')">重置</el-button>
         <el-button size="mini" icon="el-icon-download" @click="exportImage">导出</el-button>
       </div>
     </div>
 
-    <div class="grid-scroll">
+    <div class="grid-scroll" :class="{ panning: isPanning }" @wheel="handleWheel" @mousedown="handlePanStart">
+      <div class="grid-floor-wrapper" :style="floorWrapperStyle">
       <div
-        ref="floor"
         class="grid-floor"
         :style="floorStyle"
         :class="{ editing: editable }"
@@ -76,12 +79,8 @@
             <span class="shelf-meta-inline" v-if="shelf.layers && shelf.layers.length">{{ shelf.layers.length }}层</span>
             <span class="shelf-count" :class="getUsageClass(shelf)">{{ getFilledCount(shelf) }}/{{ getTotalCount(shelf) }}</span>
           </div>
-          <!-- 老库：底座标识 -->
-          <div v-if="isOldWarehouse(shelf)" class="layer-strip">
-            <span class="base-label">底座</span>
-          </div>
-          <!-- 新库：所有容器色块平铺展示 -->
-          <div v-else class="layers-grid">
+          <!-- 所有容器色块平铺展示（2D模式下新老库统一） -->
+          <div class="layers-grid">
             <template v-for="layer in shelf.layers">
               <button
                 v-for="(container, ci) in getLayerContainers(layer)"
@@ -96,6 +95,7 @@
             </template>
           </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -137,7 +137,10 @@ export default {
       painting: false,
       paintedCells: new Set(),
       gridColsInput: 20,
-      gridRowsInput: 12
+      gridRowsInput: 12,
+      zoom: 1,
+      isPanning: false,
+      panStart: null
     };
   },
   computed: {
@@ -152,12 +155,25 @@ export default {
     cellSize() {
       return this.currentLayout.grid.cellSize || 32;
     },
+    zoomPercent() {
+      return Math.round(this.zoom * 100);
+    },
     floorStyle() {
       const grid = this.currentLayout.grid;
       return {
         width: `${grid.cols * this.cellSize}px`,
         height: `${grid.rows * this.cellSize}px`,
-        backgroundSize: `${this.cellSize}px ${this.cellSize}px`
+        backgroundSize: `${this.cellSize}px ${this.cellSize}px`,
+        transform: `scale(${this.zoom})`,
+        transformOrigin: '0 0'
+      };
+    },
+    floorWrapperStyle() {
+      const grid = this.currentLayout.grid;
+      return {
+        width: `${grid.cols * this.cellSize * this.zoom}px`,
+        height: `${grid.rows * this.cellSize * this.zoom}px`,
+        position: 'relative'
       };
     },
     viewShelves() {
@@ -192,10 +208,61 @@ export default {
   beforeDestroy() {
     this.removeDragListeners();
     this.removePaintListeners();
+    this.removePanListeners();
   },
   methods: {
-    isOldWarehouse(shelf) {
-      return shelf.shelfType && shelf.shelfType.includes('-1-') && shelf.shelfType.endsWith('-2-10');
+    handlePanStart(event) {
+      if (event.button !== 0) return;
+      if (this.editable && this.tool !== 'select') return;
+      event.preventDefault();
+      this.isPanning = true;
+      const scrollEl = this.$el.querySelector('.grid-scroll');
+      this.panStart = {
+        x: event.clientX,
+        y: event.clientY,
+        scrollLeft: scrollEl.scrollLeft,
+        scrollTop: scrollEl.scrollTop
+      };
+      document.addEventListener('mousemove', this.handlePanMove);
+      document.addEventListener('mouseup', this.handlePanEnd);
+    },
+    handlePanMove(event) {
+      if (!this.isPanning || !this.panStart) return;
+      const scrollEl = this.$el.querySelector('.grid-scroll');
+      scrollEl.scrollLeft = this.panStart.scrollLeft - (event.clientX - this.panStart.x);
+      scrollEl.scrollTop = this.panStart.scrollTop - (event.clientY - this.panStart.y);
+    },
+    handlePanEnd() {
+      this.isPanning = false;
+      this.panStart = null;
+      document.removeEventListener('mousemove', this.handlePanMove);
+      document.removeEventListener('mouseup', this.handlePanEnd);
+    },
+    removePanListeners() {
+      document.removeEventListener('mousemove', this.handlePanMove);
+      document.removeEventListener('mouseup', this.handlePanEnd);
+    },
+    handleWheel(event) {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      const direction = event.deltaY > 0 ? -1 : 1;
+      const newZoom = Math.round((this.zoom + direction * 0.1) * 10) / 10;
+      const clamped = Math.min(2, Math.max(0.5, newZoom));
+      if (clamped === this.zoom) return;
+      const scrollEl = this.$el.querySelector('.grid-scroll');
+      const rect = scrollEl.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left + scrollEl.scrollLeft;
+      const mouseY = event.clientY - rect.top + scrollEl.scrollTop;
+      const gridX = mouseX / this.zoom;
+      const gridY = mouseY / this.zoom;
+      this.zoom = clamped;
+      this.$nextTick(() => {
+        scrollEl.scrollLeft = gridX * this.zoom - (event.clientX - rect.left);
+        scrollEl.scrollTop = gridY * this.zoom - (event.clientY - rect.top);
+      });
+    },
+    resetZoom() {
+      this.zoom = 1;
     },
     syncGridInputs() {
       this.gridColsInput = this.currentLayout.grid.cols;
@@ -306,8 +373,8 @@ export default {
     },
     handleDragMove(event) {
       if (!this.dragging) return;
-      const dx = Math.round((event.clientX - this.dragging.startX) / this.cellSize);
-      const dy = Math.round((event.clientY - this.dragging.startY) / this.cellSize);
+      const dx = Math.round((event.clientX - this.dragging.startX) / (this.cellSize * this.zoom));
+      const dy = Math.round((event.clientY - this.dragging.startY) / (this.cellSize * this.zoom));
       const next = {
         ...this.dragging.origin,
         x: this.dragging.origin.x + dx,
@@ -352,8 +419,8 @@ export default {
       if (event.button !== 0) return;
       event.preventDefault();
       const rect = this.$refs.floor.getBoundingClientRect();
-      const x = Math.floor((event.clientX - rect.left) / this.cellSize);
-      const y = Math.floor((event.clientY - rect.top) / this.cellSize);
+      const x = Math.floor((event.clientX - rect.left) / (this.cellSize * this.zoom));
+      const y = Math.floor((event.clientY - rect.top) / (this.cellSize * this.zoom));
       this.painting = true;
       this.paintedCells = new Set();
       this.paintCell(x, y);
@@ -362,8 +429,8 @@ export default {
     handleFloorMouseMove(event) {
       if (!this.editable || !this.painting || this.tool === 'select') return;
       const rect = this.$refs.floor.getBoundingClientRect();
-      const x = Math.floor((event.clientX - rect.left) / this.cellSize);
-      const y = Math.floor((event.clientY - rect.top) / this.cellSize);
+      const x = Math.floor((event.clientX - rect.left) / (this.cellSize * this.zoom));
+      const y = Math.floor((event.clientY - rect.top) / (this.cellSize * this.zoom));
       this.paintCell(x, y);
     },
     paintCell(x, y) {
@@ -533,6 +600,20 @@ export default {
       align-items: center;
       gap: 8px;
     }
+
+    .zoom-indicator {
+      font-size: 12px;
+      color: #606266;
+      font-weight: 600;
+      min-width: 38px;
+      text-align: center;
+    }
+
+    .zoom-hint {
+      font-size: 11px;
+      color: #aeb8c5;
+      white-space: nowrap;
+    }
   }
 
   .grid-scroll {
@@ -541,6 +622,9 @@ export default {
     min-height: 0;
     background: #eef2f6;
     padding: 16px;
+    cursor: grab;
+
+    &.panning { cursor: grabbing; user-select: none; }
   }
 
   .grid-floor {
@@ -664,9 +748,10 @@ export default {
       margin-top: 2px;
     }
 
+
     .base-label {
-      font-size: 9px;
-      color: rgba(255,255,255,.55);
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.7);
       font-style: italic;
     }
   }

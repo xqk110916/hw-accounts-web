@@ -13,11 +13,6 @@
       </div>
       <el-table :data="tableData" border stripe v-loading="loading" height="400px">
         <el-table-column prop="documentNo" label="文号" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="type" label="类型" width="100">
-          <template slot-scope="scope">
-            {{ scope.row.type == '0' ? '调入' : '调出' }}
-          </template>
-        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template slot-scope="scope">
             <el-tag :type="scope.row.status === 1 ? 'success' : 'info'" size="mini">
@@ -44,17 +39,16 @@
       </div>
     </div>
 
-    <!-- 新增/编辑弹窗 -->
     <AllocationBasisDialog ref="editDialog" @success="handleEditSuccess" />
   </el-dialog>
 </template>
 
 <script>
-import { getTransferBasisPageList, deleteTransferBasis } from './api'
+import { getTransferBasisPageList, deleteTransferBasis } from '@/views/task/inbound/components/api'
 import AllocationBasisDialog from './AllocationBasisDialog.vue'
 
 export default {
-  name: 'AllocationBasisListDialog',
+  name: 'OutboundAllocationBasisListDialog',
   components: { AllocationBasisDialog },
   data() {
     return {
@@ -65,7 +59,7 @@ export default {
       params: {
         pageNum: 1,
         pageSize: 10,
-        type: '0'
+        type: '1'
       }
     }
   },
@@ -107,7 +101,7 @@ export default {
           if (res.code === 1) {
             this.$message.success('删除成功')
             this.getList()
-            this.$emit('success') // 通知外部刷新下拉列表
+            this.$emit('success')
           }
         })
       })
