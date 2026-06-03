@@ -176,9 +176,11 @@
           <div class="detail-actions" v-if="type !== 'view' && type !== 'audit'">
             <el-button v-if="type === 'add'" size="small" @click="openImportDialog">导入</el-button>
             <el-button size="small" type="primary" @click="addDetailRow">添加</el-button>
+            <el-button size="small" type="danger" :disabled="detailSelectedRows.length === 0" @click="handleBatchDelete">批量删除</el-button>
           </div>
         </div>
-        <el-table :data="detailList" border size="small" max-height="300">
+        <el-table :data="detailList" border size="small" max-height="300" @selection-change="handleDetailSelectionChange">
+          <el-table-column v-if="type !== 'view' && type !== 'audit'" type="selection" width="55" />
           <el-table-column type="index" label="序号" width="60" />
           <el-table-column prop="goodCode" label="材料编码" width="120" show-overflow-tooltip />
           <el-table-column prop="containerCode" label="容器号" width="120" show-overflow-tooltip />
@@ -198,6 +200,7 @@
           <el-table-column label="封记类型2" width="120" show-overflow-tooltip>
             <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
           </el-table-column>
+          <el-table-column prop="metalPercentage" label="金属量%" width="90" show-overflow-tooltip />
           <el-table-column label="重量(毛,皮,净)" width="180" show-overflow-tooltip>
             <template slot-scope="scope">
               {{ scope.row.grossWeight || 0 }}、{{ scope.row.tareWeight || 0 }}、{{
@@ -230,7 +233,8 @@
         </div>
         <div class="footer" v-else-if="type !== 'view'">
           <el-button size="small" @click="close">取消</el-button>
-          <el-button type="primary" size="small" @click="submitForm">
+          <el-button v-if="type !== 'modify'" size="small" @click="submitForm(4)">暂存</el-button>
+          <el-button type="primary" size="small" @click="submitForm(0)">
             {{ type === 'modify' ? '提交变更审核' : '确定' }}
           </el-button>
         </div>
@@ -257,7 +261,7 @@
           filterable
         >
           <el-option
-            v-for="item in materialCodeOptions"
+            v-for="item in availableMaterialCodes"
             :key="item.value"
             :label="item.label"
             :value="item.value"
@@ -282,7 +286,7 @@
           <el-option
             v-for="w in warehouseOptions"
             :key="w.id"
-            :label="w.warehouseName"
+            :label="`${w.balanceAreaName ? w.balanceAreaName + ' - ' : ''}${w.warehouseName}`"
             :value="w.id"
           />
         </el-select>
@@ -328,20 +332,23 @@
           <el-option v-for="item in sealTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
+      <el-form-item label="金属量%" prop="metalPercentage">
+        <el-input v-model="detailEditForm.metalPercentage" size="small" placeholder="请输入金属量%" />
+      </el-form-item>
       <el-row :gutter="10">
         <el-col :span="8">
           <el-form-item label="毛重" prop="grossWeight">
-            <el-input v-model="detailEditForm.grossWeight" size="small" placeholder="毛重" />
+            <el-input v-model="detailEditForm.grossWeight" size="small" placeholder="毛重" @blur="formatWeightField('grossWeight')" />
           </el-form-item>
         </el-col>
         <el-col :span="8">
           <el-form-item label="皮重" prop="tareWeight">
-            <el-input v-model="detailEditForm.tareWeight" size="small" placeholder="皮重" />
+            <el-input v-model="detailEditForm.tareWeight" size="small" placeholder="皮重" @blur="formatWeightField('tareWeight')" />
           </el-form-item>
         </el-col>
         <el-col :span="8">
           <el-form-item label="净重" prop="netWeight">
-            <el-input v-model="detailEditForm.netWeight" size="small" placeholder="净重" />
+            <el-input v-model="detailEditForm.netWeight" size="small" placeholder="净重" @blur="formatWeightField('netWeight')" />
           </el-form-item>
         </el-col>
       </el-row>
@@ -436,6 +443,7 @@ export default {
       sealTypeOptions: [],
       warehouseOptions: [], // 库房下拉选项
       positionOptions: [],  // 位置下拉选项
+      detailSelectedRows: [], // 明细多选选中行
     }
   },
   computed: {
@@ -471,6 +479,19 @@ export default {
         console.error('解析修改记录失败', e)
         return {}
       }
+    },
+    // 根据已选调拨依据筛选可用的材料编码
+    availableMaterialCodes() {
+      const selected = this.form._transferSelected
+      if (!Array.isArray(selected) || selected.length === 0) return []
+      const codes = []
+      selected.forEach(path => {
+        if (Array.isArray(path) && path.length >= 2) {
+          codes.push(path[1])
+        }
+      })
+      if (codes.length === 0) return []
+      return this.materialCodeOptions.filter(opt => codes.includes(opt.value))
     },
     totalWeightGross() {
       return this.detailList
@@ -567,8 +588,9 @@ export default {
         return data
       })
     },
-    async submitForm() {
+    async submitForm(submitType = 0) {
       let payload = deepClone(this.form)
+      payload.submitType = submitType
       if (this.row.id) {
         payload.id = this.row.id
         payload.updateType = this.updateType
@@ -582,7 +604,21 @@ export default {
       }
       // 移除可能导致多余传参的属性
       delete payload.details
-      
+
+      // 暂存时不校验表单，直接提交
+      if (submitType === 4) {
+        if (beforeSubmit) payload = await beforeSubmit(payload)
+        const submitMethod = (this.type === 'edit' || this.type === 'modify') ? requestFun.update : requestFun.submit
+        submitMethod(payload).then(res => {
+          if (res.code === 1) {
+            this.$message.success('暂存成功')
+            this.$emit('query')
+            this.close()
+          }
+        })
+        return
+      }
+
       this.$refs.form.validate(async valid => {
         if (valid) {
           // 校验库位是否被占用
@@ -772,6 +808,13 @@ export default {
       }
       return Promise.resolve([])
     },
+    // 毛皮净重量自动补全5位小数
+    formatWeightField(field) {
+      const val = this.detailEditForm[field]
+      if (val !== '' && val !== null && val !== undefined && !isNaN(Number(val))) {
+        this.$set(this.detailEditForm, field, Number(val).toFixed(5))
+      }
+    },
     // 库房/位置接口联动
     loadMaterialCodeOptions() {
       getMaterialCodeListAll().then(res => {
@@ -831,6 +874,10 @@ export default {
     },
     // 明细操作
     addDetailRow() {
+      if (this.availableMaterialCodes.length === 0) {
+        this.$message.warning('请先选择调拨依据')
+        return
+      }
       this.detailEditIndex = -1
       this.detailEditForm = {
         goodCode: '',
@@ -850,6 +897,7 @@ export default {
         grossWeight: 0,
         tareWeight: 0,
         netWeight: 0,
+        metalPercentage: '',
       }
       this.positionOptions = []
       this.detailEditVisible = true
@@ -925,6 +973,30 @@ export default {
         }
       })
     },
+    handleDetailSelectionChange(selection) {
+      this.detailSelectedRows = selection
+    },
+    handleBatchDelete() {
+      if (this.detailSelectedRows.length === 0) {
+        this.$message.warning('请选择要删除的明细')
+        return
+      }
+      this.$confirm(`确定要删除选中的 ${this.detailSelectedRows.length} 条明细?`, '提示', { type: 'warning' }).then(() => {
+        this.detailSelectedRows.forEach(row => {
+          const index = this.detailList.indexOf(row)
+          if (index > -1) {
+            this.detailList.splice(index, 1)
+            if (row.id) {
+              this.deletedGoodIds.push(row.id)
+              if (row.containerCode) {
+                this.deletedContainerCodes.push(row.containerCode)
+              }
+            }
+          }
+        })
+        this.detailSelectedRows = []
+      }).catch(() => {})
+    },
     // 导入
     openImportDialog() {
       this.$refs.importDialog.open()
@@ -960,7 +1032,7 @@ export default {
           'boxNum'
         ].every(field => !isEmptyValue(item[field])) && hasPosition
       }
-      const appendCompleteRows = rows => {
+      const appendCompleteRows = async rows => {
         const parsedRows = rows.map(parsePosition)
         const completeRows = parsedRows.filter(isCompleteDetail)
         const skippedCount = parsedRows.length - completeRows.length
@@ -971,7 +1043,41 @@ export default {
           this.$message.warning('没有信息完整的数据可填充')
           return
         }
-        this.detailList = this.detailList.concat(completeRows)
+        // 检测容器号重复
+        const existingCodes = new Set(this.detailList.map(item => item.containerCode).filter(Boolean))
+        const duplicateRows = completeRows.filter(item => item.containerCode && existingCodes.has(item.containerCode))
+        const newRows = completeRows.filter(item => !item.containerCode || !existingCodes.has(item.containerCode))
+
+        if (duplicateRows.length > 0) {
+          try {
+            await this.$confirm(
+              `导入数据中存在 ${duplicateRows.length} 条与明细信息重复的记录（容器号相同），是否覆盖？`,
+              '重复检测',
+              { confirmButtonText: '覆盖', cancelButtonText: '跳过', type: 'warning' }
+            )
+            // 用户确认覆盖：替换已有重复项
+            duplicateRows.forEach(newItem => {
+              const index = this.detailList.findIndex(old => old.containerCode === newItem.containerCode)
+              if (index > -1) {
+                const removed = this.detailList[index]
+                if (removed.id) {
+                  this.deletedGoodIds.push(removed.id)
+                  if (removed.containerCode) this.deletedContainerCodes.push(removed.containerCode)
+                }
+                this.$set(this.detailList, index, newItem)
+              }
+            })
+            this.detailList = this.detailList.concat(newRows)
+          } catch {
+            // 用户取消：跳过重复项，仅追加新数据
+            this.detailList = this.detailList.concat(newRows)
+            if (duplicateRows.length > 0) {
+              this.$message.info(`已跳过 ${duplicateRows.length} 条重复数据`)
+            }
+          }
+        } else {
+          this.detailList = this.detailList.concat(completeRows)
+        }
       }
       // 合并导入的明细数据到 detailList
       if (Array.isArray(data)) {

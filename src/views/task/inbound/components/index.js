@@ -27,6 +27,7 @@ const getAllInboundTransferBasisList = () => getAllTransferBasisList({ type: '0'
 // 状态枚举
 export const statusOptions = [
   { label: '待确认', value: 'pending' },
+  { label: '暂存', value: 4 },
   { label: '已确认', value: 'confirmed' },
   { label: '已拒绝', value: 2 },
   { label: '变更审核中', value: 'auditing' },
