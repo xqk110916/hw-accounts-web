@@ -250,7 +250,7 @@
   <ImportDialog ref="importDialog" @success="handleImportSuccess" />
 
   <!-- 明细编辑弹窗 -->
-  <el-dialog :close-on-click-modal="false" title="明细编辑" custom-class="show-footer-dialog" :visible.sync="detailEditVisible" width="600px" append-to-body>
+  <el-dialog :close-on-click-modal="false" title="明细编辑" custom-class="show-footer-dialog" :visible.sync="detailEditVisible" width="800px" append-to-body>
     <el-form ref="detailForm" :model="detailEditForm" label-width="120px" :rules="detailRules">
       <el-form-item label="材料编码" prop="goodCode">
         <el-select
