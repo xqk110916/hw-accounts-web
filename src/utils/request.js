@@ -58,6 +58,22 @@ const matchingList = [70004];
 // 响应拦截器
 service.interceptors.response.use(
   res => {
+    // 拦截获取所有库房列表的接口，库房显示label添加[平衡区]名称前缀
+    if (res.config && res.config.url && /\/locationMap\/hierarchy\/listByNodeType\/2($|\?|\/)/.test(res.config.url)) {
+      if (res.data && Array.isArray(res.data.data)) {
+        res.data.data = res.data.data.map(item => {
+          const areaName = item.balanceAreaName || '';
+          if (areaName) {
+            ['warehouseName', 'nodeName', 'name', 'label'].forEach(key => {
+              if (item[key] && typeof item[key] === 'string' && !item[key].startsWith(areaName)) {
+                item[key] = `【${areaName}】- ${item[key]}`;
+              }
+            });
+          }
+          return item;
+        });
+      }
+    }
     // 未设置状态码则默认成功状态
     const code = res.data.code || 1;
     // 获取错误信息

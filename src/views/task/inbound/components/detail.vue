@@ -286,7 +286,7 @@
           <el-option
             v-for="w in warehouseOptions"
             :key="w.id"
-            :label="`${w.balanceAreaName ? w.balanceAreaName + ' - ' : ''}${w.warehouseName}`"
+            :label="w.warehouseName"
             :value="w.id"
           />
         </el-select>
