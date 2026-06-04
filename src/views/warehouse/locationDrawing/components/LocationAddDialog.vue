@@ -1,140 +1,147 @@
 <template>
-  <el-dialog :close-on-click-modal="false"
-    :title="dialogTitle"
-    :visible.sync="visible"
-    width="650px"
-    @close="handleClose"
-    :append-to-body="true"
-  >
-    <el-form :model="form" :rules="formRules" ref="form" label-width="100px" size="small">
-      <el-row :gutter="20">
-        <el-col :span="24">
-          <el-form-item label="平衡区" prop="balanceArea">
-            <el-select
-              v-model="form.balanceArea"
-              placeholder="请选择平衡区"
-              style="width: 100%"
-              :disabled="isParentFixed || isReadonly"
-              @change="handleChange"
-            >
-              <el-option
-                v-for="item in balanceAreaOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              ></el-option>
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
+  <div class="add-form-panel">
+    <div class="panel-header">
+      <span class="panel-title">
+        <i :class="mode === 'view' ? 'el-icon-document' : 'el-icon-edit-outline'" class="header-icon"></i>
+        {{ dialogTitle }}
+      </span>
+      <div class="panel-header-actions" v-if="mode === 'view'">
+        <el-button type="primary" size="mini" icon="el-icon-edit" @click="handleEdit">编辑库房</el-button>
+      </div>
+    </div>
 
-      <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="库房编号" prop="warehouseCode">
-            <el-input v-model="form.warehouseCode" placeholder="请输入库房编号" :disabled="isReadonly"></el-input>
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="库房名称" prop="warehouseName">
-            <el-input v-model="form.warehouseName" placeholder="请输入库房名称" :disabled="isReadonly"></el-input>
-          </el-form-item>
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="20">
-        <el-col :span="24">
-          <el-form-item label="材料名称" prop="materialType">
-            <el-select v-model="form.materialType" placeholder="请选择材料名称" style="width: 100%" :disabled="isReadonly" multiple collapse-tags>
-              <el-option
-                v-for="item in materialTypeOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              ></el-option>
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
-      <el-row :gutter="20">
-        <el-col :span="24">
-          <el-form-item label="备注" prop="remark">
-            <el-input
-              type="textarea"
-              v-model="form.remark"
-              placeholder="请输入备注"
-              :rows="3"
-              :disabled="isReadonly"
-            ></el-input>
-          </el-form-item>
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="20">
-        <el-col :span="24">
-          <el-form-item label="库房类型" prop="warehouseType">
-            <el-radio-group v-model="form.warehouseType" size="small" :disabled="isReadonly">
-              <el-radio-button label="0">新库</el-radio-button>
-              <el-radio-button label="2">老库</el-radio-button>
-            </el-radio-group>
-          </el-form-item>
-        </el-col>
-      </el-row>
-
-      <!-- 货架配置（新库/老库通用） -->
-      <el-divider content-position="left">货架配置</el-divider>
-      <div class="config-section shelf-config">
-        <div class="header-actions">
-          <span>货架列表</span>
-          <el-button v-if="!isReadonly" type="primary" size="mini" icon="el-icon-plus" plain @click="addColumn">添加列</el-button>
-        </div>
-        <el-table :data="form.columns" border style="width: 100%" size="mini">
-          <el-table-column label="列" width="80" align="center">
-            <template slot-scope="scope">
-              <span>{{ scope.row.code || `第 ${scope.$index + 1} 列` }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="类型" prop="type" min-width="150">
-            <template slot-scope="scope">
-              <el-select v-model="scope.row.type" placeholder="请选择类型" size="mini" style="width: 100%" :disabled="isReadonly">
+    <div class="panel-body">
+      <el-form :model="form" :rules="formRules" ref="form" label-width="100px" size="small">
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="平衡区" prop="balanceArea">
+              <el-select
+                v-model="form.balanceArea"
+                placeholder="请选择平衡区"
+                style="width: 100%"
+                :disabled="isParentFixed || isReadonly"
+                @change="handleChange"
+              >
                 <el-option
-                  v-for="item in currentShelfTypeOptions"
+                  v-for="item in balanceAreaOptions"
                   :key="item.value"
                   :label="item.label"
                   :value="item.value"
                 ></el-option>
               </el-select>
-            </template>
-          </el-table-column>
-          <el-table-column label="排" width="80" align="center">
-            <template slot-scope="scope">
-              <span>{{ getShelfInfo(scope.row.type, 'row') }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="层" width="80" align="center">
-            <template slot-scope="scope">
-              <span>{{ getShelfInfo(scope.row.type, 'level') }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column v-if="!isReadonly" label="操作" width="60" align="center">
-            <template slot-scope="scope">
-              <el-button
-                type="text"
-                icon="el-icon-delete"
-                style="color: #f56c6c"
-                @click="removeColumn(scope.$index)"
-              ></el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
 
-      
-    </el-form>
-    <div slot="footer" class="dialog-footer">
-      <el-button @click="visible = false" size="small">取 消</el-button>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="库房编号" prop="warehouseCode">
+              <el-input v-model="form.warehouseCode" placeholder="请输入库房编号" :disabled="isReadonly"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="库房名称" prop="warehouseName">
+              <el-input v-model="form.warehouseName" placeholder="请输入库房名称" :disabled="isReadonly"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="材料名称" prop="materialType">
+              <el-select v-model="form.materialType" placeholder="请选择材料名称" style="width: 100%" :disabled="isReadonly" multiple collapse-tags>
+                <el-option
+                  v-for="item in materialTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="备注" prop="remark">
+              <el-input
+                type="textarea"
+                v-model="form.remark"
+                placeholder="请输入备注"
+                :rows="3"
+                :disabled="isReadonly"
+              ></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="库房类型" prop="warehouseType">
+              <el-radio-group v-model="form.warehouseType" size="small" :disabled="isReadonly">
+                <el-radio-button label="0">新库</el-radio-button>
+                <el-radio-button label="2">老库</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <!-- 货架配置（新库/老库通用） -->
+        <el-divider content-position="left">
+          <span class="divider-text"><i class="el-icon-setting"></i> 货架配置</span>
+        </el-divider>
+        <div class="config-section shelf-config">
+          <div class="header-actions">
+            <span class="section-title">货架列表</span>
+            <el-button v-if="!isReadonly" type="primary" size="mini" icon="el-icon-plus" plain @click="addColumn">添加列</el-button>
+          </div>
+          <el-table :data="form.columns" border style="width: 100%" size="mini" class="shelf-table">
+            <el-table-column label="列" width="100" align="center">
+              <template slot-scope="scope">
+                <span class="column-code">{{ scope.row.code || `第 ${scope.$index + 1} 列` }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" prop="type" min-width="150">
+              <template slot-scope="scope">
+                <el-select v-model="scope.row.type" placeholder="请选择类型" size="mini" style="width: 100%" :disabled="isReadonly">
+                  <el-option
+                    v-for="item in currentShelfTypeOptions"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  ></el-option>
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="排" width="90" align="center">
+              <template slot-scope="scope">
+                <span class="badge-info">{{ getShelfInfo(scope.row.type, 'row') }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="层" width="90" align="center">
+              <template slot-scope="scope">
+                <span class="badge-info">{{ getShelfInfo(scope.row.type, 'level') }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column v-if="!isReadonly" label="操作" width="80" align="center">
+              <template slot-scope="scope">
+                <el-button
+                  type="text"
+                  icon="el-icon-delete"
+                  style="color: #f56c6c"
+                  @click="removeColumn(scope.$index)"
+                ></el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-form>
+    </div>
+
+    <div class="panel-footer">
+      <el-button @click="handleCancel" size="small">{{ isReadonly ? '关闭面板' : '取 消' }}</el-button>
       <el-button v-if="!isReadonly" type="primary" @click="handleSubmit" size="small">确 定</el-button>
     </div>
-  </el-dialog>
+  </div>
 </template>
 
 <script>
@@ -152,7 +159,6 @@ export default {
   name: 'LocationAddDialog',
   data() {
     return {
-      visible: false,
       isEdit: false,
       mode: 'add',
       isParentFixed: false,
@@ -176,7 +182,8 @@ export default {
       balanceAreaOptions: [],
       materialTypeOptions: [],
       shelfTypeOptions: [],
-      oldShelfTypeOptions: []
+      oldShelfTypeOptions: [],
+      originalDataBackup: null
     };
   },
   created() {
@@ -190,8 +197,8 @@ export default {
       return this.mode === 'view';
     },
     dialogTitle() {
-      if (this.mode === 'view') return '查看库位图纸';
-      if (this.mode === 'edit') return '编辑库位图纸';
+      if (this.mode === 'view') return '查看库房详情';
+      if (this.mode === 'edit') return '编辑库房详情';
       return '添加库位图纸';
     },
     formRules() {
@@ -268,17 +275,19 @@ export default {
           data.materialType = data.materialType.split(',').filter(Boolean);
         }
         this.form = { ...this.form, ...data };
+        this.originalDataBackup = JSON.parse(JSON.stringify(this.form));
       } else if (options.prefill) {
         this.resetForm();
         this.form = { ...this.form, ...options.prefill };
         // 新增时默认6列，类型为空
         this.form.columns = Array.from({ length: 6 }, (item, index) => ({ code: `S${index + 1}`, type: '' }));
+        this.originalDataBackup = null;
       } else {
         this.resetForm();
         // 新增时默认6列，类型为空
         this.form.columns = Array.from({ length: 6 }, (item, index) => ({ code: `S${index + 1}`, type: '' }));
+        this.originalDataBackup = null;
       }
-      this.visible = true;
     },
     resetForm() {
       this.form = {
@@ -297,6 +306,15 @@ export default {
         }
       });
     },
+    setViewMode() {
+      this.mode = 'view';
+      this.isEdit = false;
+    },
+    handleEdit() {
+      this.mode = 'edit';
+      this.isEdit = true;
+      this.originalDataBackup = JSON.parse(JSON.stringify(this.form));
+    },
     addColumn() {
       this.form.columns.push({ code: `S${this.form.columns.length + 1}`, type: '' });
     },
@@ -307,8 +325,22 @@ export default {
         this.$message.warning('至少需要保留一列');
       }
     },
-    handleClose() {
-      this.resetForm();
+    handleCancel() {
+      if (this.mode === 'add') {
+        this.$emit('cancel');
+      } else if (this.mode === 'edit') {
+        if (this.originalDataBackup) {
+          this.form = JSON.parse(JSON.stringify(this.originalDataBackup));
+        }
+        this.setViewMode();
+        this.$nextTick(() => {
+          if (this.$refs.form) {
+            this.$refs.form.clearValidate();
+          }
+        });
+      } else {
+        this.$emit('cancel');
+      }
     },
     handleSubmit() {
       this.$refs.form.validate((valid) => {
@@ -322,7 +354,6 @@ export default {
             levels: this.getShelfInfo(col.type, 'level')
           }));
           this.$emit('submit', result);
-          this.visible = false;
         } else {
           console.log('error submit!!');
           return false;
@@ -339,27 +370,121 @@ export default {
     },
     handleChange(value) {
       console.log(value, this.balanceAreaOptions)
-    },
+    }
   }
 };
 </script>
 
 <style lang="scss" scoped>
+.add-form-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+
+  .panel-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #ebeef5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafbfe;
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2c3e50;
+      display: flex;
+      align-items: center;
+
+      .header-icon {
+        margin-right: 8px;
+        color: #409eff;
+        font-size: 18px;
+      }
+    }
+  }
+
+  .panel-body {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #e4e7ed;
+      border-radius: 3px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: #c0c4cc;
+    }
+  }
+
+  .panel-footer {
+    padding: 12px 24px;
+    border-top: 1px solid #ebeef5;
+    text-align: right;
+    background-color: #fafbfe;
+  }
+}
+
 .config-section {
-  margin-top: 10px;
+  margin-top: 15px;
   &.shelf-config {
-    padding-left: 30px;
+    padding-left: 10px;
   }
   .header-actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 5px 10px;
-    font-size: 14px;
-    font-weight: bold;
-    color: #606266;
+    padding: 0 5px 12px;
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #606266;
+    }
   }
 }
+
+.divider-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shelf-table {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  overflow: hidden;
+
+  ::v-deep th {
+    background-color: #f5f7fa !important;
+    color: #515a6e;
+    font-weight: 600;
+  }
+
+  .column-code {
+    font-weight: 600;
+    color: #409eff;
+  }
+
+  .badge-info {
+    display: inline-block;
+    padding: 2px 8px;
+    background-color: #ecf5ff;
+    color: #409eff;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+}
+
 .el-divider--horizontal {
   margin: 24px 0 15px 0;
 }

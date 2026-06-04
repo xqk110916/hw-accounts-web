@@ -1,90 +1,112 @@
 <template>
   <div class="location-drawing-container">
-    <div class="header-card">
-      <div class="header-left">
-        <el-input
-          v-model="filterText"
-          placeholder="输入关键字进行过滤"
-          size="small"
-          prefix-icon="el-icon-search"
-          clearable
-          style="width: 250px; margin-right: 15px"
-        ></el-input>
-        <el-button size="small" @click="handleExpandAll">全部展开</el-button>
-        <el-button size="small" @click="handleCollapseAll">全部折叠</el-button>
+    <div class="main-content-layout">
+      <!-- Left Panel: Tree and Controls (35%) -->
+      <div class="left-panel">
+        <div class="panel-header">
+          <div class="search-box">
+            <el-input
+              v-model="filterText"
+              placeholder="输入关键字进行过滤"
+              size="small"
+              prefix-icon="el-icon-search"
+              clearable
+              style="width: 100%"
+            ></el-input>
+          </div>
+          <div class="action-row">
+            <el-button-group>
+              <el-button size="small" icon="el-icon-zoom-in" @click="handleExpandAll">全部展开</el-button>
+              <el-button size="small" icon="el-icon-zoom-out" @click="handleCollapseAll">全部折叠</el-button>
+            </el-button-group>
+            <el-button type="primary" size="small" icon="el-icon-plus" @click="handleAdd">添加库位</el-button>
+          </div>
+        </div>
+
+        <div class="tree-wrapper">
+          <el-tree
+            ref="tree"
+            :data="treeData"
+            :props="defaultProps"
+            :filter-node-method="filterNode"
+            node-key="id"
+            :expand-on-click-node="false"
+            class="custom-tree"
+            highlight-current
+          >
+            <span class="custom-tree-node" slot-scope="{ node, data }" @dblclick.stop="handleNodeDblClick(data)">
+              <span class="node-label">
+                <i :class="getNodeIcon(data)" class="node-icon"></i>
+                {{ node.label }}
+              </span>
+              <span class="node-ops">
+                <el-button
+                  v-if="isBalanceAreaNode(data)"
+                  type="text"
+                  size="mini"
+                  icon="el-icon-view"
+                  @click.stop="openNodeDetail(data)"
+                >详情</el-button>
+                <el-button
+                  v-if="isWarehouseNode(data)"
+                  type="text"
+                  size="mini"
+                  icon="el-icon-s-grid"
+                  @click.stop="openPositionMap(data)"
+                >位置图</el-button>
+                <el-button
+                  v-if="isWarehouseNode(data)"
+                  type="text"
+                  size="mini"
+                  icon="el-icon-view"
+                  @click.stop="openWarehouseDialog(data, 'view')"
+                >详情</el-button>
+                <el-button
+                  type="text"
+                  size="mini"
+                  icon="el-icon-plus"
+                  @click.stop="() => append(data)"
+                  v-if="data.nodeType === 1"
+                >
+                </el-button>
+                <el-button
+                  type="text"
+                  size="mini"
+                  icon="el-icon-delete"
+                  style="color: #f56c6c"
+                  @click.stop="() => remove(node, data)"
+                >
+                </el-button>
+              </span>
+            </span>
+          </el-tree>
+        </div>
       </div>
-      <div class="header-right">
-        <el-button type="primary" size="small" icon="el-icon-plus" @click="handleAdd">添加库位</el-button>
-        <!-- <el-button type="success" size="small" icon="el-icon-download" @click="handleExport">导出</el-button> -->
+
+      <!-- Right Panel: Fixed Details / Add Form (65%) -->
+      <div class="right-panel">
+        <transition name="fade-transform" mode="out-in">
+          <div v-if="!rightPanelVisible" class="empty-placeholder" key="placeholder">
+            <div class="placeholder-content">
+              <div class="icon-wrapper">
+                <i class="el-icon-office-building placeholder-icon"></i>
+              </div>
+              <h3>库房管理中心</h3>
+              <p>请在左侧树结构中，选择库房节点查看或编辑详情信息</p>
+              <span class="sub-tip">点击左上方的 “添加库位” 或平衡区右侧的 “+” 即可新建库房</span>
+            </div>
+          </div>
+          <LocationAddDialog
+            v-else
+            ref="addDialog"
+            key="form"
+            @submit="handleDialogSubmit"
+            @cancel="handleDialogCancel"
+          />
+        </transition>
       </div>
     </div>
 
-    <div class="tree-content">
-      <el-tree
-        ref="tree"
-        :data="treeData"
-        :props="defaultProps"
-        :filter-node-method="filterNode"
-        node-key="id"
-        :expand-on-click-node="false"
-        class="custom-tree"
-      >
-        <span class="custom-tree-node" slot-scope="{ node, data }" @dblclick.stop="handleNodeDblClick(data)">
-          <span class="node-label">
-            <i :class="getNodeIcon(data)" class="node-icon"></i>
-            {{ node.label }}
-          </span>
-          <span class="node-ops">
-            <el-button
-              v-if="isBalanceAreaNode(data)"
-              type="text"
-              size="mini"
-              icon="el-icon-view"
-              @click.stop="openNodeDetail(data)"
-            >详情</el-button>
-            <el-button
-              v-if="isWarehouseNode(data)"
-              type="text"
-              size="mini"
-              icon="el-icon-s-grid"
-              @click.stop="openPositionMap(data)"
-            >位置图</el-button>
-            <el-button
-              v-if="isWarehouseNode(data)"
-              type="text"
-              size="mini"
-              icon="el-icon-view"
-              @click.stop="openWarehouseDialog(data, 'view')"
-            >详情</el-button>
-            <!-- <el-button
-              v-if="isWarehouseNode(data)"
-              type="text"
-              size="mini"
-              icon="el-icon-edit"
-              @click.stop="openWarehouseDialog(data, 'edit')"
-            >编辑</el-button> -->
-            <el-button
-              type="text"
-              size="mini"
-              icon="el-icon-plus"
-              @click.stop="() => append(data)"
-              v-if="data.nodeType === 1"
-            >
-            </el-button>
-            <el-button
-              type="text"
-              size="mini"
-              icon="el-icon-delete"
-              style="color: #f56c6c"
-              @click.stop="() => remove(node, data)"
-            >
-            </el-button>
-          </span>
-        </span>
-      </el-tree>
-    </div>
-
-    <LocationAddDialog ref="addDialog" @submit="handleDialogSubmit" />
     <NodeDetailDrawer ref="nodeDetail" @query="fetchTreeData" />
     <WarehousePositionMapDialog ref="positionMapDialog" @saved="fetchTreeData" />
   </div>
@@ -115,7 +137,8 @@ export default {
       defaultProps: {
         children: 'children',
         label: (data) => data.nodeName || `节点(${data.id})`
-      }
+      },
+      rightPanelVisible: false
     };
   },
   created() {
@@ -165,10 +188,16 @@ export default {
       this.$refs.positionMapDialog.open(data);
     },
     async openWarehouseDialog(data, mode) {
-      const detail = await this.fetchWarehouseDetail(data);
-      this.$refs.addDialog.open(this.mapWarehouseNodeToForm(detail), {
-        mode,
-        isParentFixed: true
+      this.rightPanelVisible = true;
+      this.$nextTick(async () => {
+        if (this.$refs.tree) {
+          this.$refs.tree.setCurrentKey(data.id);
+        }
+        const detail = await this.fetchWarehouseDetail(data);
+        this.$refs.addDialog.open(this.mapWarehouseNodeToForm(detail), {
+          mode,
+          isParentFixed: true
+        });
       });
     },
     async fetchWarehouseDetail(data) {
@@ -199,10 +228,19 @@ export default {
       }
     },
     handleAdd() {
-      this.$refs.addDialog.open();
+      this.rightPanelVisible = true;
+      this.$nextTick(() => {
+        if (this.$refs.tree) {
+          this.$refs.tree.setCurrentKey(null);
+        }
+        this.$refs.addDialog.open();
+      });
     },
-    handleExport() {
-      this.$message.success('正在导出库位图纸...');
+    handleDialogCancel() {
+      this.rightPanelVisible = false;
+      if (this.$refs.tree) {
+        this.$refs.tree.setCurrentKey(null);
+      }
     },
     async handleDialogSubmit(formData) {
       // 组装对接接口的参数
@@ -236,14 +274,28 @@ export default {
       if (formData.rawNode && formData.rawNode.id) apiData.id = formData.rawNode.id;
 
       try {
+        let res;
         if (formData.mode === 'edit') {
-          await updateHierarchyNode(apiData);
-          this.$message.success('编辑库位图纸成功');
+          res = await updateHierarchyNode(apiData);
+          this.$message.success('编辑库房成功');
         } else {
-          await addHierarchyNode(apiData);
-          this.$message.success('添加库位图纸成功');
+          res = await addHierarchyNode(apiData);
+          this.$message.success('添加库房成功');
         }
-        this.fetchTreeData();
+        await this.fetchTreeData();
+
+        // 提交成功后将右侧设为只读形式
+        if (formData.mode === 'edit' && formData.rawNode && formData.rawNode.id) {
+          const nodeData = { id: formData.rawNode.id, nodeType: 2 };
+          await this.openWarehouseDialog(nodeData, 'view');
+        } else if (res && res.data && res.data.id) {
+          const nodeData = { id: res.data.id, nodeType: 2 };
+          await this.openWarehouseDialog(nodeData, 'view');
+        } else {
+          if (this.$refs.addDialog) {
+            this.$refs.addDialog.setViewMode();
+          }
+        }
       } catch (err) {
         console.error(err);
         this.$message.error(formData.mode === 'edit' ? '编辑失败' : '添加失败');
@@ -287,7 +339,6 @@ export default {
       };
     },
     getShelfTypeValue(column, rowCount, levelCount) {
-      const extra = column.extra || {};
       return column.shelfType;
     },
     normalizeWarehouseType(warehouseType, columns) {
@@ -297,15 +348,17 @@ export default {
       return columns.length > 1 ? '0' : '2';
     },
     ensureShelfTypeOption(type, rowCount, levelCount) {
-      const dialog = this.$refs.addDialog;
-      if (!dialog || !type) return;
-      const exists = dialog.shelfTypeOptions.some(item => item.value === type);
-      if (!exists) {
-        dialog.shelfTypeOptions.push({
-          label: `${rowCount}排${levelCount}层`,
-          value: type
-        });
-      }
+      this.$nextTick(() => {
+        const dialog = this.$refs.addDialog;
+        if (!dialog || !type) return;
+        const exists = dialog.shelfTypeOptions.some(item => item.value === type);
+        if (!exists) {
+          dialog.shelfTypeOptions.push({
+            label: `${rowCount}排${levelCount}层`,
+            value: type
+          });
+        }
+      });
     },
     cleanNodeName(name) {
       return String(name || '').replace(/^【库房】/, '');
@@ -314,11 +367,17 @@ export default {
       const label = this.defaultProps.label(data);
       // Level 0 为平衡区，添加子节点即添加库房
       if (data.nodeType === 1) {
-        this.$refs.addDialog.open(null, {
-          isParentFixed: true,
-          prefill: {
-            balanceArea: data.id || data.balanceId
+        this.rightPanelVisible = true;
+        this.$nextTick(() => {
+          if (this.$refs.tree) {
+            this.$refs.tree.setCurrentKey(null);
           }
+          this.$refs.addDialog.open(null, {
+            isParentFixed: true,
+            prefill: {
+              balanceArea: data.id || data.balanceId
+            }
+          });
         });
       } else {
         this.$message.info(`当前仅支持在[平衡区]级别快捷添加子节点(库房): ${label}`);
@@ -335,6 +394,9 @@ export default {
           await deleteHierarchyNode(data.id);
           this.$message.success('删除成功');
           this.fetchTreeData();
+          if (this.rightPanelVisible) {
+            this.handleDialogCancel();
+          }
         } catch (e) {
           console.error(e);
           this.$message.error('删除失败');
@@ -347,69 +409,203 @@ export default {
 
 <style lang="scss" scoped>
 .location-drawing-container {
-  padding: 20px;
+  padding: 16px;
   height: 100%;
+  box-sizing: border-box;
+  background-color: #f4f6f9;
   display: flex;
   flex-direction: column;
-  background-color: #f5f7fa;
+  overflow: hidden;
 
-  .header-card {
-    background: #fff;
-    padding: 15px 20px;
-    border-radius: 8px;
+  .main-content-layout {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
-    margin-bottom: 20px;
-  }
-
-  .tree-content {
+    gap: 16px;
     flex: 1;
-    background: #fff;
-    border-radius: 8px;
-    padding: 20px;
-    overflow-y: auto;
-    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.05);
+    height: 0; // force flexbox height calculation
+    min-height: 0;
+    overflow: hidden;
 
-    .custom-tree {
-      ::v-deep .el-tree-node__content {
-        height: 40px;
-        &:hover {
-          background-color: #f0f7ff;
+    .left-panel {
+      width: 40%;
+      height: 100%;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      box-sizing: border-box;
+      overflow: hidden;
+      border: 1px solid #eef2f5;
+
+      .panel-header {
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        .search-box {
+          width: 100%;
+        }
+
+        .action-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
         }
       }
 
-      .custom-tree-node {
+      .tree-wrapper {
         flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        font-size: 14px;
-        padding-right: 8px;
+        overflow-y: auto;
+        padding-right: 4px;
 
-        .node-label {
-          display: flex;
-          align-items: center;
-          .node-icon {
-            margin-right: 8px;
-            color: #409eff;
-            font-size: 16px;
+        &::-webkit-scrollbar {
+          width: 5px;
+        }
+        &::-webkit-scrollbar-thumb {
+          background: #e4e7ed;
+          border-radius: 3px;
+        }
+        &::-webkit-scrollbar-thumb:hover {
+          background: #c0c4cc;
+        }
+
+        .custom-tree {
+          ::v-deep .el-tree-node__content {
+            height: 38px;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            &:hover {
+              background-color: #f0f7ff;
+            }
+          }
+
+          ::v-deep .el-tree--highlight-current .el-tree-node.is-current > .el-tree-node__content {
+            background-color: #e8f3ff;
+            color: #1890ff;
+            font-weight: 500;
+          }
+
+          .custom-tree-node {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
+            padding-right: 8px;
+
+            .node-label {
+              display: flex;
+              align-items: center;
+              .node-icon {
+                margin-right: 8px;
+                color: #409eff;
+                font-size: 16px;
+              }
+            }
+
+            .node-ops {
+              opacity: 0;
+              transition: opacity 0.2s;
+            }
+
+            &:hover {
+              .node-ops {
+                opacity: 1;
+              }
+            }
           }
         }
+      }
+    }
 
-        .node-ops {
-          opacity: 0;
-          transition: opacity 0.2s;
-        }
+    .right-panel {
+      width: 60%;
+      height: 100%;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: hidden;
+      border: 1px solid #eef2f5;
 
-        &:hover {
-          .node-ops {
-            opacity: 1;
+      .empty-placeholder {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        box-sizing: border-box;
+        background: linear-gradient(135deg, #ffffff 0%, #f9fbfd 100%);
+
+        .placeholder-content {
+          text-align: center;
+          max-width: 420px;
+
+          .icon-wrapper {
+            width: 80px;
+            height: 80px;
+            background: #eef5fe;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.1);
+
+            .placeholder-icon {
+              font-size: 38px;
+              color: #409eff;
+            }
+          }
+
+          h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0 0 12px;
+          }
+
+          p {
+            font-size: 14px;
+            color: #606266;
+            margin: 0 0 8px;
+            line-height: 1.5;
+          }
+
+          .sub-tip {
+            display: inline-block;
+            font-size: 12px;
+            color: #909399;
+            line-height: 1.6;
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #f4f6fa;
+            border-radius: 4px;
+            border: 1px dashed #e4e7ed;
           }
         }
       }
     }
   }
+}
+
+// Fade transform transition for smooth switching between placeholder and form
+.fade-transform-leave-active,
+.fade-transform-enter-active {
+  transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+}
+
+.fade-transform-enter {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.fade-transform-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 </style>
