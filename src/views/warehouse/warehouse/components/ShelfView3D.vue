@@ -304,10 +304,10 @@ export default {
         const originalIndex = containers.findIndex(c => c.id === container.id);
         const x = -shelfWidth/2 + spacing * (originalIndex + 1);
         
-        // 容器圆柱体 (模拟核废料储存罐)
-        const radius = 0.35;
-        const height = 1.0;
-        const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 16);
+        // 容器圆柱体 (模拟核废料储存罐，自适应货架宽度变宽，避免空余)
+        const radius = Math.min(spacing * 0.42, shelfDepth * 0.45, 0.85);
+        const height = 1.1;
+        const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 24);
         
         // 根据入库时间确定颜色
         let color = 0xe0e0e0;
@@ -337,7 +337,7 @@ export default {
         this.containerMeshes.push(cylinder);
 
         // 添加顶部盖子
-        const lidGeometry = new THREE.CylinderGeometry(radius, radius * 0.95, 0.05, 16);
+        const lidGeometry = new THREE.CylinderGeometry(radius, radius * 0.95, 0.05, 24);
         const lidMaterial = new THREE.MeshStandardMaterial({ 
           color: 0x1a1a1a,
           metalness: 0.8,

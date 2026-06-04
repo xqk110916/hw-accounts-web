@@ -314,7 +314,7 @@ export default {
               if (!container.materialCode) return;
 
               const cx = startCX + cIdx * spacing;
-              const radius = Math.min(spacing * 0.35, d * 0.3, 0.28);
+              const radius = Math.min(spacing * 0.42, d * 0.42, 0.55);
               const cylH = 0.65; // 与新库房（layerH = 1.0 时 cylH = 0.65）一致
 
               let color = 0xe0e0e0;
@@ -323,7 +323,7 @@ export default {
                 color = parseInt(hexColor.replace('#', ''), 16);
               }
 
-              const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 12);
+              const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 18);
               const cylMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
               const cyl = new THREE.Mesh(cylGeo, cylMat);
               cyl.position.set(cx, baseY + cylH / 2, 0);
@@ -331,7 +331,7 @@ export default {
               cyl.receiveShadow = true;
               group.add(cyl);
 
-              const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 12);
+              const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 18);
               const lidMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
               const lid = new THREE.Mesh(lidGeo, lidMat);
               lid.position.set(cx, baseY + cylH + 0.02, 0);
@@ -378,7 +378,7 @@ export default {
               if (!container.materialCode) return;
 
               const cx = startCX + cIdx * spacing;
-              const radius = Math.min(spacing * 0.35, d * 0.3, 0.28);
+              const radius = Math.min(spacing * 0.42, d * 0.42, 0.55);
               const cylH = layerH * 0.65;
 
               let color = 0xe0e0e0;
@@ -387,7 +387,7 @@ export default {
                 color = parseInt(hexColor.replace('#', ''), 16);
               }
 
-              const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 12);
+              const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 18);
               const cylMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
               const cyl = new THREE.Mesh(cylGeo, cylMat);
               cyl.position.set(cx, baseY + cylH / 2, 0);
@@ -395,7 +395,7 @@ export default {
               cyl.receiveShadow = true;
               group.add(cyl);
 
-              const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 12);
+              const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 18);
               const lidMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
               const lid = new THREE.Mesh(lidGeo, lidMat);
               lid.position.set(cx, baseY + cylH + 0.02, 0);
