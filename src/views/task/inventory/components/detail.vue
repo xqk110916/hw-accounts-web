@@ -121,7 +121,18 @@ import { getGoodsList, submitInventory, editInventory, auditInventory, submitInv
 import { generateBatchNo } from '@/api/common/batchNo.js'
 import { blobSaveExcel } from '@/utils'
 import { getLocationHierarchy } from '@/views/task/outbound/components/api.js'
+import { getWarehouseById } from '@/views/warehouse/warehouse/config/warehouseConfig.js'
+import { renderInventoryPlan, buildInventoryResultMap } from '../utils/renderInventoryPlan.js'
 import InventoryContainer from './InventoryContainer.vue'
+
+let JSZip = null
+function loadJSZip() {
+  if (JSZip) return Promise.resolve(JSZip)
+  return import('jszip').then(mod => {
+    JSZip = mod.default || mod
+    return JSZip
+  })
+}
 
 export default {
   components: {
@@ -456,24 +467,78 @@ export default {
         this.goodsLoading = false
       })
     },
-    handleExport() {
+    async handleExport() {
       if (!this.form.taskNum) return
       this.exportLoading = true
-      exportInventory({ taskNum: this.form.taskNum }).then(res => {
-        const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
-        // 从 content-disposition 获取文件名
-        const disposition = res.headers && res.headers['content-disposition']
-        let fileName = `实物盘存清单_${this.form.taskNum}`
+      try {
+        // 1. 并行：获取 Excel + 加载 JSZip + 加载各库房布局数据
+        const excelPromise = exportInventory({ taskNum: this.form.taskNum })
+        const jszipPromise = loadJSZip()
+
+        // 构建库房布局加载任务（只加载有货物数据的库房）
+        const warehouseIds = this.tabList.map(t => t.id)
+        const warehousePromises = warehouseIds.map(wId => {
+          return getWarehouseById(wId)
+            .then(warehouse => ({ wId, warehouse }))
+            .catch(() => ({ wId, warehouse: null }))
+        })
+
+        const [excelRes, ZipClass, ...warehouseResults] = await Promise.all([
+          excelPromise,
+          jszipPromise,
+          ...warehousePromises,
+        ])
+
+        // 2. 处理 Excel blob
+        const excelBlob = excelRes.data instanceof Blob ? excelRes.data : new Blob([excelRes.data])
+        const disposition = excelRes.headers && excelRes.headers['content-disposition']
+        let excelFileName = `实物盘存清单_${this.form.taskNum}.xlsx`
         if (disposition) {
           const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
           if (match && match[1]) {
-            fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+            excelFileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
           }
         }
-        blobSaveExcel(blob, fileName)
-      }).finally(() => {
+
+        // 3. 渲染各库房平面图
+        const planPromises = warehouseResults.map(({ wId, warehouse }) => {
+          if (!warehouse || !warehouse.layout2d) return null
+          const tab = this.tabList.find(t => t.id === wId)
+          const goodsList = this.goodsListMap[wId] || []
+          const inventoryResultMap = buildInventoryResultMap(goodsList)
+          return renderInventoryPlan({
+            warehouseName: tab ? tab.name : warehouse.name,
+            layout: warehouse.layout2d,
+            shelves: warehouse.shelves || [],
+            inventoryResultMap,
+          }).then(blob => ({ wId, tabName: tab ? tab.name : warehouse.name, blob }))
+        })
+
+        const planResults = (await Promise.all(planPromises)).filter(Boolean)
+
+        // 4. 如果没有平面图数据，直接下载 Excel
+        if (planResults.length === 0) {
+          blobSaveExcel(excelBlob, excelFileName.replace(/\.xlsx$/i, ''))
+          return
+        }
+
+        // 5. 打包 ZIP
+        const zip = new ZipClass()
+        zip.file(excelFileName, excelBlob)
+        planResults.forEach(({ tabName, blob }) => {
+          const safeName = (tabName || '库房').replace(/[\\/:*?"<>|]/g, '_')
+          zip.file(`${safeName}-盘存平面图.png`, blob)
+        })
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        const zipFileName = `盘存清单_${this.form.taskNum}.zip`
+        blobSaveExcel(zipBlob, zipFileName)
+      } catch (err) {
+        console.error('导出盘存清单失败:', err)
+        this.$message.error('导出失败，请重试')
+      } finally {
         this.exportLoading = false
-      })
+      }
     },
     handleExportToPad() {
       if (!this.form.taskNum) return
