@@ -27,18 +27,19 @@
           >
             <!-- <el-table-column type="selection" width="55"></el-table-column> -->
             <el-table-column type="index" label="序号" width="80" align="center" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="templateId" label="模板名称" min-width="140" show-overflow-tooltip>
-              <template slot-scope="scope">{{ templateMap[scope.row.templateId] || '' }}</template>
-            </el-table-column>
             <el-table-column prop="containerNo" label="容器号" min-width="140" show-overflow-tooltip>
               <template slot-scope="scope">{{ getDataJsonValue(scope.row, '容器号') }}</template>
             </el-table-column>
             <el-table-column prop="warehouse" label="库房" min-width="140" show-overflow-tooltip>
               <template slot-scope="scope">{{ getDataJsonValue(scope.row, '库房') }}</template>
             </el-table-column>
+            <el-table-column prop="materialCode" label="材料编码" min-width="140" show-overflow-tooltip>
+              <template slot-scope="scope">{{ getDataJsonValue(scope.row, '材料编码') }}</template>
+            </el-table-column>
+            <el-table-column prop="templateId" label="模板名称" min-width="140" show-overflow-tooltip>
+              <template slot-scope="scope">{{ templateMap[scope.row.templateId] || '' }}</template>
+            </el-table-column>
             <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip></el-table-column>
-            
-            <!-- <el-table-column prop="labelCount" label="标签数量" min-width="140" show-overflow-tooltip></el-table-column> -->
             <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
             <el-table-column label="操作" width="190" fixed="right">
               <template slot-scope="scope">
