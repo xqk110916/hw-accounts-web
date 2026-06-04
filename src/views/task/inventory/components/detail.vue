@@ -62,7 +62,7 @@
         <el-button v-if="type === 'add' || type === 'edit'" type="primary" @click="fetchGoodsList" :loading="goodsLoading">生成任务清单</el-button>
         <template v-if="hasGoodsList">
           <el-button type="success" @click="handleExport" :loading="exportLoading">导出盘存清单</el-button>
-          <el-button type="warning" @click="handleExportToPad" :loading="exportPadLoading">导出到PAD</el-button>
+          <!-- <el-button type="warning" @click="handleExportToPad" :loading="exportPadLoading">导出到PAD</el-button> -->
           <el-button type="info" @click="handleDownloadPadStream" :loading="downloadPadLoading">下载PAD盘存数据</el-button>
         </template>
       </div>

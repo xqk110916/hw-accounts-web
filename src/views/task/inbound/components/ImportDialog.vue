@@ -211,7 +211,7 @@ export default {
       downloadTemplate({ tempType: this.importForm.inboundImportType }).then(res => {
         const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
         const disposition = res.headers && res.headers['content-disposition']
-        let fileName = `入库导入模板${this.importForm.inboundImportType}`
+        let fileName = `信息导入模板${this.importForm.inboundImportType}`
         if (disposition) {
           const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
           if (match && match[1]) {
