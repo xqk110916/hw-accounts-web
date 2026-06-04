@@ -56,6 +56,10 @@ When generating a new page, component, route, menu, or standard List/CRUD interf
 - **直接行动**：Claude 在执行任务时，对于日常需求（包括但不限于修改文件、调试接口、更新样式、分析文档等），禁止进行冗余的多阶段规划（Planning Mode）或要求用户先批准设计图。直接使用文件读写和命令工具完成修改，行动要果断迅速。
 - **减少打扰**：除非遇到严重冲突或不可恢复的风险，否则不需要向用户反复进行确认和询问。保持自信，一步到位地解决问题。
 
+## Git 提交规范
+
+- **提交即推送**：用户要求提交代码时，执行 `git commit` 后必须顺带执行 `git push` 推送到远程，无需额外询问。
+
 ## 浏览器操作规范（项目级）
 
 - **必须使用 CDP-Bridge**：本项目需要登录才能访问（localhost:8080），进行界面调试或获取 Token 时，必须使用 MCP 工具 `CDP-Bridge` 连接本地浏览器
