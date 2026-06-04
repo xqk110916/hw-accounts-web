@@ -331,7 +331,6 @@ export default {
     getRowBtns(row) {
       const btns = [{ label: '详情', type: 'text', execute: 'view' }]
       const dataStatus = Number(row.status)
-
       if (dataStatus === 4) {
         btns.push({ label: '编辑', type: 'text', execute: 'update' })
         btns.push({ label: '录入结果', type: 'text', execute: 'inputResult' })
