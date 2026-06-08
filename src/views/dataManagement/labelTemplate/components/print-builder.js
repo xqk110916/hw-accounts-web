@@ -6,6 +6,9 @@ const fontDotMap = {
   '14号': 22,
   '16号': 24,
   '18号': 28,
+  '22号': 36,
+  '24号': 40,
+  '26号': 44,
 }
 
 const getFontDot = value => fontDotMap[value] || 24
@@ -130,10 +133,18 @@ export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
     const titleFontSize = scaleFont(getFontDot(template.titleFontSize))
     const titleText = template.title || ''
     const titleY = bounds.y + Math.round((titleHeight - titleFontSize) / 2)
+    const titleBold = template.titleStatus === 'bold'
     builder.ZPL_Text_BlockEx(
       bounds.x, titleY, 16, 0, titleFontSize, titleFontSize,
       bounds.width, 1, 1, 0, 0, titleText
     )
+    // 加粗：偏移 1 dot 再打印一次
+    if (titleBold) {
+      builder.ZPL_Text_BlockEx(
+        bounds.x + 1, titleY, 16, 0, titleFontSize, titleFontSize,
+        bounds.width, 1, 1, 0, 0, titleText
+      )
+    }
   }
 
   // 字段行横线
@@ -145,6 +156,7 @@ export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
   // 字段名和值（字号放大 3 倍，垂直居中）
   visibleFields.forEach((field, index) => {
     const fontSize = scaleFont(getFontDot(field.fontSize))
+    const fieldBold = field.status === 'bold'
     // 垂直居中：行内 (rowHeight - fontSize) / 2
     const rowY = bounds.y + titleHeight + index * rowHeight
     const centerY = rowY + Math.round((rowHeight - fontSize) / 2)
@@ -156,6 +168,17 @@ export const buildLabelPrintData = (ZPL_JSSDK, template, formData) => {
       rowHeight - Math.round(dpi / 25.4 * 2),
       formData[field.key] || ''
     )
+    // 加粗：偏移 1 dot 再打印一次
+    if (fieldBold) {
+      builder.ZPL_Text(bounds.x + Math.round(dpi / 25.4 * 2) + 1, centerY, 16, 0, fontSize, fontSize, field.name || '')
+      builder.ZPL_Text_Block(
+        fieldSplitX + Math.round(dpi / 25.4 * 1.5) + 1,
+        centerY, 16, 0, fontSize, fontSize,
+        Math.max(100, qrX - fieldSplitX - Math.round(dpi / 25.4 * 3)),
+        rowHeight - Math.round(dpi / 25.4 * 2),
+        formData[field.key] || ''
+      )
+    }
   })
 
   // 二维码：自适应大小，在右侧 40% 区域内水平+垂直居中

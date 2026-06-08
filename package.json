@@ -47,6 +47,7 @@
     "jsonlint": "1.6.3",
     "jszip": "^3.10.1",
     "nprogress": "0.2.0",
+    "qrcode": "^1.5.4",
     "screenfull": "5.0.2",
     "standard-version": "^9.5.0",
     "three": "^0.182.0",

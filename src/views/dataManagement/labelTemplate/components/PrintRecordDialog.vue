@@ -30,13 +30,14 @@
           :select-bind-values="selectBindValues"
           :date-field-values="dateFieldValues"
           @select-change="handleSelectFieldChange"
+          @input-change="generatePreviewQr"
         >
           <template #qrcode="{ qrStyle }">
             <div class="qr-code-display" :style="qrStyle">
-              <img v-if="formData.qrContent" :src="formData.qrContent" class="qr-code-image" alt="二维码" />
+              <img v-if="previewQrDataUrl" :src="previewQrDataUrl" class="qr-code-image" alt="二维码" />
               <div v-else class="qr-code-empty">
                 <i class="el-icon-picture-outline"></i>
-                <span>{{ readonly ? '暂无二维码' : '保存后生成' }}</span>
+                <span>暂无二维码</span>
               </div>
             </div>
           </template>
@@ -54,7 +55,8 @@
 
 <script>
 import LabelTemplatePreview from './LabelTemplatePreview.vue'
-import { buildLabelPrintData, buildQrOnlyPrintData } from './print-builder'
+import QRCode from 'qrcode'
+import { buildLabelPrintData, buildQrOnlyPrintData, buildQrContent } from './print-builder'
 import {
   backendToTemplate,
   buildLabelDataPayload,
@@ -78,6 +80,7 @@ export default {
       saveLoading: false,
       printLoading: false,
       printQrLoading: false,
+      previewQrDataUrl: '',
       templateOptions: [],
       currentTemplate: createDefaultTemplate('模板1'),
       formData: {
@@ -159,6 +162,7 @@ export default {
         this.$nextTick(() => {
           if (this.$refs.form) this.$refs.form.clearValidate()
         })
+        this.generatePreviewQr()
       } finally {
         this.formLoading = false
       }
@@ -183,6 +187,14 @@ export default {
         remark: row.remark,
         qrContent: row.qrContent,
         ...row,
+      }
+    },
+    async generatePreviewQr() {
+      try {
+        const data = buildQrContent(this.currentTemplate, this.formData)
+        this.previewQrDataUrl = await QRCode.toDataURL(data, { width: 200, margin: 1 })
+      } catch (e) {
+        this.previewQrDataUrl = ''
       }
     },
     async loadCurrentTemplate() {
@@ -219,6 +231,7 @@ export default {
       this.formData.qrContent = ''
       this.$set(this.selectFieldOptions, 'position', [])
       this.$set(this.selectBindValues, 'position', '')
+      this.generatePreviewQr()
     },
     validateCardFields() {
       const fields = this.currentTemplate.fields || []
@@ -421,6 +434,7 @@ export default {
           this.$set(this.formData, fieldKey, selected.label)
         }
       }
+      this.generatePreviewQr()
     },
   },
 }

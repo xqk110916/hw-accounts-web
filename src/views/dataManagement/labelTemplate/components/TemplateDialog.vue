@@ -161,7 +161,7 @@ export default {
       templateId: '',
       templateName: '',
       currentTemplate: null,
-      fontSizeOptions: ['12号', '14号', '16号', '18号'],
+      fontSizeOptions: ['12号', '14号', '16号', '18号', '22号', '24号', '26号'],
       titleStatusOptions: [
         { label: '正常', value: 'normal' },
         { label: '加粗', value: 'bold' },
