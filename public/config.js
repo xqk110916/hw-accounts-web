@@ -19,10 +19,13 @@ window.globalConfig = {
   ZPL_PRINTER_CONFIG: {
     serviceIp: '127.0.0.1',
     servicePort: 9099,
-    model: 'HT300',
-    interfaceType: 'USB',
+    model: 'iX4P',
+    dpi: 300,
+    labelWidth: 160,    // 标签宽度(mm)
+    labelHeight: 120,   // 标签高度(mm)
+    interfaceType: 'NET',
     sn: '',
-    netIp: '',
+    netIp: '192.168.1.58',
     netPort: 9100,
     comData: {
       port: 'COM1',

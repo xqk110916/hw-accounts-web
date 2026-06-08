@@ -2,6 +2,9 @@ export const defaultPrinterConfig = {
   serviceIp: '127.0.0.1',
   servicePort: 9099,
   model: 'HT300',
+  dpi: 203,
+  labelWidth: 100,
+  labelHeight: 75,
   interfaceType: 'USB',
   sn: '',
   netIp: '',
@@ -37,10 +40,10 @@ export const createDefaultTemplate = (name = '模板1') => ({
   qrSize: { width: '50mm', height: '50mm' },
   qrVisible: 'visible',
   margins: {
-    top: '10mm',
-    bottom: '10mm',
-    left: '10mm',
-    right: '10mm',
+    top: '2mm',
+    bottom: '2mm',
+    left: '2mm',
+    right: '2mm',
   },
 })
 
@@ -123,10 +126,10 @@ export const backendToTemplate = data => {
     },
     qrVisible: toVisibleValue(source.codeShow),
     margins: {
-      top: ensureMm(withDefault(source.marginTop, 10)),
-      bottom: ensureMm(withDefault(source.marginBottom, 10)),
-      left: ensureMm(withDefault(source.marginLeft, 10)),
-      right: ensureMm(withDefault(source.marginRight, 10)),
+      top: ensureMm(withDefault(source.marginTop, 2)),
+      bottom: ensureMm(withDefault(source.marginBottom, 2)),
+      left: ensureMm(withDefault(source.marginLeft, 2)),
+      right: ensureMm(withDefault(source.marginRight, 2)),
     },
   }
 }

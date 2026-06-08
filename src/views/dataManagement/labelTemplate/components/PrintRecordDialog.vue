@@ -46,14 +46,15 @@
     <div slot="footer">
       <el-button size="small" @click="handleClose">关闭</el-button>
       <el-button v-if="!readonly" type="primary" size="small" :loading="saveLoading" @click="handleSave">保存</el-button>
-      <el-button v-if="!readonly" type="primary" size="small" :loading="printLoading" @click="handlePrint">打印</el-button>
+      <el-button type="primary" size="small" :loading="printLoading" @click="handlePrint">打印</el-button>
+      <!-- <el-button type="primary" size="small" :loading="printQrLoading" @click="handlePrintQr">单独打印二维码</el-button> -->
     </div>
   </el-dialog>
 </template>
 
 <script>
 import LabelTemplatePreview from './LabelTemplatePreview.vue'
-import { buildLabelPrintData } from './print-builder'
+import { buildLabelPrintData, buildQrOnlyPrintData } from './print-builder'
 import {
   backendToTemplate,
   buildLabelDataPayload,
@@ -76,6 +77,7 @@ export default {
       formLoading: false,
       saveLoading: false,
       printLoading: false,
+      printQrLoading: false,
       templateOptions: [],
       currentTemplate: createDefaultTemplate('模板1'),
       formData: {
@@ -290,21 +292,34 @@ export default {
             netPort: config.netPort,
             comData: config.comData,
           })
-          const payload = buildLabelDataPayload(this.currentTemplate, this.formData, this.formData.id)
-          if (this.mode === 'edit' && this.formData.id) {
-            await updateLabelData(payload)
-          } else {
-            delete payload.id
-            await addLabelData(payload)
-          }
           this.$message.success('打印任务已发送')
-          this.$emit('saved')
-          this.handleClose()
         } catch (error) {
           this.$message.error(error && error.message ? error.message : '打印失败')
         } finally {
           this.printLoading = false
         }
+      })
+    },
+    handlePrintQr() {
+      const config = getPrinterConfig()
+      if (!this.validatePrinterConfig(config)) return
+      this.printQrLoading = true
+      this.$zplPrinter.getSdk().then(sdk => {
+        return this.$zplPrinter.connect(config.serviceIp, config.servicePort).then(() => {
+          const printData = buildQrOnlyPrintData(sdk, this.currentTemplate, this.formData)
+          this.$zplPrinter.sendData(config.model, printData, {
+            interfaceType: config.interfaceType,
+            sn: config.sn,
+            netIp: config.netIp,
+            netPort: config.netPort,
+            comData: config.comData,
+          })
+          this.$message.success('二维码打印任务已发送')
+        })
+      }).catch(error => {
+        this.$message.error(error && error.message ? error.message : '二维码打印失败')
+      }).finally(() => {
+        this.printQrLoading = false
       })
     },
     handleClose() {

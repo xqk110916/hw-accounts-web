@@ -1,3 +1,5 @@
+import { getPrinterConfig } from '@/views/dataManagement/labelTemplate/components/storage'
+
 const SDK_URL = `${process.env.BASE_URL || '/'}js/ZPL_JSSdk0.0.0.3.js`
 
 class ZplPrinter {
@@ -90,25 +92,25 @@ class ZplPrinter {
     this.connectPromise = null
   }
 
-  buildInterfaceDetail(options) {
-    const interfaceType = options.interfaceType || 'USB'
+  /**
+   * 构建 interface_detail，格式严格复制 SDK senddata() 函数
+   */
+  buildInterfaceDetail(interfaceType, options) {
     if (interfaceType === 'USB') {
       return { usb: { sn: options.sn || '' } }
     }
     if (interfaceType === 'NET') {
-      if (!options.netIp) throw new Error('请输入打印机 IP')
-      return { net: { ip: options.netIp, port: options.netPort || 9100 } }
+      return { net: { ip: options.netIp || '', port: String(options.netPort || 9100) } }
     }
-    if (interfaceType === 'COM') {
+    if (interfaceType && interfaceType.startsWith('COM')) {
       const comData = options.comData || {}
-      if (!comData.port) throw new Error('请输入串口号')
       return {
         com: {
-          port: comData.port,
-          baudrate: Number(comData.baudrate) || 115200,
+          port: comData.port || 'COM1',
+          baudrate: comData.baudrate || 115200,
           party: comData.party || 'n',
-          databit: Number(comData.databit) || 8,
-          stopbit: Number(comData.stopbit) || 1,
+          databit: comData.databit || 8,
+          stopbit: comData.stopbit || 1,
           ctl: comData.ctl || 'n',
         },
       }
@@ -116,28 +118,58 @@ class ZplPrinter {
     throw new Error('不支持的打印机连接方式')
   }
 
+  /**
+   * 发送打印数据，JSON 格式严格复制 SDK senddata() 函数
+   * SDK 原始格式：模板字符串拼接 + decodeURIComponent 后整体发送
+   */
   sendData(model, builderData, options = {}) {
     if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('打印机未连接，请先连接 JSSDK 服务')
     }
-    const printData = decodeURIComponent(builderData)
-    const payload = {
-      model: model || 'HT300',
-      printerID: 'ZPL',
-      interface: '',
-      interface_detail: this.buildInterfaceDetail(options),
-      printers: [{ Items: JSON.parse(`[${printData}]`) }],
-    }
-    this.ws.send(JSON.stringify(payload))
+    const config = getPrinterConfig()
+    const interfaceType = options.interfaceType || 'USB'
+    const interfaceDetail = this.buildInterfaceDetail(interfaceType, options)
+
+    // 严格复制 SDK senddata() 中的模板字符串格式
+    const sendDataString = `{
+    "model": "${model || config.model}",
+    "printerID": "ZPL",
+    "interface": "",
+    "interface_detail": ${JSON.stringify(interfaceDetail)},
+    "printers": [{
+        "Items": [${builderData}]
+      }]
+    }`
+
+    this.ws.send(decodeURIComponent(sendDataString))
   }
 
+  /**
+   * 查询打印机状态
+   * JSON 格式严格复制 SDK ZPL_GetPrinterStatus 原型方法
+   */
   getStatus(model, options = {}) {
-    if (!window.ZPL_JSSDK) throw new Error('ZPL SDK 未加载')
-    const builder = new window.ZPL_JSSDK.Builder()
-    builder.ZPL_StartFormat()
-    builder.ZPL_GetPrinterStatus()
-    builder.ZPL_EndFormat()
-    this.sendData(model, builder.getPrintData(), options)
+    if (!this.isConnected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error('打印机未连接，请先连接 JSSDK 服务')
+    }
+    const config = getPrinterConfig()
+    const interfaceType = options.interfaceType || 'USB'
+    const interfaceDetail = this.buildInterfaceDetail(interfaceType, options)
+
+    // 严格复制 SDK ZPL_GetPrinterStatus 中的模板字符串格式
+    const sendDataString = `{
+        "model": "${model || config.model}",
+        "printerID": "ZPL",
+        "interface": "",
+          "interface_detail": ${JSON.stringify(interfaceDetail)},
+        "printers": [{
+            "Items": [{
+                "itemtype": "ZPL_GetPrinterStatus"
+            }]
+        }]
+    }`
+
+    this.ws.send(sendDataString)
   }
 
   onMessage(callback) {

@@ -106,6 +106,8 @@ export default {
     }
   },
   async created() {
+    // 进入页面时预加载 ZPL SDK
+    this.$zplPrinter.getSdk().catch(() => {})
     await this.loadTemplateOptions()
     this.handleQuery()
   },
