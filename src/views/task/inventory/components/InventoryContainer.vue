@@ -154,11 +154,28 @@
 
         <!-- 明细列表 -->
         <div class="detail-section-wrap mt-15">
-          <div class="detail-section-title">明细</div>
-          <el-table :data="goodsListMap[tab.id] || []" border size="small" max-height="400">
-            <el-table-column type="index" label="序号" width="60" />
-            <el-table-column prop="warehouseName" label="位置" width="120" show-overflow-tooltip />
-            <el-table-column prop="containerCode" label="容器号" min-width="120" show-overflow-tooltip />
+          <div class="detail-section-header">
+            <div class="detail-section-title">明细</div>
+            <!-- 批量设置状态按钮（仅录入结果模式显示） -->
+            <div v-if="type === 'inputResult' && selectedGoodsMap[tab.id] && selectedGoodsMap[tab.id].length > 0" class="batch-actions">
+              <span class="batch-info">已选 {{ selectedGoodsMap[tab.id].length }} 项</span>
+              <el-button type="success" size="mini" @click="batchSetResult(tab.id, '0')">批量设为正常</el-button>
+              <el-button type="warning" size="mini" @click="batchSetResult(tab.id, '2')">批量设为盘盈</el-button>
+              <el-button type="danger" size="mini" @click="batchSetResult(tab.id, '1')">批量设为盘亏</el-button>
+            </div>
+          </div>
+          <el-table
+            ref="goodsTable"
+            :data="goodsListMap[tab.id] || []"
+            border
+            size="small"
+            max-height="400"
+            @selection-change="(selection) => handleSelectionChange(tab.id, selection)"
+          >
+            <el-table-column v-if="type === 'inputResult'" type="selection" width="45" fixed="left" />
+            <el-table-column type="index" label="序号" width="60" fixed="left" />
+            <el-table-column prop="location" label="位置" width="120" show-overflow-tooltip fixed="left" />
+            <el-table-column prop="containerCode" label="容器号" min-width="120" show-overflow-tooltip fixed="left" />
             <el-table-column prop="storageTime" label="入库时间" min-width="120" show-overflow-tooltip />
             <el-table-column prop="productionUnit" label="生产单位" width="100" show-overflow-tooltip />
             <el-table-column prop="sealCode1" label="封记编号1" width="100" show-overflow-tooltip />
@@ -169,7 +186,7 @@
             <el-table-column label="封记类型2" width="110" show-overflow-tooltip>
               <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
             </el-table-column>
-            <el-table-column label="结果" width="220" v-if="type === 'inputResult'">
+            <el-table-column label="结果" width="220" v-if="type === 'inputResult'" fixed="right">
               <template slot-scope="scope">
                 <div class="result-cell">
                   <el-radio-group v-model="scope.row.result" size="mini" @change="handleGoodsResultChange(tab.id)">
@@ -181,7 +198,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="结果" width="220" v-if="isReadonlyResultMode">
+            <el-table-column label="结果" width="220" v-if="isReadonlyResultMode" fixed="right">
               <template slot-scope="scope">
                 <span :class="getResultClass(scope.row.result)">{{ getResultText(scope.row.result) }}</span>
                 <span v-if="scope.row.resultRemark" class="ml-10">({{ scope.row.resultRemark }})</span>
@@ -224,6 +241,7 @@ export default {
   data() {
     return {
       sealTypeOptions: [],
+      selectedGoodsMap: {},
     }
   },
   created() {
@@ -269,6 +287,37 @@ export default {
       this.$emit('goods-result-change', {
         warehouseId,
       })
+    },
+    handleSelectionChange(warehouseId, selection) {
+      this.$set(this.selectedGoodsMap, warehouseId, selection)
+    },
+    batchSetResult(warehouseId, result) {
+      const selected = this.selectedGoodsMap[warehouseId] || []
+      if (selected.length === 0) {
+        this.$message.warning('请先选择需要操作的明细')
+        return
+      }
+      const labelMap = { '0': '正常', '1': '盘亏', '2': '盘盈' }
+      const applyResult = (remark) => {
+        selected.forEach(item => {
+          this.$set(item, 'result', result)
+          if (remark !== undefined) this.$set(item, 'resultRemark', remark)
+        })
+        this.handleGoodsResultChange(warehouseId)
+        this.$message.success(`已将 ${selected.length} 项设为「${labelMap[result]}」`)
+      }
+      // 盘盈/盘亏弹出备注输入框
+      if (result === '1' || result === '2') {
+        this.$prompt(`请输入「${labelMap[result]}」备注信息`, '批量设置备注', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          inputPlaceholder: '请输入备注（可选）',
+        }).then(({ value }) => {
+          applyResult(value || '')
+        }).catch(() => {})
+        return
+      }
+      applyResult()
     },
     getGoodsKey(item, idx) {
       return item.id ? String(item.id) : String(idx)
@@ -413,12 +462,27 @@ export default {
   }
 
   .detail-section-wrap {
+    .detail-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
     .detail-section-title {
       font-weight: bold;
       color: #303133;
-      margin-bottom: 10px;
       padding-left: 10px;
       border-left: 3px solid #409eff;
+    }
+    .batch-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      .batch-info {
+        font-size: 13px;
+        color: #909399;
+        margin-right: 4px;
+      }
     }
   }
 }

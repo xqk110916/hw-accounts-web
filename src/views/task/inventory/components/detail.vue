@@ -1,6 +1,6 @@
 <template>
   <div>
-    <theme-edit :show="show" width="1080px" showFooterSlot :title="titleMap[type]" :column="1" @cancle="close">
+    <theme-edit :show="show" width="1200px" showFooterSlot :title="titleMap[type]" :column="1" @cancle="close">
       <el-form ref="form" class="form" :model="form" :rules="rules" label-width="130px">
         <el-form-item label="任务编号" prop="taskNum">
           <el-input v-model="form.taskNum" size="small" disabled placeholder="自动生成" />
@@ -65,6 +65,11 @@
           <!-- <el-button type="warning" @click="handleExportToPad" :loading="exportPadLoading">导出到PAD</el-button> -->
           <el-button type="info" @click="handleDownloadPadStream" :loading="downloadPadLoading">下载PAD盘存数据</el-button>
         </template>
+      </div>
+      <!-- 录入结果模式：导入盘存数据 -->
+      <div v-if="type === 'inputResult'" style="padding: 0 20px 20px;">
+        <input type="file" ref="importFileInput" accept=".json" style="display: none;" @change="handleImportFile" />
+        <el-button type="warning" size="small" icon="el-icon-upload2" @click="$refs.importFileInput.click()" :loading="importLoading">导入盘存数据</el-button>
       </div>
 
       <!-- 实物盘存清单容器 (按库房 Tab 渲染) -->
@@ -172,6 +177,7 @@ export default {
       exportLoading: false,
       exportPadLoading: false,
       downloadPadLoading: false,
+      importLoading: false,
       submitting: false,
       rejectDialogVisible: false,
       rejectRemark: '',
@@ -327,9 +333,13 @@ export default {
       }
     },
     normalizeGoodsList(goodsList) {
+      const noResult = (v) => v === undefined || v === null || v === '' || v === '-1'
       return (goodsList || []).map(g => ({
         ...g,
-        result: g.result === undefined || g.result === null || g.result === '' ? '-1' : String(g.result),
+        // 无结果值时，录入模式默认空字符串，其他模式保留"-1"
+        result: noResult(g.result)
+          ? (this.type === 'inputResult' ? '' : '-1')
+          : String(g.result),
         resultRemark: g.resultRemark || g.remark || '',
       }))
     },
@@ -568,6 +578,60 @@ export default {
       }).finally(() => {
         this.downloadPadLoading = false
       })
+    },
+    handleImportFile(event) {
+      const file = event.target.files && event.target.files[0]
+      if (!file) return
+      // 重置 input 以支持重复选择同一文件
+      event.target.value = ''
+      this.importLoading = true
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result)
+          this.applyImportData(data)
+        } catch (err) {
+          console.error('导入JSON解析失败:', err)
+          this.$message.error('文件解析失败，请确保是有效的JSON文件')
+        } finally {
+          this.importLoading = false
+        }
+      }
+      reader.onerror = () => {
+        this.$message.error('文件读取失败')
+        this.importLoading = false
+      }
+      reader.readAsText(file)
+    },
+    applyImportData(data) {
+      // 1. 填充主表单
+      const inventory = data.inventory || {}
+      if (inventory.taskNum) this.$set(this.form, 'taskNum', inventory.taskNum)
+      if (inventory.selectType) this.$set(this.form, 'selectType', inventory.selectType)
+      if (inventory.remark !== undefined) this.$set(this.form, 'remark', inventory.remark)
+      if (inventory.warehouseNames) this.$set(this.form, 'warehouseNames', inventory.warehouseNames)
+      if (inventory.warehouseIds) {
+        const wIds = typeof inventory.warehouseIds === 'string'
+          ? inventory.warehouseIds.split(',').filter(Boolean).map(id => String(id))
+          : Array.isArray(inventory.warehouseIds) ? inventory.warehouseIds.map(id => String(id)) : []
+        this.$set(this.form, 'warehouseIds', wIds)
+      }
+      // 2. 填充统计数据
+      if (data.totalNormalCount !== undefined) this.statistics.totalNormalCount = data.totalNormalCount
+      if (data.totalDeficitCount !== undefined) this.statistics.totalDeficitCount = data.totalDeficitCount
+      if (data.totalExcessCount !== undefined) this.statistics.totalExcessCount = data.totalExcessCount
+
+      // 3. 填充库房列表和明细
+      const warehouseList = data.warehouseList || []
+      if (warehouseList.length === 0) {
+        this.$message.warning('导入数据中没有库房明细')
+        return
+      }
+      this.warehouseList = warehouseList
+      // 初始化 Tab 和表单数据
+      this.initInventoryFormData(warehouseList)
+      this.fillGoodsListFromWarehouseList(warehouseList)
+      this.$message.success(`成功导入 ${warehouseList.length} 个库房的盘存数据`)
     },
     handleGoodsSelectionChange(selection) {
       this.selectedGoods = selection
@@ -841,8 +905,8 @@ export default {
         this.$set(this.inventoryFormMap[warehouseId], field, value)
       }
     },
-    getGoodsKey(item) {
-      return String(item.id || '')
+    getGoodsKey(item, idx) {
+      return item.id ? String(item.id) : String(idx)
     },
     setGoodsResult(goods, result, clearRemark = false) {
       this.$set(goods, 'result', result)
@@ -860,12 +924,13 @@ export default {
       if (!this.inventoryFormMap[warehouseId]) return
       const goods = this.goodsListMap[warehouseId] || []
       const hasResultValue = goods.some(item => ['0', '1', '2'].includes(String(item.result)))
-      const deficitContainerCodes = goods
-        .filter(item => String(item.result) === '1')
-        .map(item => this.getGoodsKey(item))
-      const excessContainerCodes = goods
-        .filter(item => String(item.result) === '2')
-        .map(item => this.getGoodsKey(item))
+      const deficitContainerCodes = []
+      const excessContainerCodes = []
+      goods.forEach((item, idx) => {
+        const key = this.getGoodsKey(item, idx)
+        if (String(item.result) === '1') deficitContainerCodes.push(key)
+        if (String(item.result) === '2') excessContainerCodes.push(key)
+      })
       this.$set(this.inventoryFormMap[warehouseId], 'deficitContainerCodes', deficitContainerCodes)
       this.$set(this.inventoryFormMap[warehouseId], 'excessContainerCodes', excessContainerCodes)
       if (deficitContainerCodes.length > 0 || excessContainerCodes.length > 0) {
@@ -897,8 +962,8 @@ export default {
       const deficitSet = new Set(resultType === 'deficit' ? selectedKeys : oppositeKeys)
       const excessSet = new Set(resultType === 'excess' ? selectedKeys : oppositeKeys)
       const goods = this.goodsListMap[warehouseId] || []
-      goods.forEach(item => {
-        const key = this.getGoodsKey(item)
+      goods.forEach((item, idx) => {
+        const key = this.getGoodsKey(item, idx)
         if (deficitSet.has(key)) {
           this.setGoodsResult(item, '1')
         } else if (excessSet.has(key)) {
