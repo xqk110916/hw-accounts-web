@@ -67,19 +67,35 @@ export function getDictionaryDetail(id) {
   - 子级字典项（parentId 为具体父级ID）：`dictType: '1'`
 - **防重复提交**：后端有防重复提交机制，每条请求之间需间隔至少 **3秒**
 - **创建顺序**：先创建父级分类，查询获取其 ID，再创建子项
-- **认证方式**：请求头中添加 `{ [tokenName]: tokenValue }`，tokenName 和 tokenValue 从浏览器 Cookies 获取
+- **认证方式**：请求头添加 `{ [tokenName]: tokenValue }`，tokenName 和 tokenValue 从浏览器 Cookies 获取
+
+### ⚠️ 中文编码规范（必读）
+
+Windows 环境下 bash 终端默认编码为 GBK/CP936，直接用 `cat << 'EOF' > file.js` 或 `curl` 传递中文会产生乱码。
+**必须使用 Python 写入临时脚本文件，确保 UTF-8 编码：**
+
+```bash
+python -c "
+import os, sys
+script = '''<脚本内容>'''
+path = os.path.join(os.environ.get('TEMP', '/tmp'), 'dict-create.js')
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(script)
+print(path)
+"
+```
 
 ### 脚本模板
 
 ```javascript
 const axios = require('axios');
-const BASE_URL = 'http://10.10.41.179:40000/api'; // 读取 .env.development 中的 VUE_APP_BASE_API
+const BASE_URL = 'http://10.10.216.20:8080/api'; // 读取 .env.development 中的 VUE_APP_BASE_API
 const TOKEN_NAME = '<tokenName>';
 const TOKEN_VALUE = '<tokenValue>';
 
 const http = axios.create({
   baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json', [TOKEN_NAME]: TOKEN_VALUE }
+  headers: { 'Content-Type': 'application/json; charset=utf-8', [TOKEN_NAME]: TOKEN_VALUE }
 });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -117,7 +133,7 @@ async function findParentId(keyword) {
 
 ## 接口参考
 
-- 基础地址: `.env.development` 中的 `VUE_APP_BASE_API`
+- 基础地址: `.env.development` 中的 `VUE_APP_BASE_API`（当前: `http://10.10.216.20:8080/api`）
 - 新增: `POST /base/dictionary`
 - 查询分类列表: `GET /base/dictionary/list?keyword=xxx`
 - 查询子项列表: `GET /base/dictionary/list?parentId=xxx`
@@ -129,5 +145,4 @@ async function findParentId(keyword) {
 
 | 分类 | bizCode | 子项 |
 |------|---------|------|
-| 货架类型 | shelfType | 5排3层2m*10m(5-3-2-10)、5排4层2m*10m(5-4-2-10)、5排5层2m*10m(5-5-2-10)、5排6层2m*10m(5-6-2-10) |
-| 平衡区类型 | balanceAreaType | 本地(local)、代存(proxy) |
+| （暂无记录） | | |
