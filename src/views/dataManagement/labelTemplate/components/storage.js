@@ -24,7 +24,7 @@ export const FIXED_FIELD_KEYS = ['containerNo', 'warehouse']
 const defaultFields = [
   { key: 'containerNo', label: '字段1', name: '容器号', fileValue: 'containerCode', layout: 'single', fontSize: '16号', status: 'normal' },
   { key: 'warehouse', label: '字段2', name: '库房', fileValue: 'warehouseName', layout: 'single', fontSize: '16号', status: 'normal' },
-  { key: 'materialCode', label: '字段3', name: '材料编码', fileValue: 'goodCode', layout: 'single', fontSize: '16号', status: 'normal' },
+  { key: 'materialCode', label: '字段3', name: '材料代码', fileValue: 'goodCode', layout: 'single', fontSize: '16号', status: 'normal' },
   { key: 'productionUnit', label: '字段4', name: '生产单位', fileValue: 'productionUnit', layout: 'single', fontSize: '16号', status: 'normal' },
   { key: 'storageTime', label: '字段5', name: '入库时间', fileValue: 'storageTime', layout: 'single', fontSize: '16号', status: 'normal' },
 ]

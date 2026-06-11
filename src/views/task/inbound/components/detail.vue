@@ -182,7 +182,7 @@
         <el-table :data="detailList" border size="small" max-height="300" @selection-change="handleDetailSelectionChange">
           <el-table-column v-if="type !== 'view' && type !== 'audit'" type="selection" width="55" />
           <el-table-column type="index" label="序号" width="60" />
-          <el-table-column prop="goodCode" label="材料编码" width="120" show-overflow-tooltip />
+          <el-table-column prop="goodCode" label="材料代码" width="120" show-overflow-tooltip />
           <el-table-column prop="containerCode" label="容器号" width="120" show-overflow-tooltip />
           <el-table-column prop="productionUnit" label="生产单位" width="120" show-overflow-tooltip />
           <el-table-column prop="warehouseName" label="库房" width="100" show-overflow-tooltip />
@@ -252,11 +252,11 @@
   <!-- 明细编辑弹窗 -->
   <el-dialog :close-on-click-modal="false" title="明细编辑" custom-class="show-footer-dialog" :visible.sync="detailEditVisible" width="800px" append-to-body>
     <el-form ref="detailForm" :model="detailEditForm" label-width="120px" :rules="detailRules">
-      <el-form-item label="材料编码" prop="goodCode">
+      <el-form-item label="材料代码" prop="goodCode">
         <el-select
           v-model="detailEditForm.goodCode"
           size="small"
-          placeholder="请选择材料编码"
+          placeholder="请选择材料代码"
           clearable
           filterable
         >
@@ -286,7 +286,7 @@
           <el-option
             v-for="w in warehouseOptions"
             :key="w.id"
-            :label="`${w.balanceAreaName ? w.balanceAreaName + ' - ' : ''}${w.warehouseName}`"
+            :label="`${w.balanceAreaName ? w.balanceAreaName + ' - ' : ''}${w.warehouseName}(${w.warehouseCode})`"
             :value="w.id"
           />
         </el-select>
@@ -419,7 +419,7 @@ export default {
       detailEditForm: {},
       detailEditIndex: -1,
       detailRules: {
-        goodCode: [{ required: true, message: '请选择材料编码', trigger: 'change' }],
+        goodCode: [{ required: true, message: '请选择材料代码', trigger: 'change' }],
         containerCode: [{ required: true, message: '请输入容器号', trigger: 'blur' }],
         productionUnit: [{ required: true, message: '请输入生产单位', trigger: 'blur' }],
         warehouseId: [{ required: true, message: '请选择库房', trigger: 'change' }],
@@ -480,7 +480,7 @@ export default {
         return {}
       }
     },
-    // 根据已选调拨依据筛选可用的材料编码
+    // 根据已选调拨依据筛选可用的材料代码
     availableMaterialCodes() {
       const selected = this.form._transferSelected
       if (!Array.isArray(selected) || selected.length === 0) return []
@@ -856,7 +856,7 @@ export default {
       this.positionOptions = []
       // 同步库房名称
       const warehouse = this.warehouseOptions.find(w => w.id === warehouseId)
-      this.detailEditForm.warehouseName = warehouse ? warehouse.warehouseName : ''
+      this.detailEditForm.warehouseName = warehouse ? warehouse.warehouseCode : ''
       this.detailEditForm.warehouseId = warehouseId
       if (warehouseId) {
         getPositionMap({ nodeId: warehouseId, nodeType: '2' }).then(res => {
@@ -908,7 +908,9 @@ export default {
       
       // 如果没有 warehouseId 但有 warehouseName，尝试从选项中匹配（兼容导入数据）
       if (!rowData.warehouseId && rowData.warehouseName && this.warehouseOptions.length > 0) {
-        const foundWarehouse = this.warehouseOptions.find(w => w.warehouseName === rowData.warehouseName)
+        // warehouseName 字段存储的是库房编号，优先按 warehouseCode 匹配，兼容旧数据按 warehouseName 匹配
+        const foundWarehouse = this.warehouseOptions.find(w => w.warehouseCode === rowData.warehouseName)
+          || this.warehouseOptions.find(w => w.warehouseName === rowData.warehouseName)
         if (foundWarehouse) {
           rowData.warehouseId = foundWarehouse.id
         }

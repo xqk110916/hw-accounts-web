@@ -109,7 +109,7 @@ export const getPositionMap = data => {
   })
 }
 
-// 查询所有材料编码（下拉选择用）
+// 查询所有材料代码（下拉选择用）
 export const getMaterialCodeListAll = () => {
   return request({
     url: '/busin/material-code/listAll',

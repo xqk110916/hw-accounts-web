@@ -116,7 +116,7 @@
           <el-table-column type="index" label="序号" width="60" />
           <el-table-column prop="taskNum" label="入库任务编号" width="140" show-overflow-tooltip />
           <el-table-column prop="containerCode" label="容器号" width="130" show-overflow-tooltip />
-          <el-table-column prop="goodCode" label="材料编码" width="120" show-overflow-tooltip />
+          <el-table-column prop="goodCode" label="材料代码" width="120" show-overflow-tooltip />
           <el-table-column prop="productionUnit" label="生产单位" width="120" show-overflow-tooltip />
           <el-table-column prop="sourceWarehouse" label="原库房" width="120" show-overflow-tooltip />
           <el-table-column label="原位置" width="130" show-overflow-tooltip>
@@ -277,7 +277,7 @@
             <td>{{ detailEditForm.containerCode || '-' }}</td>
           </tr>
           <tr>
-            <td class="label">材料编码</td>
+            <td class="label">材料代码</td>
             <td>{{ detailEditForm.goodCode || '-' }}</td>
             <td class="label">生产单位</td>
             <td>{{ detailEditForm.productionUnit || '-' }}</td>

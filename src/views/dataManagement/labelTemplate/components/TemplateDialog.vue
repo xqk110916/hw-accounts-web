@@ -191,7 +191,7 @@ export default {
       fieldConfigList: [],
       fixedFieldKeys: ['containerNo', 'warehouse'],
       fieldOptions: [
-        { label: '材料编码', value: '材料编码', fileValue: 'goodCode' },
+        { label: '材料代码', value: '材料代码', fileValue: 'goodCode' },
         { label: '容器号', value: '容器号', fileValue: 'containerCode' },
         { label: '生产单位', value: '生产单位', fileValue: 'productionUnit' },
         { label: '库房', value: '库房', fileValue: 'warehouseName' },

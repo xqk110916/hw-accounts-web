@@ -33,8 +33,8 @@
             <el-table-column prop="warehouse" label="库房" min-width="140" show-overflow-tooltip>
               <template slot-scope="scope">{{ getDataJsonValue(scope.row, '库房') }}</template>
             </el-table-column>
-            <el-table-column prop="materialCode" label="材料编码" min-width="140" show-overflow-tooltip>
-              <template slot-scope="scope">{{ getDataJsonValue(scope.row, '材料编码') }}</template>
+            <el-table-column prop="materialCode" label="材料代码" min-width="140" show-overflow-tooltip>
+              <template slot-scope="scope">{{ getDataJsonValue(scope.row, '材料代码') }}</template>
             </el-table-column>
             <el-table-column prop="templateId" label="模板名称" min-width="140" show-overflow-tooltip>
               <template slot-scope="scope">{{ templateMap[scope.row.templateId] || '' }}</template>

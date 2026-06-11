@@ -13,7 +13,7 @@
       <div class="section-title">导入内容</div>
       <el-table :data="approveTableData" border size="small" max-height="330">
         <el-table-column type="index" label="序号" width="60"></el-table-column>
-        <el-table-column prop="goodCode" label="材料编码" min-width="100" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="goodCode" label="材料代码" min-width="100" show-overflow-tooltip></el-table-column>
         <el-table-column prop="productionUnit" label="生产单位" min-width="110" show-overflow-tooltip></el-table-column>
         <el-table-column prop="warehouseName" label="库房" min-width="100" show-overflow-tooltip></el-table-column>
         <el-table-column prop="boxNum" label="货箱号" min-width="100" show-overflow-tooltip></el-table-column>

@@ -15,7 +15,7 @@
           <el-radio :label="2">信息导入2</el-radio>
         </el-radio-group>
         <div class="type-desc">
-          <div class="desc-text">* 信息导入1(材料编码、容器号、生产单位、库房)</div>
+          <div class="desc-text">* 信息导入1(材料代码、容器号、生产单位、库房)</div>
           <div class="desc-text">* 信息导入2(容器号、封记编码1、封记类型1、封记编码2、封记类型2、重量:毛、皮、净、金属量%、货箱号、位置)</div>
         </div>
       </el-form-item>
@@ -74,7 +74,7 @@
       </div>
       <el-table :data="previewList" border stripe size="mini" max-height="280" style="width: 100%;">
         <!-- 类型1字段 -->
-        <el-table-column prop="goodCode" label="材料编码" min-width="100" show-overflow-tooltip />
+        <el-table-column prop="goodCode" label="材料代码" min-width="100" show-overflow-tooltip />
         <el-table-column prop="containerCode" label="容器号" min-width="90" show-overflow-tooltip />
         <el-table-column prop="productionUnit" label="生产单位" min-width="100" show-overflow-tooltip />
         <el-table-column prop="warehouseName" label="库房" min-width="90" show-overflow-tooltip />

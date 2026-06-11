@@ -178,7 +178,7 @@
           <td>{{ detailContainer.taskNum || '-' }}</td>
         </tr>
         <tr>
-          <td class="label">材料编码</td>
+          <td class="label">材料代码</td>
           <td>{{ detailContainer.goodCode || '-' }}</td>
           <td class="label">生产单位</td>
           <td>{{ detailContainer.productionUnit || '-' }}</td>
@@ -283,7 +283,7 @@ export default {
         { type: 'slot', slotName: 'footer', col: 4 },
       ],
       goodsColumns: [
-        { label: '材料编码', prop: 'goodCode', width: 120 },
+        { label: '材料代码', prop: 'goodCode', width: 120 },
         { label: '容器号', prop: 'containerCode', width: 130 },
         { label: '生产单位', prop: 'productionUnit', width: 130 },
         { label: '库房', prop: 'warehouseName', width: 120 },

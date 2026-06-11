@@ -163,7 +163,7 @@
         </div>
         <el-table :data="detailList" border size="small" max-height="300">
           <el-table-column type="index" label="序号" width="60" />
-          <el-table-column prop="goodCode" label="材料编码" width="120" show-overflow-tooltip />
+          <el-table-column prop="goodCode" label="材料代码" width="120" show-overflow-tooltip />
           <el-table-column prop="containerCode" label="容器号" width="120" show-overflow-tooltip />
           <el-table-column prop="productionUnit" label="生产单位" width="120" show-overflow-tooltip />
           <el-table-column prop="warehouseName" label="库房" width="100" show-overflow-tooltip />

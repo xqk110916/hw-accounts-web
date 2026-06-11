@@ -96,7 +96,7 @@ export default {
       },
       rules: {
         templateId: [{ required: true, message: '请选择模板', trigger: 'change' }],
-        materialCode: [{ required: true, message: '请输入材料编码', trigger: 'blur' }],
+        materialCode: [{ required: true, message: '请输入材料代码', trigger: 'blur' }],
         productionUnit: [{ required: true, message: '请输入生产单位', trigger: 'blur' }],
         warehouse: [{ required: true, message: '请输入库房', trigger: 'blur' }],
         containerNo: [{ required: true, message: '请输入容器号', trigger: 'blur' }],
@@ -349,7 +349,7 @@ export default {
       try {
         const res = await getMaterialCodeListAll()
         this.$set(this.selectFieldOptions, 'materialCode', (res.data || []).map(item => ({
-          label: item.goodName || item.goodCode,
+          label: item.goodCode,
           value: item.goodCode,
         })))
       } catch (e) {

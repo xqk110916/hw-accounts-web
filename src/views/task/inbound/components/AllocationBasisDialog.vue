@@ -66,7 +66,7 @@
           <el-button type="text" icon="el-icon-plus" @click="addMaterial">添加材料</el-button>
         </div>
         <el-table :data="form.goodsList" border stripe size="mini" max-height="250">
-          <el-table-column prop="goodCode" label="材料编码">
+          <el-table-column prop="goodCode" label="材料代码">
             <template slot-scope="scope">
               <el-select
                 v-model="scope.row.goodCode"
@@ -300,7 +300,7 @@ export default {
           for (let i = 0; i < this.form.goodsList.length; i++) {
             const item = this.form.goodsList[i]
             if (!item.goodCode) {
-              this.$message.warning(`第 ${i + 1} 行材料明细的材料编码不能为空`)
+              this.$message.warning(`第 ${i + 1} 行材料明细的材料代码不能为空`)
               return
             }
           }
