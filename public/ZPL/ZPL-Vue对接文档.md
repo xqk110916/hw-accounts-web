@@ -559,7 +559,7 @@ builder.ZPL_QRCode(xPos, yPos, orientation, model, dpi, eccLevel, input, charMod
 | text | String | 二维码内容 |
 
 ```js
-// 打印二维码，内容为材料编码
+// 打印二维码，内容为材料代码
 builder.ZPL_QRCode(600, 100, 0, 2, 6, 'M', 'A', 'A', 'MAT-20250101-001')
 ```
 
@@ -734,8 +734,8 @@ X=50    X=250    X=350                    X=750
 | 生产日期值 | 250 | 380 | 350 | 24×24 | |
 | "备注"标签 | 60 | 440 | - | 24×24 | |
 | 备注值 | 250 | 440 | 350 | 24×24 | 多行文本 |
-| 二维码 | 580 | 140 | - | - | 包含材料编码 |
-| 条形码 | 500 | 400 | - | - | 包含材料编码 |
+| 二维码 | 580 | 140 | - | - | 包含材料代码 |
+| 条形码 | 500 | 400 | - | - | 包含材料代码 |
 
 ### 7.3 构建打印数据
 
@@ -797,7 +797,7 @@ function buildMaterialCard(data) {
   }
 
   // ========== 二维码 ==========
-  // 二维码内容：材料编码（JSON 格式方便扫码解析）
+  // 二维码内容：材料代码（JSON 格式方便扫码解析）
   const qrContent = JSON.stringify({
     code: data.code,
     name: data.name,
@@ -917,7 +917,7 @@ printMaterialCard({
       <h3>材料信息</h3>
       <div class="form-grid">
         <div class="form-item">
-          <label>材料编码：</label>
+          <label>材料代码：</label>
           <input v-model="material.code" placeholder="MAT-20250101-001" />
         </div>
         <div class="form-item">
@@ -1037,7 +1037,7 @@ export default {
     async handlePrint() {
       // 表单验证
       if (!this.material.code || !this.material.name) {
-        this.showMessage('请至少填写材料编码和材料名称', 'warning')
+        this.showMessage('请至少填写材料代码和材料名称', 'warning')
         return
       }
 
