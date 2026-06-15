@@ -14,7 +14,8 @@
       "mcp__cdp-bridge__browser_execute_js",
       "mcp__cdp-bridge__browser_wait",
       "mcp__cdp-bridge__browser_screenshot",
-      "mcp__cdp-bridge__browser_scan"
+      "mcp__cdp-bridge__browser_scan",
+      "Skill(update-config)"
     ]
   }
 }

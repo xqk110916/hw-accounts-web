@@ -23,7 +23,7 @@ window.globalConfig = {
     dpi: 300,
     labelWidth: 160,    // 标签宽度(mm)
     labelHeight: 120,   // 标签高度(mm)
-    interfaceType: 'NET',
+    interfaceType: 'USB',
     sn: '',
     netIp: '192.168.1.58',
     netPort: 9100,
