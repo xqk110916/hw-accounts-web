@@ -173,34 +173,16 @@ export default {
       platform.receiveShadow = true;
       group.add(platform);
 
-      // 主楼体
-      const bodyGeo = new THREE.BoxGeometry(4.5, 3, 4.5);
-      const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
+      // 主楼体（平顶，高度 2/3，颜色统一灰色）
+      const bodyGeo = new THREE.BoxGeometry(4.5, 2, 4.5);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x909399, roughness: 0.5, metalness: 0.2 });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 1.8;
+      body.position.y = 1.3;
       body.castShadow = true;
       body.receiveShadow = true;
       body.userData = { type: 'warehouse', warehouse: wh };
       group.add(body);
       this.warehouseMeshes.push(body);
-
-      // 四棱锥屋顶
-      const roofGeo = new THREE.ConeGeometry(3.5, 1.8, 4);
-      const roofMat = new THREE.MeshStandardMaterial({ color: 0x1a3a6a, roughness: 0.6 });
-      const roof = new THREE.Mesh(roofGeo, roofMat);
-      roof.position.y = 4.2;
-      roof.rotation.y = Math.PI / 4;
-      roof.castShadow = true;
-      group.add(roof);
-
-      // 窗户（前面2个）
-      const winGeo = new THREE.BoxGeometry(0.7, 0.7, 0.05);
-      const winMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x2288aa, emissiveIntensity: 0.6 });
-      [[-1.2, 2.2, 2.26], [1.2, 2.2, 2.26], [-1.2, 1.2, 2.26], [1.2, 1.2, 2.26]].forEach(([wx, wy, wz]) => {
-        const win = new THREE.Mesh(winGeo, winMat);
-        win.position.set(wx, wy, wz);
-        group.add(win);
-      });
 
       // 门
       const doorGeo = new THREE.BoxGeometry(0.9, 1.4, 0.05);

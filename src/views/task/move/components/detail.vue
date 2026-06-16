@@ -182,6 +182,22 @@
     >
       <el-form ref="detailForm" :model="detailEditForm" label-width="120px" :rules="detailRules">
         <el-row :gutter="12">
+          <el-col :span="24">
+            <el-form-item label="容器号" prop="containerCodeQuery">
+              <div style="display: flex; align-items: center;">
+                <el-input
+                  v-model="containerCodeInput"
+                  size="small"
+                  placeholder="请输入容器号"
+                  clearable
+                  style="flex: 1; margin-right: 10px;"
+                />
+                <el-button type="primary" size="small" @click="handleQueryContainer">查询</el-button>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="12">
           <el-col :span="12">
             <el-form-item label="原库房" prop="sourceWarehouseId">
               <el-select
@@ -307,7 +323,7 @@
 <script>
 import { deepClone } from '@/utils'
 import { config, requestFun, beforeSubmit } from './index.js'
-import { cancelMoveApply, confirmMove, executeAuditedMove, getLocationHierarchy, getPositionMap } from './api.js'
+import { cancelMoveApply, confirmMove, executeAuditedMove, getLocationHierarchy, getPositionMap, getContainerInfo } from './api.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
 import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
@@ -363,6 +379,7 @@ export default {
       sourcePositionLoading: false,
       targetPositionLoading: false,
       sealTypeOptions: [],
+      containerCodeInput: '',
     }
   },
   computed: {
@@ -641,6 +658,7 @@ export default {
       this.sourcePositionOptions = []
       this.detailEditForm.sourceWarehouse = this.getWarehouseName(warehouseId)
       this.clearSourceGoodsFields()
+      this.containerCodeInput = ''
       if (warehouseId) this.loadSourcePositions(warehouseId)
     },
     handleTargetWarehouseChange(warehouseId) {
@@ -653,6 +671,7 @@ export default {
       if (warehouseId) this.loadTargetPositions(warehouseId)
     },
     handleSourcePositionChange(positionId) {
+      this.containerCodeInput = ''
       const pos = this.sourcePositionOptions.find(item => String(item.id) === String(positionId))
       if (!pos) return
       Object.assign(this.detailEditForm, {
@@ -671,6 +690,39 @@ export default {
         sourceShelf: pos.shelfCode || '',
         sourceRow: pos.rowCode || '',
         sourceColumn: pos.columnCode || '',
+      })
+    },
+    handleQueryContainer() {
+      const code = this.containerCodeInput && this.containerCodeInput.trim()
+      if (!code) {
+        this.$message.warning('请输入容器号')
+        return
+      }
+      getContainerInfo(code).then(async res => {
+        if (res.code === 1 && res.data) {
+          const data = res.data
+          const warehouseId = data.warehouseId
+
+          if (warehouseId) {
+            this.detailEditForm.sourceWarehouseId = warehouseId
+            this.handleSourceWarehouseChange(warehouseId)
+            // 加载该库房的位置列表，从中匹配该容器号
+            await this.loadSourcePositions(warehouseId)
+            const matched = this.sourcePositionOptions.find(
+              item => String(item.containerCode) === code
+            )
+            if (matched) {
+              this.$nextTick(() => {
+                this.detailEditForm.sourcePositionId = matched.id
+                this.handleSourcePositionChange(matched.id)
+              })
+            }
+          } else {
+            this.$message.warning('未找到该容器号对应的位置信息')
+          }
+        } else {
+          this.$message.warning('未找到该容器号对应的位置信息')
+        }
       })
     },
     handleTargetPositionChange(positionId) {

@@ -62,8 +62,9 @@ When generating a new page, component, route, menu, or standard List/CRUD interf
 
 ## 浏览器操作规范（项目级）
 
+- **默认不主动验证**：代码修改完成后，除非用户特意要求进行界面验证（如「验证一下」「看下效果」「跑一下」），否则不要主动调用浏览器做验证；优先信任代码改动的正确性，把验证留给用户触发。
 - **必须使用 CDP-Bridge**：本项目需要登录才能访问（localhost:8080），进行界面调试或获取 Token 时，必须使用 MCP 工具 `CDP-Bridge` 连接本地浏览器
 - **禁止使用 Playwright**：不要使用 Playwright 打开项目页面，因为它无法复用已登录的会话
 - **原因**：项目有登录态，CDP-Bridge 可以连接已登录的 Chrome 浏览器，避免重复登录
-- **调试验证**：调试过程中以 CDP-Bridge 为主进行界面验证和调试，当 CDP-Bridge 无法满足需求时，可调用 `open-computer-use` MCP 工具辅助完成
+- **调试验证（按需触发）**：仅当用户明确要求验证时，才以 CDP-Bridge 为主进行界面验证和调试；当 CDP-Bridge 无法满足需求时，可调用 `open-computer-use` MCP 工具辅助完成
 

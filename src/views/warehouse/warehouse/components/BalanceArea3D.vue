@@ -251,32 +251,14 @@ export default {
       base.receiveShadow = true;
       g.add(base);
 
-      // 主体
-      const bodyGeo = new THREE.BoxGeometry(1.5, 1.2, 1.5);
-      const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.2 });
+      // 主体（平顶，高度 2/3，颜色统一灰色）
+      const bodyGeo = new THREE.BoxGeometry(1.5, 0.8, 1.5);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x909399, roughness: 0.5, metalness: 0.2 });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 0.72;
+      body.position.y = 0.52;
       body.castShadow = true;
       body.receiveShadow = true;
       g.add(body);
-
-      // 四棱锥屋顶
-      const roofGeo = new THREE.ConeGeometry(1.2, 0.7, 4);
-      const roofMat = new THREE.MeshStandardMaterial({ color: 0x1a3a6a, roughness: 0.6 });
-      const roof = new THREE.Mesh(roofGeo, roofMat);
-      roof.position.y = 1.67;
-      roof.rotation.y = Math.PI / 4;
-      roof.castShadow = true;
-      g.add(roof);
-
-      // 小窗户
-      const winGeo = new THREE.BoxGeometry(0.3, 0.28, 0.03);
-      const winMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, emissive: 0x2288aa, emissiveIntensity: 0.6 });
-      [[-0.38, 0.85, 0.77], [0.38, 0.85, 0.77]].forEach(([wx, wy, wz]) => {
-        const win = new THREE.Mesh(winGeo, winMat);
-        win.position.set(wx, wy, wz);
-        g.add(win);
-      });
 
       // 小门
       const doorGeo = new THREE.BoxGeometry(0.35, 0.55, 0.03);

@@ -149,7 +149,7 @@
 出库明细的“手工选择”打开“选择容器”弹窗，不再使用旧的明细编辑弹窗。弹窗左侧提供三个选择维度：
 
 - 位置图：先选平衡区，再选库房，调用 `POST /busin/locationMap/positionMap` 以 2D 位置图展示已占用容器；空闲位置不可加入。
-- 容器列表：调用 `POST /busin/inbound/goodsPageList`，支持容器号、货物编码和入库时间筛选。
+- 容器列表：调用 `POST /busin/inbound/goodsPageList`，支持容器号、材料代码和入库时间筛选。
 - 入库单：调用 `POST /busin/inbound/goodsPageList`，按 `taskNum` 查询入库单容器，弃用 `getByTaskNumAndContainerCode`。
 
 确认选择后，前端统一规范化为出库明细字段：`containerCode`、`goodCode`、`warehouseId`、`warehouseName`、`boxNum`、`grossWeight`、`tareWeight`、`netWeight`、`productionUnit`、`shelfCode`、`rowCode`、`columnCode`、`sealCode1`、`sealType1`、`sealCode2`、`sealType2`。

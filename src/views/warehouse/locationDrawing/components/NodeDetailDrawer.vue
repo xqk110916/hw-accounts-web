@@ -223,8 +223,8 @@ export default {
     normalizeDetail(data) {
       return {
         ...data,
-        inLicense: data.inLicense,
-        outLicense: data.outLicense,
+        inLicense: data.importLicense || data.inLicense,
+        outLicense: data.exportLicense || data.outLicense,
         type: normalizeBalanceAreaType(data.type)
       };
     },

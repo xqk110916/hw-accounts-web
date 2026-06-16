@@ -140,9 +140,16 @@ export const config = {
     {
       label: '入库时间',
       prop: 'createTime',
-      type: 'datetime',
+      type: 'date',
       required: false,
-      defaultValue: () => new Date(),
+      defaultValue: () => {
+        const now = new Date()
+        const y = now.getFullYear()
+        const m = String(now.getMonth() + 1).padStart(2, '0')
+        const d = String(now.getDate()).padStart(2, '0')
+        return `${y}-${m}-${d}`
+      },
+      attrs: { valueFormat: 'yyyy-MM-dd' },
     },
     {
       label: '出方单位',
@@ -202,6 +209,10 @@ export const getDefaultOptions = async () => {}
 export const beforeSubmit = async data => {
   // 移除级联组件的中间绑定字段，不向后端提交
   delete data._transferSelected
+  // 确保入库时间只传日期，不带时分秒
+  if (data.createTime) {
+    data.createTime = String(data.createTime).substring(0, 10)
+  }
   return data
 }
 

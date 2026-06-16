@@ -4,7 +4,7 @@
       <div class="right">
         <search-filter class="search" :options="search.options" :form="search.params">
           <div slot="footer" class="footer">
-            <div :class="['btn', 'text']" @click="getTableList">查询000</div>
+            <div :class="['btn', 'text']" @click="getTableList">查询</div>
             <div class="partition"></div>
             <div :class="['btn', 'text']" @click="resetSearchParams">重置</div>
           </div>

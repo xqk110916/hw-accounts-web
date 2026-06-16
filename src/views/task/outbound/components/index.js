@@ -86,29 +86,21 @@ export const config = {
       required: true,
       defaultValue: [],
       change: (values, form, that) => {
+        const firstLevelIds = new Set()
         const goodCodes = []
-        let activeFirstLevelId = ''
 
-        if (Array.isArray(values) && values.length > 0) {
-          activeFirstLevelId = values[0][0]
+        // checkStrictly: false 时 values 只包含叶子路径（父级自动展开子级）
+        if (Array.isArray(values)) {
           values.forEach(path => {
-            if (Array.isArray(path) && path.length >= 2 && path[0] === activeFirstLevelId) {
+            if (Array.isArray(path) && path.length >= 2) {
+              firstLevelIds.add(path[0])
               goodCodes.push(path[1])
             }
           })
         }
 
-        form.transferId = activeFirstLevelId
+        form.transferId = Array.from(firstLevelIds).join(',')
         form.goodCodes = goodCodes.join(',')
-
-        // 动态更新级联选项：已选文号则将其他第一级置灰，清空则恢复全部
-        if (that && that.options && that.options['_transferSelected']) {
-          const updated = that.options['_transferSelected'].map(opt => ({
-            ...opt,
-            disabled: activeFirstLevelId ? opt.value !== activeFirstLevelId : false
-          }))
-          that.$set(that.options, '_transferSelected', updated)
-        }
       },
     },
     {
@@ -186,41 +178,32 @@ export const handleSearchParams = params => {
 }
 
 export const beforeRecurrence = (data, that) => {
-  // 复现调拨依据：将 transferId 和 goodCodes 映射回级联组件的二维数组格式
+  // 复现调拨依据：将 transferId(s) 和 goodCodes 映射回级联组件的叶子路径
   if (data.transferId) {
-    const transferId = data.transferId
+    const transferIds = data.transferId.split(',').filter(Boolean)
     const goodCodes = data.goodCodes ? data.goodCodes.split(',').filter(Boolean) : []
-    const paths = goodCodes.length > 0
-      ? goodCodes.map(code => [transferId, code])
-      : [[transferId]]
-    that.$set(that.form, '_transferSelected', paths)
+    const opts = (that.options && that.options['_transferSelected']) || []
 
-    // 置灰其他文号选项
-    const applyDisabled = () => {
-      const opts = that.options['_transferSelected']
-      if (opts && opts.length > 0) {
-        const updated = opts.map(opt => ({
-          ...opt,
-          disabled: opt.value !== transferId
-        }))
-        that.$set(that.options, '_transferSelected', updated)
-        return true
-      }
-      return false
-    }
-
-    // 如果 options 已加载则直接执行，否则用 $watch 等待
-    if (!applyDisabled()) {
-      const unwatch = that.$watch(
-        () => that.options['_transferSelected'],
-        (newVal) => {
-          if (newVal && newVal.length > 0) {
-            applyDisabled()
-            unwatch()
-          }
+    const paths = []
+    transferIds.forEach(parentId => {
+      if (goodCodes.length > 0) {
+        // 有子级编码：用它们构建叶子路径
+        goodCodes.forEach(code => {
+          paths.push([parentId, code])
+        })
+      } else {
+        // 无子级编码：从选项中找到所有子级，展开为叶子路径
+        const parent = opts.find(o => String(o.value) === String(parentId))
+        const children = (parent && parent.children) || []
+        if (children.length > 0) {
+          children.forEach(child => {
+            paths.push([parentId, child.value])
+          })
         }
-      )
-    }
+      }
+    })
+
+    that.$set(that.form, '_transferSelected', paths)
   }
 
   // 复现密级：确保值为字符串以匹配 select 的 value

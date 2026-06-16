@@ -56,8 +56,8 @@ export function parseShelfType(value) {
   return {
     rowCount: parts[0] || 1,
     levelCount: parts[1] || 1,
-    length: parts[2] || 2,
-    width: parts[3] || 10,
+    length: 2,      // 固定2排（2m），不再读取编码
+    width: 5,       // 固定5列（5m），不再读取编码
     bizCode: value || ''
   };
 }

@@ -283,7 +283,7 @@ export default {
     addMaterial() {
       this.form.goodsList.push({
         goodCode: '',
-        goodNum: '1',
+        goodNum: '0',
         goodWeight: '0'
       })
     },

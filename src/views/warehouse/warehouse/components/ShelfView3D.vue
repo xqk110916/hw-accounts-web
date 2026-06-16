@@ -72,7 +72,7 @@
 <script>
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { getColorByDate } from '../utils/colorHelper';
+import { getContainerColor } from '../utils/colorHelper';
 
 export default {
   name: 'ShelfView3D',
@@ -309,12 +309,9 @@ export default {
         const height = 1.1;
         const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 24);
         
-        // 根据入库时间确定颜色
-        let color = 0xe0e0e0;
-        if (container.storageDate) {
-          const hexColor = this.dateColorMap[container.storageDate] || getColorByDate(container.storageDate);
-          color = parseInt(hexColor.replace('#', ''), 16);
-        }
+        // 根据容器状态确定颜色
+        const hexColor = getContainerColor(container.status, container.materialCode || container.goodCode);
+        const color = parseInt(hexColor.replace('#', ''), 16);
 
         const material = new THREE.MeshStandardMaterial({ 
           color: color,

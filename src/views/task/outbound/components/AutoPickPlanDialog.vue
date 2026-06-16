@@ -119,6 +119,10 @@
                   />
                 </div>
               </el-col>
+              <el-col :span="4">
+                <div class="field-label">件数</div>
+                <el-input v-model="material.amount" size="small" placeholder="件数" @input="clearPlans" />
+              </el-col>
               <el-col :span="10">
                 <div class="field-label">重量</div>
                 <div class="weight-fields">
@@ -394,6 +398,7 @@ export default {
         _key: `material-${Date.now()}-${this.materialIndexSeed}`,
         goodCode: '',
         materialName: '',
+        amount: '',
         grossWeight: '',
         tareWeight: '',
         netWeight: '',
@@ -446,6 +451,7 @@ export default {
         _key: row._key || `material-${Date.now()}-${this.materialIndexSeed}`,
         goodCode: row.goodCode || '',
         materialName: row.materialName || '',
+        amount: row.amount || '',
         grossWeight: row.grossWeight || '',
         tareWeight: row.tareWeight || '',
         netWeight: row.netWeight || '',

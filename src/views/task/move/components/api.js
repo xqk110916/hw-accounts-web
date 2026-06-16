@@ -78,6 +78,15 @@ export const getPositionMap = data => {
   })
 }
 
+export const getContainerInfo = (containerCode) => {
+  return request({
+    url: '/busin/inbound/getByContainerCode',
+    method: 'get',
+    params: { containerCode },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  })
+}
+
 export const move = {
   list: getMoveList,
   detail: getMoveDetail,

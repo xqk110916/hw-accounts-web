@@ -93,16 +93,7 @@
               <el-input v-model="scope.row.remainWeight" style="width: 100%" />
             </template>
           </el-table-column>
-          <el-table-column prop="goodNum" label="批准数" width="90">
-            <template slot-scope="scope">
-              <el-input v-model="scope.row.goodNum" style="width: 100%" />
-            </template>
-          </el-table-column>
-          <el-table-column prop="remainNum" label="已用数" width="90">
-            <template slot-scope="scope">
-              <el-input v-model="scope.row.remainNum" style="width: 100%" />
-            </template>
-          </el-table-column>
+
           <el-table-column label="浮动值">
             <template slot-scope="scope">
               <div class="float-cell">

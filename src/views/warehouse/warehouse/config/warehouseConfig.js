@@ -8,7 +8,7 @@ import { getWarehouseListByBalanceArea } from '@/api/warehouse/warehouse';
 import { getHierarchyDetail, getHierarchyListByNodeType, getPositionMap } from '@/api/warehouse/locationMap';
 import { getDictionaryList } from '@/api/common/dictionary';
 import { normalizeExtra, getLocalExtra, parseShelfType, SHELF_TYPE_PARENT_ID, normalizeShelfTypeOptions } from '../utils/locationLayoutStorage';
-import { generateInitialLayout, applyLayoutToShelves, buildShelfTypeMap } from '../utils/locationLayoutAdapter';
+import { generateInitialLayout, applyLayoutToShelves, buildShelfTypeMap, generateDefaultAisles, parseCodeNumber } from '../utils/locationLayoutAdapter';
 
 // ==================== 默认本地布局/样式配置 ====================
 
@@ -774,7 +774,8 @@ function normalizePosition(item = {}) {
     tareWeight: normalizedGoods.tareWeight,
     netWeight: normalizedGoods.netWeight,
     weightUnit: normalizedGoods.weightUnit,
-    warehouseType: String(item.warehouseType || '0')
+    warehouseType: String(item.warehouseType || '0'),
+    areaCode: item.areaCode || ''
   };
 }
 
@@ -798,6 +799,7 @@ function buildShelvesFromPositions(positions = [], shelfTypeMap = {}) {
         rowCode: position.rowCode,
         shelfType,
         warehouseType: position.warehouseType || '0',
+        areaCode: position.areaCode || '',
         typeInfo: parsedType,
         width: parsedType.width,
         height: parsedType.length,
@@ -966,7 +968,19 @@ export async function getWarehouseById(warehouseId) {
       }
 
       const extra = resolveExtra({ ...detail, id: detail.id || warehouseId });
-      const layout = extra.layout2d || generateInitialLayout(baseShelves);
+      let layout = extra.layout2d || generateInitialLayout(baseShelves);
+      // 历史布局回填：旧 layout2d 缺 aisleSettings 时补默认过道，保证 3D 按默认过道显示
+      if (layout && !layout.aisleSettings) {
+        const shelfRowCount = Math.max(1, ...baseShelves.map(s => Number(s.rowCode) || 0));
+        const shelfColCount = Math.max(1, ...baseShelves.map(s => parseCodeNumber(s.columnCode)));
+        layout = {
+          ...layout,
+          aisleSettings: {
+            rows: generateDefaultAisles(shelfRowCount),
+            cols: generateDefaultAisles(shelfColCount)
+          }
+        };
+      }
       const shelves = applyLayoutToShelves(baseShelves, layout);
       const gridCols = layout.grid ? layout.grid.cols : 20;
       const gridRows = layout.grid ? layout.grid.rows : 12;

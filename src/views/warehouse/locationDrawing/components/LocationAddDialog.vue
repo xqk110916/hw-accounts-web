@@ -19,7 +19,7 @@
                 v-model="form.balanceArea"
                 placeholder="请选择平衡区"
                 style="width: 100%"
-                :disabled="isParentFixed || isReadonly"
+                :disabled="isParentFixed || isReadonly || isEdit"
                 @change="handleChange"
               >
                 <el-option
@@ -36,7 +36,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="库房编号" prop="warehouseCode">
-              <el-input v-model="form.warehouseCode" placeholder="请输入库房编号" :disabled="isReadonly"></el-input>
+              <el-input v-model="form.warehouseCode" placeholder="请输入库房编号" :disabled="isReadonly || isEdit"></el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -77,7 +77,7 @@
         <el-row :gutter="20">
           <el-col :span="24">
             <el-form-item label="库房类型" prop="warehouseType">
-              <el-radio-group v-model="form.warehouseType" size="small" :disabled="isReadonly">
+              <el-radio-group v-model="form.warehouseType" size="small" :disabled="isReadonly || isEdit">
                 <el-radio-button label="0">新库</el-radio-button>
                 <el-radio-button label="2">老库</el-radio-button>
               </el-radio-group>
@@ -92,7 +92,7 @@
         <div class="config-section shelf-config">
           <div class="header-actions">
             <span class="section-title">货架列表</span>
-            <el-button v-if="!isReadonly" type="primary" size="mini" icon="el-icon-plus" plain @click="addColumn">添加列</el-button>
+            <el-button v-if="!isReadonly && !isEdit" type="primary" size="mini" icon="el-icon-plus" plain @click="addColumn">添加列</el-button>
           </div>
           <el-table :data="form.columns" border style="width: 100%" size="mini" class="shelf-table">
             <el-table-column label="列" width="100" align="center">
@@ -100,9 +100,30 @@
                 <span class="column-code">{{ scope.row.code || `第 ${scope.$index + 1} 列` }}</span>
               </template>
             </el-table-column>
+            <el-table-column v-if="form.warehouseType === '2'" label="区域编号" width="120" align="center">
+              <template slot-scope="scope">
+                <el-select
+                  v-model="scope.row.areaCode"
+                  filterable
+                  allow-create
+                  default-first-option
+                  size="mini"
+                  placeholder="请选择或输入"
+                  :disabled="isReadonly || isEdit"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in areaOptions"
+                    :key="item"
+                    :label="item"
+                    :value="item"
+                  />
+                </el-select>
+              </template>
+            </el-table-column>
             <el-table-column label="类型" prop="type" min-width="150">
               <template slot-scope="scope">
-                <el-select v-model="scope.row.type" placeholder="请选择类型" size="mini" style="width: 100%" :disabled="isReadonly">
+                <el-select v-model="scope.row.type" placeholder="请选择类型" size="mini" style="width: 100%" :disabled="isReadonly || isEdit">
                   <el-option
                     v-for="item in currentShelfTypeOptions"
                     :key="item.value"
@@ -122,7 +143,7 @@
                 <span class="badge-info">{{ getShelfInfo(scope.row.type, 'level') }}</span>
               </template>
             </el-table-column>
-            <el-table-column v-if="!isReadonly" label="操作" width="80" align="center">
+            <el-table-column v-if="!isReadonly && !isEdit" label="操作" width="80" align="center">
               <template slot-scope="scope">
                 <el-button
                   type="text"
@@ -183,7 +204,8 @@ export default {
       materialTypeOptions: [],
       shelfTypeOptions: [],
       oldShelfTypeOptions: [],
-      originalDataBackup: null
+      originalDataBackup: null,
+      areaOptions: ['A', 'B', 'C', 'D', 'E', 'F']
     };
   },
   created() {
@@ -279,13 +301,11 @@ export default {
       } else if (options.prefill) {
         this.resetForm();
         this.form = { ...this.form, ...options.prefill };
-        // 新增时默认6列，类型为空
-        this.form.columns = Array.from({ length: 6 }, (item, index) => ({ code: `S${index + 1}`, type: '' }));
+        this.initDefaultColumns();
         this.originalDataBackup = null;
       } else {
         this.resetForm();
-        // 新增时默认6列，类型为空
-        this.form.columns = Array.from({ length: 6 }, (item, index) => ({ code: `S${index + 1}`, type: '' }));
+        this.initDefaultColumns();
         this.originalDataBackup = null;
       }
     },
@@ -315,8 +335,18 @@ export default {
       this.isEdit = true;
       this.originalDataBackup = JSON.parse(JSON.stringify(this.form));
     },
+    initDefaultColumns() {
+      const len = this.form.columns.length || 6;
+      this.form.columns = Array.from({ length: len }, (_, i) => {
+        const col = { code: `S${i + 1}`, type: '' };
+        if (this.form.warehouseType === '2') col.areaCode = 'A';
+        return col;
+      });
+    },
     addColumn() {
-      this.form.columns.push({ code: `S${this.form.columns.length + 1}`, type: '' });
+      const col = { code: `S${this.form.columns.length + 1}`, type: '' };
+      if (this.form.warehouseType === '2') col.areaCode = 'A';
+      this.form.columns.push(col);
     },
     removeColumn(index) {
       if (this.form.columns.length > 1) {

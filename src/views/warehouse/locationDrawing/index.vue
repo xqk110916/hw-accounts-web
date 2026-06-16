@@ -150,7 +150,7 @@ export default {
         const res = await getHierarchyTree();
         if (res && res.data) {
           this.treeData = Array.isArray(res.data) ? res.data : [res.data];
-          this.$nextTick(() => this.handleExpandAll());
+          this.$nextTick(() => this.handleExpandFirstLevel());
         }
       } catch (e) {
         console.error('Failed to fetch tree data', e);
@@ -187,17 +187,27 @@ export default {
     openPositionMap(data) {
       this.$refs.positionMapDialog.open(data);
     },
+    // out-in 过渡下 addDialog 需等 placeholder leave(约 0.3s) 完成才挂载，轮询等待 ref 就绪
+    waitForRef(refName, timeout = 2000) {
+      return new Promise(resolve => {
+        const start = Date.now();
+        const check = () => {
+          if (this.$refs[refName] || Date.now() - start > timeout) return resolve();
+          requestAnimationFrame(check);
+        };
+        check();
+      });
+    },
     async openWarehouseDialog(data, mode) {
       this.rightPanelVisible = true;
-      this.$nextTick(async () => {
-        if (this.$refs.tree) {
-          this.$refs.tree.setCurrentKey(data.id);
-        }
-        const detail = await this.fetchWarehouseDetail(data);
-        this.$refs.addDialog.open(this.mapWarehouseNodeToForm(detail), {
-          mode,
-          isParentFixed: true
-        });
+      await this.waitForRef('addDialog');
+      if (this.$refs.tree) {
+        this.$refs.tree.setCurrentKey(data.id);
+      }
+      const detail = await this.fetchWarehouseDetail(data);
+      this.$refs.addDialog.open(this.mapWarehouseNodeToForm(detail), {
+        mode,
+        isParentFixed: true
       });
     },
     async fetchWarehouseDetail(data) {
@@ -217,6 +227,13 @@ export default {
       }
       return data;
     },
+    // 默认仅展开第一层（根节点），保持下层折叠
+    handleExpandFirstLevel() {
+      const store = this.$refs.tree.store;
+      const allNodes = store._getAllNodes();
+      allNodes.forEach(node => { node.expanded = false; });
+      store.root.childNodes.forEach(node => { node.expanded = true; });
+    },
     handleExpandAll() {
       const nodes = this.$refs.tree.store._getAllNodes();
       nodes.forEach(node => { node.expanded = true; });
@@ -227,14 +244,13 @@ export default {
         nodes[i].expanded = false;
       }
     },
-    handleAdd() {
+    async handleAdd() {
       this.rightPanelVisible = true;
-      this.$nextTick(() => {
-        if (this.$refs.tree) {
-          this.$refs.tree.setCurrentKey(null);
-        }
-        this.$refs.addDialog.open();
-      });
+      await this.waitForRef('addDialog');
+      if (this.$refs.tree) {
+        this.$refs.tree.setCurrentKey(null);
+      }
+      this.$refs.addDialog.open();
     },
     handleDialogCancel() {
       this.rightPanelVisible = false;
@@ -258,18 +274,25 @@ export default {
         warehouseType: formData.warehouseType,
         materialTypes: Array.isArray(formData.materialType) ? formData.materialType.join(',') : formData.materialType,
         remark: formData.remark,
-        sortOrder: 1,
-        shelvesList: []
+        sortOrder: 1
       };
 
-      // 新库/老库统一使用列配置格式
-      apiData.shelvesList = formData.columns.map((col, index) => ({
-        shelfCode: col.code || `S${index + 1}`,
-        shelfRowNum: parseInt(col.rows) || 1,
-        shelfColNum: parseInt(col.levels) || 1,
-        shelfType: col.type,
-        sortOrder: index + 1
-      }));
+      if (formData.mode !== 'edit') {
+        // 新库/老库统一使用列配置格式
+        apiData.shelvesList = formData.columns.map((col, index) => {
+          const parts = String(col.type || '').split('-');
+          const shelfRowNum = parseInt(parts[0]) || parseInt(col.rows) || 1;
+          const shelfColNum = parseInt(parts[1]) || parseInt(col.levels) || 1;
+          return {
+            shelfCode: col.code || `S${index + 1}`,
+            shelfRowNum: shelfRowNum,
+            shelfColNum: shelfColNum,
+            shelfType: col.type,
+            areaCode: col.areaCode || '',
+            sortOrder: index + 1
+          };
+        });
+      }
 
       if (formData.rawNode && formData.rawNode.id) apiData.id = formData.rawNode.id;
 
@@ -313,7 +336,8 @@ export default {
           code: shelf.shelfCode,
           type,
           rows: rowCount,
-          levels: levelCount
+          levels: levelCount,
+          areaCode: shelf.areaCode || ''
         }
       }) : (data.children || []).map((column, index) => {
         const rows = column.children || [];
@@ -321,10 +345,21 @@ export default {
         const levelCount = rows.reduce((max, row) => Math.max(max, (row.children || []).length), 1);
         const type = this.getShelfTypeValue(column, rowCount, levelCount);
         this.ensureShelfTypeOption(type, rowCount, levelCount);
+        
+        let extra = {};
+        if (column.extra) {
+          try {
+            extra = typeof column.extra === 'string' ? JSON.parse(column.extra) : column.extra;
+          } catch (e) {
+            console.error('Failed to parse column extra', e);
+          }
+        }
+
         return {
           id: column.id,
           code: column.nodeCode,
-          type
+          type,
+          areaCode: column.areaCode || extra.areaCode || ''
         };
       });
       return {
@@ -363,21 +398,20 @@ export default {
     cleanNodeName(name) {
       return String(name || '').replace(/^【库房】/, '');
     },
-    append(data) {
+    async append(data) {
       const label = this.defaultProps.label(data);
       // Level 0 为平衡区，添加子节点即添加库房
       if (data.nodeType === 1) {
         this.rightPanelVisible = true;
-        this.$nextTick(() => {
-          if (this.$refs.tree) {
-            this.$refs.tree.setCurrentKey(null);
+        await this.waitForRef('addDialog');
+        if (this.$refs.tree) {
+          this.$refs.tree.setCurrentKey(null);
+        }
+        this.$refs.addDialog.open(null, {
+          isParentFixed: true,
+          prefill: {
+            balanceArea: data.id || data.balanceId
           }
-          this.$refs.addDialog.open(null, {
-            isParentFixed: true,
-            prefill: {
-              balanceArea: data.id || data.balanceId
-            }
-          });
         });
       } else {
         this.$message.info(`当前仅支持在[平衡区]级别快捷添加子节点(库房): ${label}`);

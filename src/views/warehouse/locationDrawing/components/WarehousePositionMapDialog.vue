@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :visible.sync="visible"
-    :title="dialogTitle"
+    :fullscreen="isFullscreen"
     width="92vw"
     top="4vh"
     custom-class="warehouse-position-dialog"
@@ -9,6 +9,18 @@
     append-to-body
     @closed="handleClosed"
   >
+    <div slot="title" class="dialog-header-custom">
+      <span class="el-dialog__title">{{ dialogTitle }}</span>
+      <button
+        type="button"
+        class="el-dialog__headerbtn"
+        style="right: 48px; top: 16px;"
+        @click="isFullscreen = !isFullscreen"
+        title="全屏"
+      >
+        <i :class="isFullscreen ? 'el-icon-zoom-out' : 'el-icon-full-screen'"></i>
+      </button>
+    </div>
     <div class="position-shell" v-loading="loading">
       <div class="position-header">
         <div class="meta">
@@ -39,6 +51,9 @@
           :layout="draftLayout"
           :editable="editing"
           :selected-shelf="selectedShelf"
+          hide-internal-aisle-settings
+          @aisle-visible-change="handleAisleVisibleChange"
+          @aisle-settings-change="handleAisleSettingsChange"
           @layout-change="handleLayoutChange"
           @reset-layout="resetLayout"
           @shelf-select="selectedShelf = $event"
@@ -57,22 +72,85 @@
       </div>
 
       <div class="position-side">
-        <div class="side-card">
-          <div class="side-title">当前货架</div>
-          <template v-if="selectedShelf">
-            <p><b>{{ selectedShelf.name }}</b></p>
-            <p>列：{{ selectedShelf.columnCode }}，排：{{ selectedShelf.rowCode }}</p>
-            <p>层数：{{ (selectedShelf.layers || []).length }}</p>
-            <p>占用：{{ getFilledCount(selectedShelf) }} / {{ getTotalCount(selectedShelf) }}</p>
-          </template>
-          <el-empty v-else description="请选择货架" :image-size="72"></el-empty>
-        </div>
-        <!-- <div class="side-card">
-          <div class="side-title">布局状态</div>
-          <p>货架：{{ displayShelves.length }}</p>
-          <p>过道：{{ (draftLayout.aisles || []).length }}</p>
-          <p>来源：{{ layoutSource }}</p>
-        </div> -->
+        <template v-if="editing && aisleVisible">
+          <div class="side-card">
+            <div class="side-title">过道设置</div>
+            <div class="aisle-section">
+              <div class="aisle-section-label">
+                <span>排间过道</span>
+                <span class="width-config">
+                  ( 宽
+                  <el-input-number v-model="newRowAisleWidth" size="mini" :min="1" :max="5" :controls="false" class="width-input" />
+                  格 )
+                </span>
+              </div>
+              <div v-for="(row, idx) in aisleSettings.rows" :key="'r'+idx" class="aisle-item">
+                <span class="aisle-badge badge-row">排 {{ row.afterIndex }}</span>
+                <span class="aisle-desc">宽 {{ row.width }} 格</span>
+                <button type="button" class="aisle-delete-btn" @click="removeRowAisle(idx)" title="删除">
+                  <i class="el-icon-close"></i>
+                </button>
+              </div>
+              <div class="aisle-add">
+                <el-select v-model="newRowAisleAfter" size="mini" placeholder="选择排">
+                  <el-option v-for="i in ($refs.gridMap ? $refs.gridMap.shelfRowCount : 0)" :key="i" :label="'第'+i+'排后'" :value="i" />
+                </el-select>
+                <el-button size="mini" type="primary" style="padding: 6px 14px;" @click="handleAddRowAisle">添加</el-button>
+              </div>
+            </div>
+            <div class="aisle-section">
+              <div class="aisle-section-label">
+                <span>列间过道</span>
+                <span class="width-config">
+                  ( 宽
+                  <el-input-number v-model="newColAisleWidth" size="mini" :min="1" :max="5" :controls="false" class="width-input" />
+                  格 )
+                </span>
+              </div>
+              <div v-for="(col, idx) in aisleSettings.cols" :key="'c'+idx" class="aisle-item">
+                <span class="aisle-badge badge-col">列 {{ col.afterIndex }}</span>
+                <span class="aisle-desc">宽 {{ col.width }} 格</span>
+                <button type="button" class="aisle-delete-btn" @click="removeColAisle(idx)" title="删除">
+                  <i class="el-icon-close"></i>
+                </button>
+              </div>
+              <div class="aisle-add">
+                <el-select v-model="newColAisleAfter" size="mini" placeholder="选择列">
+                  <el-option v-for="i in ($refs.gridMap ? $refs.gridMap.shelfColCount : 0)" :key="i" :label="'第'+i+'列后'" :value="i" />
+                </el-select>
+                <el-button size="mini" type="primary" style="padding: 6px 14px;" @click="handleAddColAisle">添加</el-button>
+              </div>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <div class="side-card">
+            <div class="side-title">当前库房</div>
+            <p>总货位数：{{ totalPositions }}</p>
+            <p>已用数：{{ usedPositions }}</p>
+            <p>空闲数：{{ freePositions }}</p>
+          </div>
+          <div class="side-card">
+            <div class="side-title">当前货架</div>
+            <template v-if="selectedShelf">
+              <p><b>{{ selectedShelf.name }}</b></p>
+              <p>列：{{ selectedShelf.columnCode }}，排：{{ selectedShelf.rowCode }}</p>
+              <p>层数：{{ (selectedShelf.layers || []).length }}</p>
+              <p>占用：{{ getFilledCount(selectedShelf) }} / {{ getTotalCount(selectedShelf) }}</p>
+            </template>
+            <el-empty v-else description="请选择货架" :image-size="72"></el-empty>
+          </div>
+          <div class="side-card">
+            <div class="side-title">容器信息</div>
+            <template v-if="selectedContainer">
+              <p>位置：{{ getPositionText(selectedContainer) }}</p>
+              <p>材料代码：{{ selectedContainer.goodCode || '-' }}</p>
+              <p>容器号：{{ selectedContainer.containerCode || '-' }}</p>
+              <p>入库时间：{{ selectedContainer.createTime || '-' }}</p>
+            </template>
+            <el-empty v-else description="未选中容器" :image-size="72"></el-empty>
+          </div>
+        </template>
       </div>
     </div>
   </el-dialog>
@@ -84,7 +162,7 @@ import { getHierarchyDetail, getHierarchyTree, getPositionMap, updateHierarchyNo
 import WarehouseGridMap2D from '../../warehouse/components/WarehouseGridMap2D.vue';
 import WarehouseInterior3D from '../../warehouse/components/WarehouseInterior3D.vue';
 import { SHELF_TYPE_PARENT_ID, normalizeExtra, normalizeShelfTypeOptions, saveLocalExtra, getLocalExtra } from '../../warehouse/utils/locationLayoutStorage';
-import { buildShelvesFromWarehouse, findNodeById, generateInitialLayout, applyLayoutToShelves } from '../../warehouse/utils/locationLayoutAdapter';
+import { buildShelvesFromWarehouse, findNodeById, generateInitialLayout, applyLayoutToShelves, generateDefaultAisles, parseCodeNumber } from '../../warehouse/utils/locationLayoutAdapter';
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || {}));
@@ -107,7 +185,14 @@ export default {
       draftLayout: { grid: { rows: 12, cols: 20, cellSize: 32 }, shelves: [], aisles: [] },
       savedLayout: null,
       selectedShelf: null,
-      layoutSource: '自动生成'
+      layoutSource: '自动生成',
+      isFullscreen: false,
+      aisleVisible: false,
+      aisleSettings: { rows: [], cols: [] },
+      newRowAisleAfter: 1,
+      newRowAisleWidth: 2,
+      newColAisleAfter: 1,
+      newColAisleWidth: 2
     };
   },
   computed: {
@@ -122,6 +207,27 @@ export default {
     },
     displayShelves() {
       return applyLayoutToShelves(this.shelves, this.draftLayout);
+    },
+    totalPositions() {
+      return this.displayShelves.reduce((sum, shelf) => {
+        return sum + (shelf.layers || []).length;
+      }, 0);
+    },
+    usedPositions() {
+      return this.displayShelves.reduce((sum, shelf) => {
+        return sum + (shelf.layers || []).filter(layer => {
+          const container = (layer.containers || [])[0];
+          return container && (container.materialCode || String(container.status) === '1');
+        }).length;
+      }, 0);
+    },
+    freePositions() {
+      return Math.max(this.totalPositions - this.usedPositions, 0);
+    },
+    selectedContainer() {
+      if (!this.selectedShelf) return null
+      const allContainers = (this.selectedShelf.layers || []).flatMap(layer => (layer.containers || []))
+      return allContainers.length > 0 ? allContainers[0] : null
     }
   },
   methods: {
@@ -130,6 +236,9 @@ export default {
       this.loading = true;
       this.editing = false;
       this.viewMode = '2d';
+      this.isFullscreen = false;
+      this.aisleVisible = false;
+      this.aisleSettings = { rows: [], cols: [] };
       try {
         const [detailRes, treeRes, positionRes, dictRes, oldDictRes] = await Promise.all([
           getHierarchyDetail(row.id),
@@ -158,20 +267,34 @@ export default {
     },
     initLayout() {
       const detailExtra = normalizeExtra(this.detail.extra);
-      // const localExtra = getLocalExtra(this.detail.id);
       let layout = null;
       if (detailExtra.layout2d) {
         layout = detailExtra.layout2d;
         this.layoutSource = '接口 extra';
-      // } else if (localExtra.layout2d) {
-      //   layout = localExtra.layout2d;
-      //   this.layoutSource = '本地 extra';
       } else {
         layout = generateInitialLayout(this.shelves);
         this.layoutSource = '自动生成';
       }
+      // 历史布局回填：旧 layout2d 可能没有 aisleSettings，用默认过道补齐，
+      // 保证 3D 也能按默认过道显示（单一数据源）
+      if (layout && !layout.aisleSettings) {
+        const shelfRowCount = Math.max(1, ...this.shelves.map(s => Number(s.rowCode) || 0));
+        const shelfColCount = Math.max(1, ...this.shelves.map(s => parseCodeNumber(s.columnCode)));
+        layout = {
+          ...layout,
+          aisleSettings: {
+            rows: generateDefaultAisles(shelfRowCount),
+            cols: generateDefaultAisles(shelfColCount)
+          }
+        };
+      }
       this.savedLayout = clone(layout);
       this.draftLayout = clone(layout);
+      if (layout && layout.aisleSettings) {
+        this.aisleSettings = clone(layout.aisleSettings);
+      } else {
+        this.aisleSettings = { rows: [], cols: [] };
+      }
       this.selectedShelf = this.displayShelves[0] || null;
     },
     startEdit() {
@@ -180,10 +303,23 @@ export default {
     },
     cancelEdit() {
       this.draftLayout = clone(this.savedLayout);
+      if (this.savedLayout && this.savedLayout.aisleSettings) {
+        this.aisleSettings = clone(this.savedLayout.aisleSettings);
+      } else {
+        this.aisleSettings = { rows: [], cols: [] };
+      }
       this.editing = false;
+      this.aisleVisible = false;
+      if (this.$refs.gridMap) {
+        this.$refs.gridMap.aisleVisible = false;
+        this.$refs.gridMap.tool = 'select';
+      }
     },
     handleLayoutChange(layout) {
       this.draftLayout = clone(layout);
+      if (layout && layout.aisleSettings) {
+        this.aisleSettings = clone(layout.aisleSettings);
+      }
     },
     resetLayout() {
       this.draftLayout = generateInitialLayout(this.shelves);
@@ -200,22 +336,35 @@ export default {
           warehouseCode: this.detail.warehouseCode || this.detail.nodeCode,
           extra: JSON.stringify(extra)
         });
-        // saveLocalExtra(this.detail.id, extra);
         this.detail = { ...this.detail, extra };
         this.savedLayout = clone(this.draftLayout);
         this.editing = false;
+        this.aisleVisible = false;
+        if (this.$refs.gridMap) {
+          this.$refs.gridMap.aisleVisible = false;
+          this.$refs.gridMap.tool = 'select';
+        }
         this.layoutSource = '接口 extra';
         this.$message.success('布局保存成功');
         this.$emit('saved', this.detail);
       } catch (error) {
         console.error(error);
-        // saveLocalExtra(this.detail.id, extra);
         this.detail = { ...this.detail, extra };
         this.savedLayout = clone(this.draftLayout);
         this.editing = false;
+        this.aisleVisible = false;
+        if (this.$refs.gridMap) {
+          this.$refs.gridMap.aisleVisible = false;
+          this.$refs.gridMap.tool = 'select';
+        }
         this.layoutSource = '接口 extra';
         this.$message.error('布局保存失败');
       }
+    },
+    getPositionText(container) {
+      if (!container) return '-'
+      const values = [container.shelfCode, container.rowCode, container.columnCode].filter(Boolean)
+      return values.length ? values.join('-') : '-'
     },
     getFilledCount(shelf) {
       return (shelf.layers || []).reduce((count, layer) => {
@@ -226,9 +375,37 @@ export default {
     getTotalCount(shelf) {
       return (shelf.layers || []).length;
     },
+    handleAisleVisibleChange(val) {
+      this.aisleVisible = val;
+    },
+    handleAisleSettingsChange(val) {
+      this.aisleSettings = clone(val);
+    },
+    removeRowAisle(idx) {
+      if (this.$refs.gridMap) {
+        this.$refs.gridMap.removeRowAisle(idx);
+      }
+    },
+    removeColAisle(idx) {
+      if (this.$refs.gridMap) {
+        this.$refs.gridMap.removeColAisle(idx);
+      }
+    },
+    handleAddRowAisle() {
+      if (this.$refs.gridMap) {
+        this.$refs.gridMap.addRowAisle(this.newRowAisleAfter, this.newRowAisleWidth);
+      }
+    },
+    handleAddColAisle() {
+      if (this.$refs.gridMap) {
+        this.$refs.gridMap.addColAisle(this.newColAisleAfter, this.newColAisleWidth);
+      }
+    },
     handleClosed() {
       this.editing = false;
       this.selectedShelf = null;
+      this.isFullscreen = false;
+      this.aisleVisible = false;
     }
   }
 };
@@ -238,6 +415,14 @@ export default {
 .warehouse-position-dialog {
   .el-dialog__body {
     padding: 20px;
+  }
+  &.is-fullscreen {
+    .el-dialog__body {
+      padding: 10px 20px;
+    }
+    .position-shell {
+      height: calc(100vh - 100px);
+    }
   }
 }
 </style>
@@ -300,6 +485,119 @@ export default {
       margin: 6px 0;
       color: #5d6673;
       font-size: 13px;
+    }
+  }
+
+  .aisle-section {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #e3e8f0;
+    &:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+  .aisle-section-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    color: #4a5568;
+    font-size: 13px;
+    margin-bottom: 8px;
+
+    .width-config {
+      font-size: 11px;
+      color: #718096;
+      font-weight: normal;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+
+      .width-input {
+        width: 32px;
+        ::v-deep .el-input__inner {
+          padding: 0 !important;
+          text-align: center;
+          height: 20px !important;
+          line-height: 20px !important;
+          font-size: 11px;
+        }
+      }
+    }
+  }
+  .aisle-item {
+    display: flex;
+    align-items: center;
+    background: #f4f6fa;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    gap: 8px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #edf2f7;
+      border-color: #cbd5e0;
+    }
+
+    .aisle-badge {
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      line-height: 1;
+
+      &.badge-row {
+        background: #409eff;
+      }
+      &.badge-col {
+        background: #67c23a;
+      }
+    }
+
+    .aisle-desc {
+      font-size: 12px;
+      color: #4a5568;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .aisle-delete-btn {
+      background: transparent;
+      border: none;
+      color: #a0aec0;
+      cursor: pointer;
+      padding: 2px;
+      line-height: 1;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: #feb2b2;
+        color: #e53e3e;
+      }
+
+      i {
+        font-size: 12px;
+      }
+    }
+  }
+  .aisle-add {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-top: 8px;
+
+    ::v-deep .el-select--mini {
+      flex: 1;
     }
   }
 }

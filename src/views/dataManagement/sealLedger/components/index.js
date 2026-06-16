@@ -73,9 +73,9 @@ export const handleSearchParams = params => {
     currentPage: params.currentPage,
     pageSize: params.pageSize,
   }
-  ;['containerCode', 'sealCode', 'sealType', 'sealStatus'].forEach(key => {
-    if (params[key] !== undefined && params[key] !== null && params[key] !== '') data[key] = params[key]
-  })
+    ;['containerCode', 'sealCode', 'sealType', 'sealStatus'].forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') data[key] = params[key]
+    })
   if (params.registerTimeRange && params.registerTimeRange.length === 2) {
     data.starTime = `${params.registerTimeRange[0]} 00:00:00`
     data.endTime = `${params.registerTimeRange[1]} 23:59:59`

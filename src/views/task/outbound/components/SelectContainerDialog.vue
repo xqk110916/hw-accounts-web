@@ -54,7 +54,8 @@
                 :shelves="mapShelves"
                 :layout="mapLayout"
                 :editable="false"
-                @container-click="openContainerDetail"
+                :selected-container-codes="selectedContainerCodesList"
+                @container-click="handleContainerClick"
               />
               <el-empty v-else description="请选择平衡区和库房后查看位置图" :image-size="88" style="margin-top: 150px" />
             </div>
@@ -82,7 +83,6 @@
               <el-table-column v-for="item in goodsColumns" :key="item.prop" :prop="item.prop" :label="item.label" :width="item.width" show-overflow-tooltip>
                 <template slot-scope="scope">
                   <span v-if="item.prop === 'positionText'">{{ getPositionText(scope.row) }}</span>
-                  <span v-else-if="item.prop === 'weightText'">{{ getWeightText(scope.row) }}</span>
                   <span v-else-if="item.prop === 'sealType1' || item.prop === 'sealType2'">{{ getSealTypeLabel(scope.row[item.prop]) }}</span>
                   <span v-else>{{ scope.row[item.prop] }}</span>
                 </template>
@@ -100,46 +100,7 @@
             </div>
           </el-tab-pane>
 
-          <el-tab-pane label="入库单" name="inbound">
-            <search-filter class="dialog-search" :options="inboundSearchOptions" :form="inboundSearch">
-              <div slot="footer" class="search-footer">
-                <el-button type="text" size="small" @click="queryInboundList">查询</el-button>
-                <span class="partition"></span>
-                <el-button type="text" size="small" @click="resetInboundSearch">重置</el-button>
-              </div>
-            </search-filter>
-            <div class="table-actions">
-              <el-button type="primary" size="small" @click="addCheckedRows(inboundCheckedRows)">加入选择</el-button>
-            </div>
-            <el-table
-              :data="inboundList"
-              border
-              size="small"
-              height="430"
-              @selection-change="inboundCheckedRows = $event"
-            >
-              <el-table-column type="selection" width="48" />
-              <el-table-column prop="taskNum" label="任务编号" width="140" show-overflow-tooltip />
-              <el-table-column v-for="item in goodsColumns" :key="item.prop" :prop="item.prop" :label="item.label" :width="item.width" show-overflow-tooltip>
-                <template slot-scope="scope">
-                  <span v-if="item.prop === 'positionText'">{{ getPositionText(scope.row) }}</span>
-                  <span v-else-if="item.prop === 'weightText'">{{ getWeightText(scope.row) }}</span>
-                  <span v-else-if="item.prop === 'sealType1' || item.prop === 'sealType2'">{{ getSealTypeLabel(scope.row[item.prop]) }}</span>
-                  <span v-else>{{ scope.row[item.prop] }}</span>
-                </template>
-              </el-table-column>
-            </el-table>
-            <div class="pagination">
-              <el-pagination
-                :current-page="inboundSearch.currentPage"
-                :page-size="inboundSearch.pageSize"
-                :total="inboundTotal"
-                background
-                layout="total, prev, pager, next"
-                @current-change="handleInboundPageChange"
-              />
-            </div>
-          </el-tab-pane>
+
         </el-tabs>
       </div>
 
@@ -163,62 +124,6 @@
       <el-button type="primary" size="small" @click="confirmSelected">确定</el-button>
     </span>
 
-    <el-dialog
-      title="容器详情"
-      :visible.sync="detailVisible"
-      width="620px"
-      append-to-body
-      :close-on-click-modal="false"
-    >
-      <table v-if="detailContainer" class="detail-table">
-        <tr>
-          <td class="label">容器号</td>
-          <td>{{ detailContainer.containerCode || '-' }}</td>
-          <td class="label">任务编号</td>
-          <td>{{ detailContainer.taskNum || '-' }}</td>
-        </tr>
-        <tr>
-          <td class="label">材料代码</td>
-          <td>{{ detailContainer.goodCode || '-' }}</td>
-          <td class="label">生产单位</td>
-          <td>{{ detailContainer.productionUnit || '-' }}</td>
-        </tr>
-        <tr>
-          <td class="label">库房</td>
-          <td>{{ detailContainer.warehouseName || '-' }}</td>
-          <td class="label">位置</td>
-          <td>{{ getPositionText(detailContainer) }}</td>
-        </tr>
-        <tr>
-          <td class="label">毛重</td>
-          <td>{{ detailContainer.grossWeight || '-' }}</td>
-          <td class="label">皮重</td>
-          <td>{{ detailContainer.tareWeight || '-' }}</td>
-        </tr>
-        <tr>
-          <td class="label">净重</td>
-          <td>{{ detailContainer.netWeight || '-' }}</td>
-          <td class="label">货箱号</td>
-          <td>{{ detailContainer.boxNum || '-' }}</td>
-        </tr>
-        <tr>
-          <td class="label">封记编码1</td>
-          <td>{{ detailContainer.sealCode1 || '-' }}</td>
-          <td class="label">封记类型1</td>
-          <td>{{ getSealTypeLabel(detailContainer.sealType1) }}</td>
-        </tr>
-        <tr>
-          <td class="label">封记编码2</td>
-          <td>{{ detailContainer.sealCode2 || '-' }}</td>
-          <td class="label">封记类型2</td>
-          <td>{{ getSealTypeLabel(detailContainer.sealType2) }}</td>
-        </tr>
-      </table>
-      <span slot="footer">
-        <el-button size="small" @click="detailVisible = false">关闭</el-button>
-        <el-button type="primary" size="small" @click="addDetailContainer">加入选择</el-button>
-      </span>
-    </el-dialog>
   </el-dialog>
 </template>
 
@@ -250,36 +155,29 @@ export default {
       mapPositions: [],
       mapShelves: [],
       mapLayout: null,
-      detailVisible: false,
-      detailContainer: null,
+
       containerSearch: {
         currentPage: 1,
         pageSize: 20,
         containerCode: '',
         goodCode: '',
+        warehouseId: '',
         timeRange: [],
-      },
-      inboundSearch: {
-        currentPage: 1,
-        pageSize: 20,
-        taskNum: '',
+        netWeightMin: '',
+        netWeightMax: '',
       },
       containerList: [],
-      inboundList: [],
       containerTotal: 0,
-      inboundTotal: 0,
       containerCheckedRows: [],
-      inboundCheckedRows: [],
       materialCodeOptions: [],
       sealTypeOptions: [],
       containerSearchOptions: [
         { label: '容器号', prop: 'containerCode', type: 'text', col: 5 },
-        { label: '货物编码', prop: 'goodCode', type: 'select', col: 5, option: [] },
+        { label: '材料代码', prop: 'goodCode', type: 'select', col: 5, option: [] },
+        { label: '库房', prop: 'warehouseId', type: 'select', col: 5, option: [] },
         { label: '入库时间', prop: 'timeRange', type: 'daterange', col: 8 },
-        { type: 'slot', slotName: 'footer', col: 4 },
-      ],
-      inboundSearchOptions: [
-        { label: '任务编号', prop: 'taskNum', type: 'text', col: 6 },
+        { label: '净重(最小值)', prop: 'netWeightMin', type: 'text', col: 4, labelWidth: 200 },
+        { label: '净重(最大值)', prop: 'netWeightMax', type: 'text', col: 4, labelWidth: 200 },
         { type: 'slot', slotName: 'footer', col: 4 },
       ],
       goodsColumns: [
@@ -289,11 +187,13 @@ export default {
         { label: '库房', prop: 'warehouseName', width: 120 },
         { label: '位置(列-排-层)', prop: 'positionText', width: 130 },
         { label: '货箱号', prop: 'boxNum', width: 100 },
+        { label: '毛重', prop: 'grossWeight', width: 90 },
+        { label: '皮重', prop: 'tareWeight', width: 90 },
+        { label: '净重', prop: 'netWeight', width: 90 },
         { label: '封记编码1', prop: 'sealCode1', width: 120 },
         { label: '封记类型1', prop: 'sealType1', width: 120 },
         { label: '封记编码2', prop: 'sealCode2', width: 120 },
         { label: '封记类型2', prop: 'sealType2', width: 120 },
-        { label: '重量(毛,皮,净)', prop: 'weightText', width: 160 },
       ],
     }
   },
@@ -308,6 +208,9 @@ export default {
       if (!areaName && !this.mapSearch.warehouseId) return ''
       return `${areaName || '-'} / ${this.selectedWarehouseName || '-'}`
     },
+    selectedContainerCodesList() {
+      return this.selectedContainers.map(c => c.containerCode).filter(Boolean)
+    },
   },
   methods: {
     open(list = []) {
@@ -316,11 +219,16 @@ export default {
       if (!this.balanceAreaOptions.length) this.loadBalanceAreas()
       if (!this.materialCodeOptions.length) this.loadMaterialCodeOptions()
       if (!this.sealTypeOptions.length) this.loadSealTypeOptions()
+      this.loadWarehouseSearchOptions()
+    },
+    async loadWarehouseSearchOptions() {
+      const res = await getLocationHierarchy(2)
+      const opts = (res.data || []).map(item => ({ label: item.warehouseName, value: item.id }))
+      const whOption = this.containerSearchOptions.find(item => item.prop === 'warehouseId')
+      if (whOption) this.$set(whOption, 'option', opts)
     },
     handleClosed() {
       this.activeTab = 'map'
-      this.detailVisible = false
-      this.detailContainer = null
     },
     async loadBalanceAreas() {
       const res = await getLocationHierarchy(1)
@@ -383,7 +291,6 @@ export default {
     },
     handleTabClick() {
       if (this.activeTab === 'container') this.queryContainerList()
-      if (this.activeTab === 'inbound') this.queryInboundList()
     },
     buildShelvesFromPositions(list) {
       const shelfMap = {}
@@ -416,47 +323,51 @@ export default {
       })
       return Object.values(shelfMap)
     },
-    openContainerDetail(container) {
+    handleContainerClick(container) {
       const normalized = this.normalizeGoods(container)
-      if (!this.canSelectContainer(normalized)) {
-        this.$message.warning('仅可选择已占用且有容器信息的位置')
-        return
+      if (!normalized.containerCode) return
+      const idx = this.selectedContainers.findIndex(c => c.containerCode === normalized.containerCode)
+      if (idx >= 0) {
+        this.selectedContainers.splice(idx, 1)
+      } else {
+        this.selectedContainers.push(normalized)
       }
-      this.detailContainer = normalized
-      this.detailVisible = true
-    },
-    addDetailContainer() {
-      if (this.detailContainer) this.addCheckedRows([this.detailContainer])
-      this.detailVisible = false
-    },
-    canSelectContainer(row) {
-      return !!(row && row.containerCode && String(row.status) !== '0')
     },
     normalizeGoods(row = {}) {
+      // positionMap 接口的容器维度信息封装在 inboundGoodsEntity 中，需解包提升到外层；
+      // getInboundGoodsPageList 返回的是扁平容器数据，entity 为空时自动回退到外层字段
+      const entity = row.inboundGoodsEntity || {}
+      const pick = (primary, ...fallback) => {
+        for (const v of [primary, ...fallback]) {
+          if (v !== undefined && v !== null && v !== '') return v
+        }
+        return ''
+      }
       return {
         ...row,
         id: row.id,
-        taskNum: row.taskNum,
-        containerCode: row.containerCode,
-        goodCode: row.goodCode,
-        goodsName: row.goodsName,
-        warehouseId: row.warehouseId,
-        warehouseName: row.warehouseName !== undefined ? row.warehouseName : row.warehouse,
-        boxNum: row.boxNum !== undefined ? row.boxNum : row.boxNo,
-        grossWeight: row.grossWeight,
-        tareWeight: row.tareWeight,
-        netWeight: row.netWeight,
-        productionUnit: row.productionUnit,
-        shelfCode: row.shelfCode,
-        rowCode: row.rowCode,
-        columnCode: row.columnCode,
+        taskNum: pick(entity.taskNum, row.taskNum),
+        containerCode: pick(entity.containerCode, row.containerCode, row.code),
+        goodCode: pick(entity.goodCode, row.goodCode, row.goodsCode),
+        goodsName: pick(row.goodsName, entity.goodsName, entity.goodCode, row.goodCode, row.goodsCode),
+        warehouseId: pick(row.warehouseId, entity.warehouseId),
+        warehouseName: pick(row.warehouseName, entity.warehouseName, row.warehouse),
+        boxNum: pick(entity.boxNum, row.boxNum, row.boxNo),
+        grossWeight: pick(entity.grossWeight, row.grossWeight),
+        tareWeight: pick(entity.tareWeight, row.tareWeight),
+        netWeight: pick(entity.netWeight, row.netWeight),
+        productionUnit: pick(entity.productionUnit, row.productionUnit),
+        shelfCode: pick(row.shelfCode, entity.shelfCode),
+        rowCode: pick(row.rowCode, entity.rowCode),
+        columnCode: pick(row.columnCode, entity.columnCode),
         shelfId: row.shelfId,
         rowId: row.rowId,
         columnId: row.columnId,
-        sealCode1: row.sealCode1,
-        sealCode2: row.sealCode2,
-        sealType1: row.sealType1,
-        sealType2: row.sealType2,
+        sealCode1: pick(entity.sealCode1, row.sealCode1),
+        sealCode2: pick(entity.sealCode2, row.sealCode2),
+        sealType1: pick(entity.sealType1, row.sealType1),
+        sealType2: pick(entity.sealType2, row.sealType2),
+        metalPercentage: pick(entity.metalPercentage, row.metalPercentage),
         status: row.status == null ? 1 : row.status,
       }
     },
@@ -486,34 +397,17 @@ export default {
       this.containerList = (data.list || []).map(this.normalizeGoods)
       this.containerTotal = (data.pagination && data.pagination.total) || 0
     },
-    async queryInboundList() {
-      const res = await getInboundGoodsPageList(this.buildGoodsParams(this.inboundSearch))
-      const data = res.data || {}
-      this.inboundList = (data.list || []).map(this.normalizeGoods)
-      this.inboundTotal = (data.pagination && data.pagination.total) || 0
-    },
     resetContainerSearch() {
-      this.containerSearch = { currentPage: 1, pageSize: 20, containerCode: '', goodCode: '', timeRange: [] }
+      this.containerSearch = { currentPage: 1, pageSize: 20, containerCode: '', goodCode: '', warehouseId: '', timeRange: [], netWeightMin: '', netWeightMax: '' }
       this.queryContainerList()
-    },
-    resetInboundSearch() {
-      this.inboundSearch = { currentPage: 1, pageSize: 20, taskNum: '' }
-      this.queryInboundList()
     },
     handleContainerPageChange(page) {
       this.containerSearch.currentPage = page
       this.queryContainerList()
     },
-    handleInboundPageChange(page) {
-      this.inboundSearch.currentPage = page
-      this.queryInboundList()
-    },
     getPositionText(row) {
       const values = [row.shelfCode, row.rowCode, row.columnCode].filter(Boolean)
       return values.length ? values.join('-') : '-'
-    },
-    getWeightText(row) {
-      return `${row.grossWeight || 0}、${row.tareWeight || 0}、${row.netWeight || 0}`
     },
     confirmSelected() {
       this.$emit('confirm', clone(this.selectedContainers))
