@@ -599,8 +599,54 @@ export default {
       }
       reader.readAsText(file)
     },
-    applyImportData(data) {
-      // 1. 填充主表单
+    async applyImportData(data) {
+      // 1. 提取库房数据
+      const warehouseList = data.warehouseList || []
+      if (warehouseList.length === 0) {
+        this.$message.warning('导入数据中没有库房明细')
+        return
+      }
+
+      // 2. 检查是否有已填写结果的库房
+      const existingWarehouses = []
+      warehouseList.forEach(warehouse => {
+        const wId = String(warehouse.warehouseId)
+        const existingGoods = this.goodsListMap[wId] || []
+        // 检查明细中是否有已填写结果的数据
+        const hasResultData = existingGoods.some(item => {
+          const hasResult = item.result !== undefined && item.result !== null && item.result !== '' && item.result !== '-1'
+          const hasRemark = item.resultRemark && item.resultRemark.trim() !== ''
+          return hasResult || hasRemark
+        })
+        if (hasResultData) {
+          const wName = warehouse.warehouseName || `库房 ${wId}`
+          const resultCount = existingGoods.filter(item => {
+            const hasResult = item.result !== undefined && item.result !== null && item.result !== '' && item.result !== '-1'
+            const hasRemark = item.resultRemark && item.resultRemark.trim() !== ''
+            return hasResult || hasRemark
+          }).length
+          existingWarehouses.push({ id: wId, name: wName, count: resultCount })
+        }
+      })
+
+      // 3. 如果有已存在的库房，弹出确认框
+      if (existingWarehouses.length > 0) {
+        const warehouseNames = existingWarehouses.map(w => `${w.name}(${w.count}条已填写结果)`).join('、')
+        try {
+          await this.$confirm(`以下库房已有数据：${warehouseNames}。\n是否覆盖这些数据？`, '确认覆盖', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+          })
+        } catch {
+          // 用户取消，不执行导入
+          this.importLoading = false
+          return
+        }
+      }
+
+      // 4. 用户确认或无冲突，执行数据填充
+      // 4.1 填充主表单
       const inventory = data.inventory || {}
       if (inventory.taskNum) this.$set(this.form, 'taskNum', inventory.taskNum)
       if (inventory.selectType) this.$set(this.form, 'selectType', inventory.selectType)
@@ -612,19 +658,13 @@ export default {
           : Array.isArray(inventory.warehouseIds) ? inventory.warehouseIds.map(id => String(id)) : []
         this.$set(this.form, 'warehouseIds', wIds)
       }
-      // 2. 填充统计数据
+      // 4.2 填充统计数据
       if (data.totalNormalCount !== undefined) this.statistics.totalNormalCount = data.totalNormalCount
       if (data.totalDeficitCount !== undefined) this.statistics.totalDeficitCount = data.totalDeficitCount
       if (data.totalExcessCount !== undefined) this.statistics.totalExcessCount = data.totalExcessCount
 
-      // 3. 填充库房列表和明细
-      const warehouseList = data.warehouseList || []
-      if (warehouseList.length === 0) {
-        this.$message.warning('导入数据中没有库房明细')
-        return
-      }
+      // 4.3 填充库房列表和明细
       this.warehouseList = warehouseList
-      // 初始化 Tab 和表单数据
       this.initInventoryFormData(warehouseList)
       this.fillGoodsListFromWarehouseList(warehouseList)
       this.$message.success(`成功导入 ${warehouseList.length} 个库房的盘存数据`)
