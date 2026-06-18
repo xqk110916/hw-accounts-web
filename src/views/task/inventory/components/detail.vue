@@ -24,7 +24,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="库房名称" v-if="(type === 'view' || type === 'audit') && form.warehouseNames">
+        <el-form-item label="库房名称" v-if="(type === 'view' || type === 'audit' || type === 'inputResult') && form.warehouseNames">
           <span>{{ form.warehouseNames }}</span>
         </el-form-item>
         <el-form-item label="备注" prop="remark" v-if="type === 'add' || type === 'edit'">
@@ -63,7 +63,7 @@
         <template v-if="hasGoodsList">
           <el-button type="success" @click="handleExport" :loading="exportLoading">导出盘存清单</el-button>
           <!-- <el-button type="warning" @click="handleExportToPad" :loading="exportPadLoading">导出到PAD</el-button> -->
-          <el-button type="info" @click="handleDownloadPadStream" :loading="downloadPadLoading">下载PAD盘存数据</el-button>
+          <el-button v-if="type === 'edit' || type === 'view'" type="info" @click="handleDownloadPadStream" :loading="downloadPadLoading">下载PAD盘存数据</el-button>
         </template>
       </div>
       <!-- 录入结果模式：导入盘存数据 -->
@@ -98,7 +98,8 @@
           </template>
           <!-- 录入结果模式 -->
           <template v-if="type === 'inputResult'">
-            <el-button type="primary" size="small" @click="submitResult" :loading="submitting">提交结果</el-button>
+            <el-button size="small" @click="submitResult(4)" :loading="submitting">暂存</el-button>
+            <el-button type="primary" size="small" @click="submitResult(0)" :loading="submitting">提交结果</el-button>
           </template>
           <!-- 审核模式 -->
           <template v-if="type === 'audit'">
@@ -117,6 +118,9 @@
         <el-button type="primary" size="small" @click="confirmReject">确定</el-button>
       </div>
     </el-dialog>
+
+    <!-- 下载PAD盘存数据：选择库房 -->
+    <DownloadPadDialog ref="downloadPadDialog" @confirm="doDownloadPadStream" />
   </div>
 </template>
 
@@ -129,6 +133,7 @@ import { getLocationHierarchy } from '@/views/task/outbound/components/api.js'
 import { getWarehouseById } from '@/views/warehouse/warehouse/config/warehouseConfig.js'
 import { renderInventoryPlan, buildInventoryResultMap } from '../utils/renderInventoryPlan.js'
 import InventoryContainer from './InventoryContainer.vue'
+import DownloadPadDialog from './DownloadPadDialog.vue'
 
 let JSZip = null
 function loadJSZip() {
@@ -142,6 +147,7 @@ function loadJSZip() {
 export default {
   components: {
     InventoryContainer,
+    DownloadPadDialog,
   },
   data() {
     return {
@@ -328,6 +334,8 @@ export default {
         deficitRemark: warehouse.deficitRemark || '',
         excessCount: warehouse.excessCount || 0,
         excessRemark: warehouse.excessRemark || '',
+        // 导入标记：后端回传 dataStatus(1=已导入PAD数据)，默认 0
+        dataStatus: warehouse.dataStatus === 1 ? 1 : 0,
       }
     },
     normalizeGoodsList(goodsList) {
@@ -558,9 +566,21 @@ export default {
       })
     },
     handleDownloadPadStream() {
+      // 先选择需要下载的库房（数据源为本任务详情返回的 warehouseList）
       if (!this.form.taskNum) return
+      if (!this.warehouseList || this.warehouseList.length === 0) {
+        this.$message.warning('当前任务没有可下载的库房')
+        return
+      }
+      this.$refs.downloadPadDialog.open(this.warehouseList)
+    },
+    doDownloadPadStream(warehouseIds) {
+      if (!this.form.taskNum || !warehouseIds || warehouseIds.length === 0) return
       this.downloadPadLoading = true
-      exportToPadStream({ taskNum: this.form.taskNum }).then(res => {
+      exportToPadStream({
+        taskNum: this.form.taskNum,
+        warehouseId: warehouseIds.join(','),
+      }).then(res => {
         const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
         const disposition = res.headers && res.headers['content-disposition']
         let fileName = `PAD盘存数据_${this.form.taskNum}.json`
@@ -599,75 +619,108 @@ export default {
       }
       reader.readAsText(file)
     },
+    // 检测某库房是否已存在数据：明细 / 统计 / 人员信息 三类任一有值即视为有数据
+    hasExistingWarehouseData(wId) {
+      const form = this.inventoryFormMap[wId] || {}
+      // 人员信息
+      const hasPersonnel = ['inventoryTime', 'inventoryUser', 'sealChecker', 'responsibleUser', 'supervisor']
+        .some(k => form[k] !== undefined && form[k] !== null && String(form[k]).trim() !== '')
+      // 统计(正常/盘盈/盘亏数 或 盘存结果)
+      const hasStats = ['normalCount', 'excessCount', 'deficitCount'].some(k => Number(form[k]) > 0)
+        || (form.inventoryResult && form.inventoryResult !== '')
+      // 明细
+      const hasGoods = (this.goodsListMap[wId] || []).some(item => {
+        const hasResult = item.result !== undefined && item.result !== null && item.result !== '' && item.result !== '-1'
+        const hasRemark = item.resultRemark && item.resultRemark.trim() !== ''
+        return hasResult || hasRemark
+      })
+      return { hasPersonnel, hasStats, hasGoods, any: hasPersonnel || hasStats || hasGoods }
+    },
+    getWarehouseName(wId) {
+      const tab = this.tabList.find(t => t.id === wId)
+      return (tab && tab.name) || `库房 ${wId}`
+    },
     async applyImportData(data) {
-      // 1. 提取库房数据
-      const warehouseList = data.warehouseList || []
-      if (warehouseList.length === 0) {
+      const importedList = data.warehouseList || []
+      if (importedList.length === 0) {
         this.$message.warning('导入数据中没有库房明细')
         return
       }
 
-      // 2. 检查是否有已填写结果的库房
-      const existingWarehouses = []
-      warehouseList.forEach(warehouse => {
+      // 1. 仅保留命中本任务的库房(以 inventoryFormMap 已有的库房为准)；未命中忽略并提示
+      const matched = []
+      const ignoredNames = []
+      importedList.forEach(warehouse => {
         const wId = String(warehouse.warehouseId)
-        const existingGoods = this.goodsListMap[wId] || []
-        // 检查明细中是否有已填写结果的数据
-        const hasResultData = existingGoods.some(item => {
-          const hasResult = item.result !== undefined && item.result !== null && item.result !== '' && item.result !== '-1'
-          const hasRemark = item.resultRemark && item.resultRemark.trim() !== ''
-          return hasResult || hasRemark
-        })
-        if (hasResultData) {
-          const wName = warehouse.warehouseName || `库房 ${wId}`
-          const resultCount = existingGoods.filter(item => {
-            const hasResult = item.result !== undefined && item.result !== null && item.result !== '' && item.result !== '-1'
-            const hasRemark = item.resultRemark && item.resultRemark.trim() !== ''
-            return hasResult || hasRemark
-          }).length
-          existingWarehouses.push({ id: wId, name: wName, count: resultCount })
+        if (this.inventoryFormMap[wId]) {
+          matched.push(warehouse)
+        } else {
+          ignoredNames.push(warehouse.warehouseName || `库房 ${wId}`)
         }
       })
+      if (ignoredNames.length > 0) {
+        // 异常提示用 MessageBox($alert)，模态置顶不会被其他提示遮挡；
+        // 纯告知性质，无论确定还是关闭(X/ESC)都继续后续导入
+        await this.$alert(`以下库房不属于本任务，已忽略：${ignoredNames.join('、')}`, '提示', {
+          confirmButtonText: '确定',
+          type: 'warning',
+        }).catch(() => {})
+      }
+      if (matched.length === 0) {
+        // 全部被忽略，已在上方 MessageBox 提示，无需重复
+        return
+      }
 
-      // 3. 如果有已存在的库房，弹出确认框
-      if (existingWarehouses.length > 0) {
-        const warehouseNames = existingWarehouses.map(w => `${w.name}(${w.count}条已填写结果)`).join('、')
+      // 2. 检测冲突库房(已有明细/统计/人员信息)
+      const conflictIds = new Set(
+        matched
+          .filter(w => this.hasExistingWarehouseData(String(w.warehouseId)).any)
+          .map(w => String(w.warehouseId))
+      )
+
+      // 3. 确定本次填充范围：冲突库房需用户确认是否覆盖；取消则仅填充无冲突库房
+      let toFill = matched
+      if (conflictIds.size > 0) {
+        const names = matched
+          .filter(w => conflictIds.has(String(w.warehouseId)))
+          .map(w => this.getWarehouseName(String(w.warehouseId)))
+          .join('、')
         try {
-          await this.$confirm(`以下库房已有数据：${warehouseNames}。\n是否覆盖这些数据？`, '确认覆盖', {
+          await this.$confirm(`以下库房已有数据：${names}。\n是否覆盖这些库房？`, '确认覆盖', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning',
           })
+          // 确认：覆盖冲突库房 + 填充无冲突库房
+          toFill = matched
         } catch {
-          // 用户取消，不执行导入
-          this.importLoading = false
-          return
+          // 取消：跳过冲突库房，仅填充无冲突库房
+          toFill = matched.filter(w => !conflictIds.has(String(w.warehouseId)))
         }
       }
 
-      // 4. 用户确认或无冲突，执行数据填充
-      // 4.1 填充主表单
-      const inventory = data.inventory || {}
-      if (inventory.taskNum) this.$set(this.form, 'taskNum', inventory.taskNum)
-      if (inventory.selectType) this.$set(this.form, 'selectType', inventory.selectType)
-      if (inventory.remark !== undefined) this.$set(this.form, 'remark', inventory.remark)
-      if (inventory.warehouseNames) this.$set(this.form, 'warehouseNames', inventory.warehouseNames)
-      if (inventory.warehouseIds) {
-        const wIds = typeof inventory.warehouseIds === 'string'
-          ? inventory.warehouseIds.split(',').filter(Boolean).map(id => String(id))
-          : Array.isArray(inventory.warehouseIds) ? inventory.warehouseIds.map(id => String(id)) : []
-        this.$set(this.form, 'warehouseIds', wIds)
+      if (toFill.length === 0) {
+        this.$message.info('已取消导入')
+        return
       }
-      // 4.2 填充统计数据
-      if (data.totalNormalCount !== undefined) this.statistics.totalNormalCount = data.totalNormalCount
-      if (data.totalDeficitCount !== undefined) this.statistics.totalDeficitCount = data.totalDeficitCount
-      if (data.totalExcessCount !== undefined) this.statistics.totalExcessCount = data.totalExcessCount
 
-      // 4.3 填充库房列表和明细
-      this.warehouseList = warehouseList
-      this.initInventoryFormData(warehouseList)
-      this.fillGoodsListFromWarehouseList(warehouseList)
-      this.$message.success(`成功导入 ${warehouseList.length} 个库房的盘存数据`)
+      // 4. 执行填充：保持 tabList/warehouseList 全量不动，仅按 warehouseId merge 命中库房
+      toFill.forEach(warehouse => {
+        const wId = String(warehouse.warehouseId)
+        // 表单(强制标记 dataStatus=1 已导入)
+        this.$set(this.inventoryFormMap, wId, {
+          ...this.buildInventoryFormFromWarehouse(warehouse),
+          dataStatus: 1,
+        })
+        // 明细
+        this.$set(this.goodsListMap, wId, this.normalizeGoodsList(warehouse.goodsList))
+        this.syncAbnormalContainerCodes(wId)
+      })
+
+      // 存在异常(被忽略的库房)时只提示异常，不再弹出成功提示，避免遮挡
+      if (ignoredNames.length === 0) {
+        this.$message.success(`成功导入 ${toFill.length} 个库房的盘存数据`)
+      }
     },
     handleGoodsSelectionChange(selection) {
       this.selectedGoods = selection
@@ -801,6 +854,8 @@ export default {
         deficitRemark: wForm.deficitRemark || '',
         excessCount: wForm.excessCount || 0,
         excessRemark: wForm.excessRemark || '',
+        // 导入标记一并提交(暂存/提交结果都带)
+        dataStatus: wForm.dataStatus === 1 ? 1 : 0,
       }
     },
     validateInventoryResultForm(warehouseList) {
@@ -825,11 +880,13 @@ export default {
       }
       return true
     },
-    submitResult() {
+    submitResult(status) {
+      const isDraft = status === 4
       const warehouseList = this.warehouseList && this.warehouseList.length
         ? this.warehouseList
         : this.tabList.map(tab => ({ warehouseId: tab.id, warehouseName: tab.name }))
-      if (!this.validateInventoryResultForm(warehouseList)) return
+      // 暂存(草稿)跳过必填校验，提交结果保持完整校验
+      if (!isDraft && !this.validateInventoryResultForm(warehouseList)) return
       const wareList = warehouseList.map(w => {
         const wId = String(w.warehouseId)
         const goods = this.goodsListMap[wId] || []
@@ -853,14 +910,16 @@ export default {
           })),
         }
       })
-      this.submitting = true
-      submitInventoryResult({
+      const payload = {
         id: this.form.id,
         taskNum: this.form.taskNum,
         wareList,
-      }).then(res => {
+        status, // 暂存传4(待提交)，提交传0(待审核)
+      }
+      this.submitting = true
+      submitInventoryResult(payload).then(res => {
         if (res.code === 1) {
-          this.$message.success('录入结果成功')
+          this.$message.success(isDraft ? '暂存成功' : '录入结果成功')
           this.$emit('query')
           this.close()
         }

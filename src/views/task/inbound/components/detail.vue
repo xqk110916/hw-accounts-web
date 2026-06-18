@@ -337,18 +337,18 @@
       </el-form-item>
       <el-row :gutter="10">
         <el-col :span="8">
-          <el-form-item label="毛重" prop="grossWeight">
-            <el-input v-model="detailEditForm.grossWeight" size="small" placeholder="毛重" @blur="formatWeightField('grossWeight')" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
           <el-form-item label="皮重" prop="tareWeight">
-            <el-input v-model="detailEditForm.tareWeight" size="small" placeholder="皮重" @blur="formatWeightField('tareWeight')" />
+            <el-input v-model="detailEditForm.tareWeight" size="small" placeholder="皮重" @blur="handleWeightChange('tareWeight')" />
           </el-form-item>
         </el-col>
         <el-col :span="8">
           <el-form-item label="净重" prop="netWeight">
-            <el-input v-model="detailEditForm.netWeight" size="small" placeholder="净重" @blur="formatWeightField('netWeight')" />
+            <el-input v-model="detailEditForm.netWeight" size="small" placeholder="净重" @blur="handleWeightChange('netWeight')" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="毛重" prop="grossWeight">
+            <el-input v-model="detailEditForm.grossWeight" size="small" placeholder="毛重(皮重+净重)" @blur="handleWeightChange('grossWeight')" />
           </el-form-item>
         </el-col>
       </el-row>
@@ -808,6 +808,20 @@ export default {
       }
       return Promise.resolve([])
     },
+    // 重量变化时格式化自身；皮重/净重变化时自动计算毛重(毛重=皮重+净重)，毛重亦可手动编辑
+    handleWeightChange(field) {
+      this.formatWeightField(field)
+      if (field === 'tareWeight' || field === 'netWeight') {
+        this.calcGrossWeight()
+      }
+    },
+    // 毛重 = 皮重 + 净重，自动计算并补全5位小数
+    calcGrossWeight() {
+      const tare = Number(this.detailEditForm.tareWeight)
+      const net = Number(this.detailEditForm.netWeight)
+      const gross = !isNaN(tare) && !isNaN(net) ? tare + net : 0
+      this.$set(this.detailEditForm, 'grossWeight', gross.toFixed(5))
+    },
     // 毛皮净重量自动补全5位小数
     formatWeightField(field) {
       const val = this.detailEditForm[field]
@@ -939,7 +953,7 @@ export default {
           }
           // 如果没有 positionId，尝试根据排行列编码反向查找对应的位置 ID
           else if (this.detailEditForm.shelfCode) {
-            const targetPos = this.positionOptions.find(p => 
+            const targetPos = this.positionOptions.find(p =>
               String(p.shelfCode) === String(this.detailEditForm.shelfCode) &&
               String(p.rowCode) === String(this.detailEditForm.rowCode) &&
               String(p.columnCode) === String(this.detailEditForm.columnCode)

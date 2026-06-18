@@ -1,7 +1,11 @@
 <template>
   <div class="inventory-container" v-if="tabList.length > 0">
     <el-tabs :value="activeTab" @input="$emit('update:activeTab', $event)" type="border-card">
-      <el-tab-pane v-for="tab in tabList" :key="tab.id" :label="tab.name" :name="tab.id">
+      <el-tab-pane v-for="tab in tabList" :key="tab.id" :name="tab.id">
+        <span slot="label" class="tab-label">
+          {{ tab.name }}
+          <el-tag v-if="showImportStatus" size="mini" :type="getImportTagType(tab.id)" class="tab-status-tag">{{ getImportTagText(tab.id) }}</el-tag>
+        </span>
         <!-- Word风格表格表单 -->
         <div class="inventory-form-table" v-if="inventoryFormMap[tab.id]">
           <table class="word-table" cellpadding="0" cellspacing="0">
@@ -213,8 +217,21 @@ export default {
     isReadonlyResultMode() {
       return this.type === 'view' || this.type === 'audit'
     },
+    // 仅录入结果/查看模式展示导入状态标签
+    showImportStatus() {
+      return this.type === 'inputResult' || this.type === 'view'
+    },
   },
   methods: {
+    isWarehouseImported(wId) {
+      return this.inventoryFormMap[wId] && this.inventoryFormMap[wId].dataStatus === 1
+    },
+    getImportTagType(wId) {
+      return this.isWarehouseImported(wId) ? 'success' : 'info'
+    },
+    getImportTagText(wId) {
+      return this.isWarehouseImported(wId) ? '已导入' : '未导入'
+    },
     updateForm(warehouseId, field, value) {
       this.$emit('update:inventoryFormMap', {
         warehouseId,
@@ -459,4 +476,12 @@ export default {
 .result-normal { color: #2e7d32; }
 .result-deficit { color: #c62828; }
 .result-excess { color: #e68600; }
+
+.tab-label {
+  display: inline-flex;
+  align-items: center;
+}
+.tab-status-tag {
+  margin-left: 6px;
+}
 </style>
