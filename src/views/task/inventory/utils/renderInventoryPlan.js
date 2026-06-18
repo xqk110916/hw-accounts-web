@@ -6,16 +6,14 @@
 // 盘存状态颜色配置
 const INVENTORY_COLORS = {
   normal: '#43a047',   // 正常 - 绿色
-  deficit: '#d32f2f',  // 盘亏 - 红色
-  excess: '#ef6c00',   // 盘盈 - 橙色
+  deficit: '#d32f2f',  // 不正常 - 红色
   unscanned: 'rgba(160,160,160,0.45)', // 非本次盘单容器 - 灰色半透明
   empty: 'rgba(255,255,255,0.15)',     // 空位
 }
 
 const LEGEND_ITEMS = [
   { color: INVENTORY_COLORS.normal, label: '正常' },
-  { color: INVENTORY_COLORS.deficit, label: '盘亏' },
-  { color: INVENTORY_COLORS.excess, label: '盘盈' },
+  { color: INVENTORY_COLORS.deficit, label: '不正常' },
   { color: INVENTORY_COLORS.unscanned, label: '非本次盘单' },
 ]
 
@@ -25,10 +23,10 @@ const LEGEND_HEIGHT = 32
 
 /**
  * 将盘存结果状态码映射为颜色键名
- * '0' → normal, '1' → deficit, '2' → excess
+ * '0' → normal, '1' → deficit
  */
 function resultToStatusKey(result) {
-  const map = { '0': 'normal', '1': 'deficit', '2': 'excess' }
+  const map = { '0': 'normal', '1': 'deficit' }
   return map[String(result)] || null
 }
 

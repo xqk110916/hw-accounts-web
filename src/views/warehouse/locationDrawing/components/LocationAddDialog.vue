@@ -49,7 +49,7 @@
         <el-row :gutter="20">
           <el-col :span="24">
             <el-form-item label="材料名称" prop="materialType">
-              <el-select v-model="form.materialType" placeholder="请选择材料名称" style="width: 100%" :disabled="isReadonly" multiple collapse-tags>
+              <el-select v-model="form.materialType" placeholder="请选择材料名称" style="width: 100%" :disabled="isReadonly || isEdit" multiple collapse-tags>
                 <el-option
                   v-for="item in materialTypeOptions"
                   :key="item.value"

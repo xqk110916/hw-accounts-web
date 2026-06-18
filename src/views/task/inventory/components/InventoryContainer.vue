@@ -100,50 +100,25 @@
                   <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].deficitRemark || '' }}</span>
                 </td>
               </tr>
-              <!-- 异常时：盘盈容器 -->
+              <!-- 异常时：不正常容器 -->
               <tr v-if="type === 'inputResult' && inventoryFormMap[tab.id].inventoryResult === 'partial_abnormal'">
-                <td class="label-cell">盘盈容器</td>
+                <td class="label-cell">不正常容器</td>
                 <td colspan="5">
                   <el-select
-                    :value="inventoryFormMap[tab.id].excessContainerCodes || []"
+                    :value="inventoryFormMap[tab.id].abnormalContainerCodes || []"
                     multiple
                     filterable
                     collapse-tags
                     size="small"
-                    placeholder="请选择盘盈容器"
+                    placeholder="请选择不正常容器"
                     style="width: 100%"
-                    @input="handleAbnormalContainerChange(tab.id, 'excess', $event)"
+                    @input="handleAbnormalContainerChange(tab.id, $event)"
                   >
                     <el-option
                       v-for="(item, idx) in goodsListMap[tab.id] || []"
-                      :key="'excess_' + idx"
+                      :key="'abnormal_' + idx"
                       :label="item.containerCode || '-'"
                       :value="getGoodsKey(item, idx)"
-                      :disabled="isOppositeContainerSelected(tab.id, 'excess', item, idx)"
-                    />
-                  </el-select>
-                </td>
-              </tr>
-              <!-- 异常时：盘亏容器 -->
-              <tr v-if="type === 'inputResult' && inventoryFormMap[tab.id].inventoryResult === 'partial_abnormal'">
-                <td class="label-cell">盘亏容器</td>
-                <td colspan="5">
-                  <el-select
-                    :value="inventoryFormMap[tab.id].deficitContainerCodes || []"
-                    multiple
-                    filterable
-                    collapse-tags
-                    size="small"
-                    placeholder="请选择盘亏容器"
-                    style="width: 100%"
-                    @input="handleAbnormalContainerChange(tab.id, 'deficit', $event)"
-                  >
-                    <el-option
-                      v-for="(item, idx) in goodsListMap[tab.id] || []"
-                      :key="'deficit_' + idx"
-                      :label="item.containerCode || '-'"
-                      :value="getGoodsKey(item, idx)"
-                      :disabled="isOppositeContainerSelected(tab.id, 'deficit', item, idx)"
                     />
                   </el-select>
                 </td>
@@ -160,8 +135,7 @@
             <div v-if="type === 'inputResult' && selectedGoodsMap[tab.id] && selectedGoodsMap[tab.id].length > 0" class="batch-actions">
               <span class="batch-info">已选 {{ selectedGoodsMap[tab.id].length }} 项</span>
               <el-button type="success" size="mini" @click="batchSetResult(tab.id, '0')">批量设为正常</el-button>
-              <el-button type="warning" size="mini" @click="batchSetResult(tab.id, '2')">批量设为盘盈</el-button>
-              <el-button type="danger" size="mini" @click="batchSetResult(tab.id, '1')">批量设为盘亏</el-button>
+              <el-button type="danger" size="mini" @click="batchSetResult(tab.id, '1')">批量设为不正常</el-button>
             </div>
           </div>
           <el-table
@@ -185,8 +159,7 @@
                 <div class="result-cell">
                   <el-radio-group v-model="scope.row.result" size="mini" @change="handleGoodsResultChange(tab.id)">
                     <el-radio label="0">正常</el-radio>
-                    <el-radio label="1">盘亏</el-radio>
-                    <el-radio label="2">盘盈</el-radio>
+                    <el-radio label="1">不正常</el-radio>
                   </el-radio-group>
                   <el-input v-model="scope.row.resultRemark" size="mini" placeholder="备注" class="cell-remark mt-5" />
                 </div>
@@ -255,10 +228,9 @@ export default {
         value,
       })
     },
-    handleAbnormalContainerChange(warehouseId, resultType, value) {
+    handleAbnormalContainerChange(warehouseId, value) {
       this.$emit('abnormal-container-change', {
         warehouseId,
-        resultType,
         value,
       })
     },
@@ -276,7 +248,7 @@ export default {
         this.$message.warning('请先选择需要操作的明细')
         return
       }
-      const labelMap = { '0': '正常', '1': '盘亏', '2': '盘盈' }
+      const labelMap = { '0': '正常', '1': '不正常' }
       const applyResult = (remark) => {
         selected.forEach(item => {
           this.$set(item, 'result', result)
@@ -285,8 +257,8 @@ export default {
         this.handleGoodsResultChange(warehouseId)
         this.$message.success(`已将 ${selected.length} 项设为「${labelMap[result]}」`)
       }
-      // 盘盈/盘亏弹出备注输入框
-      if (result === '1' || result === '2') {
+      // 不正常弹出备注输入框
+      if (result === '1') {
         this.$prompt(`请输入「${labelMap[result]}」备注信息`, '批量设置备注', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
@@ -301,21 +273,16 @@ export default {
     getGoodsKey(item, idx) {
       return item.id ? String(item.id) : String(idx)
     },
-    isOppositeContainerSelected(warehouseId, resultType, item, idx) {
-      const form = this.inventoryFormMap[warehouseId] || {}
-      const oppositeField = resultType === 'excess' ? 'deficitContainerCodes' : 'excessContainerCodes'
-      return (form[oppositeField] || []).map(value => String(value)).includes(this.getGoodsKey(item, idx))
-    },
     getInventoryResultText(result) {
       const map = { all_normal: '全部正常', partial_abnormal: '部分异常', '1': '全部正常', '2': '部分异常' }
       return map[result] || '-'
     },
     getResultText(result) {
-      const map = { '0': '正常', '1': '盘亏', '2': '盘盈', '-1': '--' }
+      const map = { '0': '正常', '1': '不正常', '-1': '--' }
       return map[result] || result || '-'
     },
     getResultClass(result) {
-      const map = { '0': 'result-normal', '1': 'result-deficit', '2': 'result-excess' }
+      const map = { '0': 'result-normal', '1': 'result-deficit' }
       return map[result] || ''
     },
   },

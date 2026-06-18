@@ -156,8 +156,7 @@ export default {
         supervisor: '',
         inventoryResult: '', // all_normal, partial_abnormal
         normalCount: 0,
-        excessContainerCodes: [],
-        deficitContainerCodes: [],
+        abnormalContainerCodes: [],
         deficitCount: 0,
         deficitRemark: '',
         excessCount: 0,
@@ -324,8 +323,7 @@ export default {
         supervisor: warehouse.supervisor || warehouse.superviseMan || '',
         inventoryResult: this.normalizeResultStatus(warehouse.inventoryResult || warehouse.resultStatus),
         normalCount: warehouse.normalCount || 0,
-        excessContainerCodes: [],
-        deficitContainerCodes: [],
+        abnormalContainerCodes: [],
         deficitCount: warehouse.deficitCount || 0,
         deficitRemark: warehouse.deficitRemark || '',
         excessCount: warehouse.excessCount || 0,
@@ -400,8 +398,7 @@ export default {
                 supervisor: '',
                 inventoryResult: '',
                 normalCount: 0,
-                excessContainerCodes: [],
-                deficitContainerCodes: [],
+                abnormalContainerCodes: [],
                 deficitCount: 0,
                 deficitRemark: '',
                 excessCount: 0,
@@ -453,8 +450,7 @@ export default {
               supervisor: '',
               inventoryResult: '',
               normalCount: 0,
-              excessContainerCodes: [],
-              deficitContainerCodes: [],
+              abnormalContainerCodes: [],
               deficitCount: 0,
               deficitRemark: '',
               excessCount: 0,
@@ -893,11 +889,11 @@ export default {
       this.$refs.form && this.$refs.form.resetFields()
     },
     getResultText(result) {
-      const map = { '0': '正常', '1': '盘亏', '2': '盘盈' }
+      const map = { '0': '正常', '1': '不正常', '2': '不正常' }
       return map[result] || result || '-'
     },
     getResultClass(result) {
-      const map = { '0': 'result-normal', '1': 'result-deficit', '2': 'result-excess' }
+      const map = { '0': 'result-normal', '1': 'result-deficit', '2': 'result-deficit' }
       return map[result] || ''
     },
     handleInventoryFormUpdate({ warehouseId, field, value }) {
@@ -917,23 +913,20 @@ export default {
     updateInventoryCounts(warehouseId) {
       const goods = this.goodsListMap[warehouseId] || []
       this.$set(this.inventoryFormMap[warehouseId], 'normalCount', goods.filter(item => String(item.result) === '0').length)
-      this.$set(this.inventoryFormMap[warehouseId], 'deficitCount', goods.filter(item => String(item.result) === '1').length)
-      this.$set(this.inventoryFormMap[warehouseId], 'excessCount', goods.filter(item => String(item.result) === '2').length)
     },
     syncAbnormalContainerCodes(warehouseId, forceUpdateCounts = false) {
       if (!this.inventoryFormMap[warehouseId]) return
       const goods = this.goodsListMap[warehouseId] || []
-      const hasResultValue = goods.some(item => ['0', '1', '2'].includes(String(item.result)))
-      const deficitContainerCodes = []
-      const excessContainerCodes = []
+      const hasResultValue = goods.some(item => ['0', '1'].includes(String(item.result)))
+      const abnormalContainerCodes = []
       goods.forEach((item, idx) => {
         const key = this.getGoodsKey(item, idx)
-        if (String(item.result) === '1') deficitContainerCodes.push(key)
-        if (String(item.result) === '2') excessContainerCodes.push(key)
+        if (String(item.result) === '1' || String(item.result) === '2') {
+          abnormalContainerCodes.push(key)
+        }
       })
-      this.$set(this.inventoryFormMap[warehouseId], 'deficitContainerCodes', deficitContainerCodes)
-      this.$set(this.inventoryFormMap[warehouseId], 'excessContainerCodes', excessContainerCodes)
-      if (deficitContainerCodes.length > 0 || excessContainerCodes.length > 0) {
+      this.$set(this.inventoryFormMap[warehouseId], 'abnormalContainerCodes', abnormalContainerCodes)
+      if (abnormalContainerCodes.length > 0) {
         this.$set(this.inventoryFormMap[warehouseId], 'inventoryResult', 'partial_abnormal')
       }
       if (forceUpdateCounts || hasResultValue) {
@@ -945,35 +938,24 @@ export default {
       goods.forEach(item => {
         this.setGoodsResult(item, '0', true)
       })
-      this.$set(this.inventoryFormMap[warehouseId], 'deficitContainerCodes', [])
-      this.$set(this.inventoryFormMap[warehouseId], 'excessContainerCodes', [])
+      this.$set(this.inventoryFormMap[warehouseId], 'abnormalContainerCodes', [])
       this.$set(this.inventoryFormMap[warehouseId], 'normalCount', goods.length)
       this.$set(this.inventoryFormMap[warehouseId], 'deficitCount', 0)
       this.$set(this.inventoryFormMap[warehouseId], 'excessCount', 0)
     },
-    applyPartialAbnormal(warehouseId, resultType, containerCodes = []) {
-      const field = resultType === 'excess' ? 'excessContainerCodes' : 'deficitContainerCodes'
-      const oppositeField = resultType === 'excess' ? 'deficitContainerCodes' : 'excessContainerCodes'
+    applyPartialAbnormal(warehouseId, containerCodes = []) {
       const selectedKeys = containerCodes.map(item => String(item))
       const selectedSet = new Set(selectedKeys)
-      const oppositeKeys = (this.inventoryFormMap[warehouseId][oppositeField] || [])
-        .map(item => String(item))
-        .filter(item => !selectedSet.has(item))
-      const deficitSet = new Set(resultType === 'deficit' ? selectedKeys : oppositeKeys)
-      const excessSet = new Set(resultType === 'excess' ? selectedKeys : oppositeKeys)
       const goods = this.goodsListMap[warehouseId] || []
       goods.forEach((item, idx) => {
         const key = this.getGoodsKey(item, idx)
-        if (deficitSet.has(key)) {
+        if (selectedSet.has(key)) {
           this.setGoodsResult(item, '1')
-        } else if (excessSet.has(key)) {
-          this.setGoodsResult(item, '2')
         } else {
           this.setGoodsResult(item, '0', true)
         }
       })
-      this.$set(this.inventoryFormMap[warehouseId], field, selectedKeys)
-      this.$set(this.inventoryFormMap[warehouseId], oppositeField, oppositeKeys)
+      this.$set(this.inventoryFormMap[warehouseId], 'abnormalContainerCodes', selectedKeys)
       this.updateInventoryCounts(warehouseId)
     },
     handleInventoryResultChange({ warehouseId, value }) {
@@ -983,11 +965,11 @@ export default {
         this.applyAllNormal(warehouseId)
         return
       }
-      this.applyPartialAbnormal(warehouseId, 'deficit', this.inventoryFormMap[warehouseId].deficitContainerCodes || [])
+      this.applyPartialAbnormal(warehouseId, this.inventoryFormMap[warehouseId].abnormalContainerCodes || [])
     },
-    handleAbnormalContainerChange({ warehouseId, resultType, value }) {
+    handleAbnormalContainerChange({ warehouseId, value }) {
       if (!this.inventoryFormMap[warehouseId]) return
-      this.applyPartialAbnormal(warehouseId, resultType, value)
+      this.applyPartialAbnormal(warehouseId, value)
     },
     handleGoodsResultChange({ warehouseId }) {
       if (!this.inventoryFormMap[warehouseId]) return
