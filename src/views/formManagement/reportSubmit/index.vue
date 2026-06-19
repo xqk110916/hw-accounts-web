@@ -68,7 +68,15 @@
             <div class="header-right-actions">
               <el-button size="small" type="primary" icon="el-icon-finished" class="action-btn-save" @click="handleSave">保存报表</el-button>
               <el-button size="small" icon="el-icon-download" class="action-btn-export" @click="handleExport">导出 Excel</el-button>
-              <el-button size="small" icon="el-icon-printer" class="action-btn-print" @click="handlePrint">打印</el-button>
+              <!-- 仅支持这些报表模板打印 -->
+              <el-button
+                v-if="['R01', 'R03', 'R04', 'R05', 'R06', 'R08', 'R09'].includes(activeReport)"
+                size="small"
+                icon="el-icon-download"
+                class="action-btn-template"
+                @click="handleTemplatePrint"
+              >表单下载</el-button>
+              <!-- <el-button size="small" icon="el-icon-printer" class="action-btn-print" @click="handlePrint">浏览器打印</el-button> -->
             </div>
           </div>
 
@@ -262,6 +270,7 @@ import {
   normalizeDetailData
 } from './components/index.js'
 import { blobSaveExcel } from '@/utils'
+import { exportReportWithTemplate } from './components/exportReportTemplate.js'
 
 export default {
   name: 'ReportSubmit',
@@ -496,6 +505,52 @@ export default {
         if (searchItem) this.$set(searchItem, 'option', options)
       } catch (e) {
         console.error('刷新历史列表失败:', e)
+      }
+    },
+    async handleTemplatePrint() {
+      if (!this.templateData || !Object.keys(this.templateData).length) {
+        this.$message.warning('请先加载或填写报表数据')
+        return
+      }
+      try {
+        const code = this.activeReport
+        if (['R03', 'R05', 'R08', 'R09'].includes(code)) {
+          const data = this.templateData
+          const year = this.searchParams.year
+          const quarter = this.searchParams.quarter
+          
+          if (year && quarter) {
+            let startMonth = '', endMonth = '', startDate = '', endDate = ''
+            if (quarter === '1') {
+              startMonth = `${year}-01`; endMonth = `${year}-03`
+              startDate = `${year}-01-01`; endDate = `${year}-03-31`
+            } else if (quarter === '2') {
+              startMonth = `${year}-04`; endMonth = `${year}-06`
+              startDate = `${year}-04-01`; endDate = `${year}-06-30`
+            } else if (quarter === '3') {
+              startMonth = `${year}-07`; endMonth = `${year}-09`
+              startDate = `${year}-07-01`; endDate = `${year}-09-30`
+            } else if (quarter === '4') {
+              startMonth = `${year}-10`; endMonth = `${year}-12`
+              startDate = `${year}-10-01`; endDate = `${year}-12-31`
+            }
+            
+            if (!data.yearQuarterRangeStart && startMonth) {
+              this.$set(data, 'yearQuarterRangeStart', startMonth)
+              this.$set(data, 'yearQuarterRangeEnd', endMonth)
+            }
+            if (!data.actualDateRangeStart && startDate) {
+              this.$set(data, 'actualDateRangeStart', startDate)
+              this.$set(data, 'actualDateRangeEnd', endDate)
+            }
+          }
+        }
+
+        await exportReportWithTemplate(this.activeReport, this.templateData, this.securityOptions)
+        this.$message.success('表单文件已生成并开始下载')
+      } catch (e) {
+        console.error('表单下载失败:', e)
+        this.$message.error('表单下载失败: ' + (e.message || '未知错误'))
       }
     },
     handleExport() {

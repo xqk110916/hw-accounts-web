@@ -64,3 +64,8 @@ When generating a new page, component, route, menu, or standard List/CRUD interf
 - **原因**：项目有登录态，CDP-Bridge 可以连接已登录的 Chrome 浏览器，避免重复登录
 - **调试验证**：调试过程中以 CDP-Bridge 为主进行界面验证和调试，当 CDP-Bridge 无法满足需求时，可调用 `open-computer-use` MCP 工具辅助完成
 
+## 依赖管理规范（私有库保护）
+
+- **私有库保护**：本项目中 `node_modules` 存在一个不在外部 npm 注册表且并未在 package.json 中显式定义包源的私有依赖库 `zc-framework-ui`。
+- **禁止清空或覆盖安装**：在进行任何依赖安装、更新操作时，**绝对禁止**进行全量安装（如单纯运行 `yarn` / `npm install` 导致清除现有结构）或由于添加新依赖导致该私有包丢失。
+- **操作要求**：安装新依赖时（如 `yarn add xxx`），如果因为环境或配置导致该私有包在 `node_modules` 中被意外清理或破坏，必须通过解压项目中或原有的备份将其恢复，确保构建过程不会出现找不到 `zc-framework-ui` 模块相关的报错。
