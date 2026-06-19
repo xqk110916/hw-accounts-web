@@ -67,7 +67,13 @@
             </div>
             <div class="header-right-actions">
               <el-button size="small" type="primary" icon="el-icon-finished" class="action-btn-save" @click="handleSave">保存报表</el-button>
-              <el-button size="small" icon="el-icon-download" class="action-btn-export" @click="handleExport">导出 Excel</el-button>
+              <el-button 
+                size="small" 
+                icon="el-icon-download" 
+                class="action-btn-export" 
+                :disabled="isExportDisabled"
+                @click="handleExport"
+              >导出 Excel</el-button>
               <!-- 仅支持这些报表模板打印 -->
               <el-button
                 v-if="['R01', 'R03', 'R04', 'R05', 'R06', 'R08', 'R09'].includes(activeReport)"
@@ -297,6 +303,25 @@ export default {
     },
     currentColumns() {
       return this.currentConfig.columns || []
+    },
+    isExportDisabled() {
+      // 优先检测 templateData 是否存在真实的历史数据 ID
+      if (this.templateData && this.templateData.id) {
+        return false
+      }
+      // 兜底：如果尚未更新到 templateData.id，检测筛选参数里是否已选择历史版本
+      const code = this.activeReport
+      if (code === 'R01') {
+        const ids = this.searchParams.historyIds
+        if (Array.isArray(ids) && ids.length > 0) {
+          return false
+        }
+      } else {
+        if (this.searchParams.historyId) {
+          return false
+        }
+      }
+      return true
     },
   },
   methods: {
@@ -554,10 +579,33 @@ export default {
       }
     },
     handleExport() {
-      const fn = requestFun[this.activeReport]
+      const code = this.activeReport
+      const fn = requestFun[code]
       if (!fn || !fn.export) return
-      const params = buildQueryParams(this.activeReport, this.searchParams)
-      fn.export(params).then(res => {
+
+      // 优先获取当前加载报表的真实历史数据 ID
+      let reportId = this.templateData && this.templateData.id
+
+      // 兜底：如果模板数据中没有，则从筛选条件的历史下拉项中获取
+      if (!reportId) {
+        if (code === 'R01') {
+          const ids = this.searchParams.historyIds
+          if (Array.isArray(ids) && ids.length > 0) {
+            reportId = ids[ids.length - 1]
+          }
+        } else {
+          reportId = this.searchParams.historyId
+        }
+      }
+
+      // 如果未找到报表 ID，说明数据未保存为历史版本，直接导出后端接口会报 404/500。
+      // 提示用户先保存，或者引导其直接使用免保存的“表单下载”功能。
+      if (!reportId) {
+        this.$message.warning('当前报表未保存，无法进行后端导出。请先点击右上角「保存报表」或直接点击「表单下载」进行离线下载。')
+        return
+      }
+
+      fn.export(reportId).then(res => {
         const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
         const disposition = res.headers && res.headers['content-disposition']
         let fileName = `${this.activeReport}报表导出`
@@ -566,6 +614,9 @@ export default {
           if (match && match[1]) fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
         }
         blobSaveExcel(blob, fileName)
+      }).catch(err => {
+        console.error('报表导出失败:', err)
+        this.$message.error('报表导出失败')
       })
     },
     handlePrint() {
@@ -1346,13 +1397,21 @@ export default {
       border-color: #246fe5;
     }
 
-    .action-btn-export, .action-btn-print {
+    .action-btn-export, .action-btn-template, .action-btn-print {
       background-color: #ffffff;
       border-color: #cbd5e1;
       color: #334155;
       font-weight: 500;
       border-radius: 6px;
       &:hover { background-color: #f8fafc; border-color: #94a3b8; }
+
+      &.is-disabled, &.is-disabled:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #e2e8f0 !important;
+        color: #94a3b8 !important;
+        cursor: not-allowed !important;
+        opacity: 0.65 !important;
+      }
     }
   }
 }
