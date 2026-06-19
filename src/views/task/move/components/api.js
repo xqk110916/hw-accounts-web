@@ -87,6 +87,26 @@ export const getContainerInfo = (containerCode) => {
   })
 }
 
+// 下载导入模板（tempType=5 为移库模板，复用入库通用模板接口）
+export const downloadMoveTemplate = params => {
+  return request({
+    url: '/busin/inbound/downTemplate',
+    method: 'get',
+    params,
+    responseType: 'blob',
+  })
+}
+
+// 导入移库明细
+export const importMove = data => {
+  return request({
+    url: '/busin/move/import',
+    method: 'post',
+    data,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 export const move = {
   list: getMoveList,
   detail: getMoveDetail,

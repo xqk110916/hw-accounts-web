@@ -518,6 +518,7 @@ export default {
         materials: this.materials.map(item => ({
           goodCode: item.goodCode,
           materialName: item.materialName,
+          amount: item.amount === '' ? undefined : Number(item.amount),
           grossWeight: item.grossWeight === '' ? undefined : Number(item.grossWeight),
           tareWeight: item.tareWeight === '' ? undefined : Number(item.tareWeight),
           netWeight: item.netWeight === '' ? undefined : Number(item.netWeight),

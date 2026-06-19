@@ -109,6 +109,7 @@
         <div class="detail-header">
           <span class="detail-title">移库明细</span>
           <div class="detail-actions" v-if="!isReadonlyMode">
+            <el-button size="small" type="primary" @click="openImport">导入</el-button>
             <el-button size="small" type="primary" @click="addDetailRow">新增明细</el-button>
           </div>
         </div>
@@ -317,6 +318,8 @@
         <el-button type="primary" size="small" @click="submitDetailForm">确定</el-button>
       </div>
     </el-dialog>
+
+    <import-dialog ref="importDialog" @success="handleImportSuccess" />
   </div>
 </template>
 
@@ -326,6 +329,7 @@ import { config, requestFun, beforeSubmit } from './index.js'
 import { cancelMoveApply, confirmMove, executeAuditedMove, getLocationHierarchy, getPositionMap, getContainerInfo } from './api.js'
 import { generateBatchNo } from '@/api/common/batchNo.js'
 import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
+import ImportDialog from './ImportDialog.vue'
 
 function formatDefaultDate(value) {
   if (!(value instanceof Date)) return value
@@ -352,6 +356,8 @@ function valueOrEmpty(value) {
 }
 
 export default {
+  name: 'MoveDetail',
+  components: { ImportDialog },
   data() {
     return {
       row: {},
@@ -791,6 +797,31 @@ export default {
       this.$nextTick(() => {
         this.$refs.detailForm && this.$refs.detailForm.clearValidate()
       })
+    },
+    openImport() {
+      this.$refs.importDialog.open()
+    },
+    handleImportSuccess(rows) {
+      if (!rows || !rows.length) return
+      const existingCodes = new Set(this.detailList.map(item => item.containerCode).filter(Boolean))
+      const newRows = []
+      let skipped = 0
+      rows.forEach(row => {
+        const normalized = this.normalizeMoveGoods(row)
+        if (normalized.containerCode && existingCodes.has(normalized.containerCode)) {
+          skipped++
+          return
+        }
+        if (normalized.containerCode) existingCodes.add(normalized.containerCode)
+        newRows.push(normalized)
+      })
+      if (newRows.length) {
+        this.detailList = this.detailList.concat(newRows)
+        this.$message.success(`成功导入 ${newRows.length} 条明细`)
+      }
+      if (skipped > 0) {
+        this.$message.warning(`已跳过 ${skipped} 条容器号重复的明细`)
+      }
     },
     editDetailRow(row, index) {
       this.detailEditIndex = index

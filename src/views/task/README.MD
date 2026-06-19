@@ -180,6 +180,7 @@
 - `src/views/task/move/components/detail.vue`
 - `src/views/task/move/components/index.js`
 - `src/views/task/move/components/api.js`
+- `src/views/task/move/components/ImportDialog.vue`
 
 接口参考：
 
@@ -210,6 +211,14 @@
 - 提交传 `saveType=0`。
 
 新增时明细通过 `goodsList` 提交；编辑和修改时按打开详情时的原始明细和当前明细对比：新增明细放入 `dtoList`，当前版本不允许直接编辑已有移库明细，所以 `editList` 固定传空数组，删除明细的 `id` 和 `containerCode` 分别汇总到 `goodIds`、`containerCodes`。已审核任务修改时传 `updateType=1` 进入变更审核链路。
+
+### 明细导入（Excel）
+
+位置移动支持通过 Excel 批量导入移库明细，导入入口位于详情弹窗“移库明细”操作区。
+
+- 下载模板：`GET /busin/inbound/downTemplate`，参数 `tempType=5`（复用入库通用模板接口）。
+- 导入接口：`POST /busin/move/import`，参数 `file`（multipart/form-data）。
+- 导入返回数据兼容数组、`successList`、`list` 三种结构，预览确认后按 `containerCode` 去重合并到移库明细，并跳过已存在的容器号。
 
 ### 3. 源位置与目标位置选择
 
