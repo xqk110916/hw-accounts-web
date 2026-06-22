@@ -385,7 +385,7 @@ export default {
     buildGoodsParams(form) {
       const params = { ...form }
       if (params.timeRange && params.timeRange.length === 2) {
-        params.startTime = params.timeRange[0]
+        params.beginTime = params.timeRange[0]
         params.endTime = params.timeRange[1]
       }
       delete params.timeRange

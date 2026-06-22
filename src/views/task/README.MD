@@ -278,7 +278,7 @@
 
 ### 3. 编辑盘存任务
 
-编辑调用 `POST /busin/inventory/edit`，参数包含 `id`、`taskNum`、`selectType`、`warehouseIds`、`warehouseNames`、`remark`。
+编辑调用 `POST /busin/inventory/edit`，参数包含 `id`、`taskNum`、`selectType`、`warehouseIds`、`warehouseNames`、`remark`、`wareList`（按库房组织的任务清单数据，结构与新增提交一致，由 `buildWareList()` 统一构建）。
 
 ### 4. 审核盘存任务
 
@@ -332,3 +332,4 @@
 - 录入盘存结果时，盘亏或盘盈明细的结果备注可为空。
 - 导出盘存清单使用 blob 下载模式，需设置 `responseType: 'blob'`。
 - 新增模式下"生成任务清单"按钮始终显示，可重复生成覆盖已有清单。
+- 添加/编辑模式下，修改"盘存方式"或"指定库房"后，必须重新点击"生成任务清单"使清单与最新盘存范围同步，否则点击"提交/保存"时会弹出提示并阻止提交（由 `goodsListDirty` 标记控制，清单生成成功后自动清除）。

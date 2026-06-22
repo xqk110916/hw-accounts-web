@@ -184,6 +184,7 @@ export default {
       downloadPadLoading: false,
       importLoading: false,
       submitting: false,
+      goodsListDirty: false, // 盘存方式/指定库房变更后需重新生成任务清单的标记
       rejectDialogVisible: false,
       rejectRemark: '',
     }
@@ -476,6 +477,8 @@ export default {
           
           let totalCount = Object.values(this.goodsListMap).reduce((sum, list) => sum + list.length, 0)
           this.$message.success(`获取到 ${totalCount} 条货物`)
+          // 清单已与最新盘存范围同步，清除重新生成标记
+          this.goodsListDirty = false
         }
       }).finally(() => {
         this.goodsLoading = false
@@ -729,6 +732,8 @@ export default {
       if (val === 'all') {
         this.$set(this.form, 'warehouseIds', [])
       }
+      // 盘存方式变更后，当前清单已失效，需重新生成
+      this.goodsListDirty = true
     },
     async saveDraft() {
       await this.doSubmit(4)
@@ -736,43 +741,51 @@ export default {
     async submitTask() {
       await this.doSubmit(0)
     },
+    // 构建按库房组织的任务清单数据(库房表单 + 明细)，新增提交与编辑保存复用
+    buildWareList() {
+      const wareList = []
+      Object.keys(this.goodsListMap).forEach(wId => {
+        const wForm = this.inventoryFormMap[wId] || {}
+        const wGoods = this.goodsListMap[wId] || []
+        wareList.push({
+          warehouseId: wId,
+          warehouseName: (this.tabList.find(t => t.id === wId) && this.tabList.find(t => t.id === wId).name) || '',
+          ...wForm,
+          goodsList: wGoods.map(g => ({
+            warehouseId: g.warehouseId,
+            warehouseName: g.warehouseName,
+            containerCode: g.containerCode,
+            goodCode: g.goodCode,
+            goodName: g.goodName,
+            productionUnit: g.productionUnit,
+            location: g.location,
+            sealCode1: g.sealCode1,
+            sealType1: g.sealType1,
+            sealCode2: g.sealCode2,
+            sealType2: g.sealType2,
+            storageTime: g.storageTime,
+            result: g.result || '0',
+            resultRemark: g.resultRemark || '',
+          }))
+        })
+      })
+      return wareList
+    },
     async doSubmit(submitType) {
       this.$refs.form.validate(async valid => {
         if (!valid) return
-        
+
+        if (this.goodsListDirty) {
+          this.$message.warning('盘存方式或指定库房已修改，请先点击"生成任务清单"')
+          return
+        }
+
         if (Object.keys(this.goodsListMap).length === 0) {
           this.$message.warning('请先获取货物清单')
           return
         }
 
-        const wareList = []
-        
-        Object.keys(this.goodsListMap).forEach(wId => {
-          const wForm = this.inventoryFormMap[wId] || {}
-          const wGoods = this.goodsListMap[wId] || []
-          
-          wareList.push({
-            warehouseId: wId,
-            warehouseName: (this.tabList.find(t => t.id === wId) && this.tabList.find(t => t.id === wId).name) || '',
-            ...wForm,
-            goodsList: wGoods.map(g => ({
-              warehouseId: g.warehouseId,
-              warehouseName: g.warehouseName,
-              containerCode: g.containerCode,
-              goodCode: g.goodCode,
-              goodName: g.goodName,
-              productionUnit: g.productionUnit,
-              location: g.location,
-              sealCode1: g.sealCode1,
-              sealType1: g.sealType1,
-              sealCode2: g.sealCode2,
-              sealType2: g.sealType2,
-              storageTime: g.storageTime,
-              result: g.result || '0',
-              resultRemark: g.resultRemark || '',
-            }))
-          })
-        })
+        const wareList = this.buildWareList()
 
         let payload = {
           taskNum: this.form.taskNum,
@@ -807,11 +820,16 @@ export default {
     editTask() {
       this.$refs.form.validate(async valid => {
         if (!valid) return
+        if (this.goodsListDirty) {
+          this.$message.warning('盘存方式或指定库房已修改，请先点击"生成任务清单"')
+          return
+        }
         let payload = {
           id: this.form.id,
           taskNum: this.form.taskNum,
           selectType: this.form.selectType,
           remark: this.form.remark,
+          wareList: this.buildWareList(),
         }
         if (this.form.selectType === 'selected') {
           const selectedNames = this.warehouseOptions
@@ -984,6 +1002,7 @@ export default {
       this.inventoryFormMap = {}
       this.tabList = []
       this.activeTab = ''
+      this.goodsListDirty = false
       this.initForm()
       this.$refs.form && this.$refs.form.resetFields()
     },
@@ -1074,7 +1093,10 @@ export default {
       if (!this.inventoryFormMap[warehouseId]) return
       this.syncAbnormalContainerCodes(warehouseId, true)
     },
-    handleChange() {},
+    handleChange() {
+      // 指定库房变更后，当前清单已失效，需重新生成
+      this.goodsListDirty = true
+    },
   },
 }
 </script>

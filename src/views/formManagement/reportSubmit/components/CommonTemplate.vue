@@ -2,7 +2,7 @@
   <div class="common-template">
     <!-- 极简高雅报表纸质感 -->
     <div class="report-paper">
-      <!-- 页眉 (分层排版：大标题独占中行，密级与格式置于其上，表号在下) -->
+      <!-- 页眉 (分层排版：密级居顶，大标题独占中行，格式与表号同列于下，格式居左、表号居右) -->
       <div class="report-header">
         <div class="header-meta-row">
           <div class="header-row label-with-select">
@@ -12,10 +12,6 @@
             </el-select>
             <span class="print-only print-text-inline" style="font-weight: bold;">{{ securityLevelLabel }}</span>
           </div>
-          <div class="header-row format-tag">
-              <span class="no-print">格式：</span><el-input v-model="form.format" size="mini" class="tag-input no-print" :placeholder="config.formatNo" />
-              <span class="print-only">格式：{{ form.format || config.formatNo }}</span>
-            </div>
         </div>
         
         <div class="header-title-row">
@@ -24,6 +20,10 @@
         </div>
         
         <div class="header-sub-row">
+          <div class="header-row format-tag">
+              <span class="no-print">格式：</span><el-input v-model="form.format" size="mini" class="tag-input no-print" :placeholder="config.formatNo" />
+              <span class="print-only">格式：{{ form.format || config.formatNo }}</span>
+            </div>
           <div class="header-row code-tag">
               <span class="no-print">表号：</span><el-input v-model="form.formNo" size="mini" class="tag-input no-print" :placeholder="config.tableNo" />
               <span class="print-only">表号：{{ form.formNo || config.tableNo }}</span>
@@ -345,7 +345,8 @@ export default {
 
     .header-sub-row {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      align-items: center;
       width: 100%;
     }
 
@@ -702,7 +703,8 @@ export default {
 
       .header-sub-row {
         display: flex !important;
-        justify-content: flex-end !important;
+        justify-content: space-between !important;
+        align-items: center !important;
         width: 100% !important;
       }
 

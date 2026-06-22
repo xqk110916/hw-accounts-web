@@ -187,6 +187,8 @@
         <div class="satisfaction-list">
           <div v-for="item in satisfactionList" :key="item.goodCode" class="satisfaction-item">
             <span class="material-name">{{ item.materialName }}</span>
+            <span v-if="item.hasAmount">目标(件数)：{{ item.targetAmount }}</span>
+            <span v-if="item.hasAmount">匹配(件数)：{{ item.actualAmount }}</span>
             <span>目标(毛/皮/净)：{{ item.targetText }}</span>
             <span>匹配(毛/皮/净)：{{ item.actualText }}</span>
             <el-tag size="mini" :type="item.satisfied ? 'success' : 'danger'">
@@ -300,25 +302,32 @@ export default {
     },
     satisfactionList() {
       return this.materials.map(material => {
-        const actual = this.currentContainers
-          .filter(item => this.isSameMaterial(item, material))
-          .reduce((sum, item) => ({
-            grossWeight: sum.grossWeight + (Number(item.grossWeight) || 0),
-            tareWeight: sum.tareWeight + (Number(item.tareWeight) || 0),
-            netWeight: sum.netWeight + (Number(item.netWeight) || 0),
-          }), { grossWeight: 0, tareWeight: 0, netWeight: 0 })
+        // 同物料的匹配容器：重量按字段累加，件数以容器数量为准（一个容器代表一件）
+        const matched = this.currentContainers.filter(item => this.isSameMaterial(item, material))
+        const actual = matched.reduce((sum, item) => ({
+          grossWeight: sum.grossWeight + (Number(item.grossWeight) || 0),
+          tareWeight: sum.tareWeight + (Number(item.tareWeight) || 0),
+          netWeight: sum.netWeight + (Number(item.netWeight) || 0),
+        }), { grossWeight: 0, tareWeight: 0, netWeight: 0 })
+        const actualAmount = matched.length
         const targetNet = toNumber(material.netWeight)
         const targetGross = toNumber(material.grossWeight)
+        const targetAmount = toNumber(material.amount)
         const hasNet = !Number.isNaN(targetNet) && targetNet > 0
         const hasGross = !Number.isNaN(targetGross) && targetGross > 0
-        const satisfied = hasNet
-          ? actual.netWeight >= targetNet
-          : hasGross
-            ? actual.grossWeight >= targetGross
-            : false
+        const hasAmount = !Number.isNaN(targetAmount) && targetAmount > 0
+        // 满足判断：已配置的目标项（重量、件数）需全部达成
+        const checks = []
+        if (hasNet) checks.push(actual.netWeight >= targetNet)
+        else if (hasGross) checks.push(actual.grossWeight >= targetGross)
+        if (hasAmount) checks.push(actualAmount >= targetAmount)
+        const satisfied = checks.length ? checks.every(Boolean) : false
         return {
           goodCode: material.goodCode,
           materialName: material.materialName,
+          hasAmount,
+          targetAmount,
+          actualAmount,
           targetText: this.getWeightText(material),
           actualText: this.getWeightText(actual),
           satisfied,
