@@ -8,7 +8,7 @@
     "dev": "vue-cli-service serve",
     "build:prod": "vue-cli-service build --mode production",
     "build": "vue-cli-service build --mode test",
-    "preinstall": "mkdir -p node_modules && unzip -o node_modules-zc-framework-ui.zip -d node_modules/",
+    "preinstall": "node scripts/preinstall.js",
     "release-tag": "standard-version --release-as v0.1.0-alpha && git push --follow-tags",
     "release": "standard-version --release-as v0.1.0-alpha --infile=changelog.md --skip.tag=true && git push"
   },
