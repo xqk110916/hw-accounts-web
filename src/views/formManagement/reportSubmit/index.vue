@@ -67,21 +67,22 @@
             </div>
             <div class="header-right-actions">
               <el-button size="small" type="primary" icon="el-icon-finished" class="action-btn-save" @click="handleSave">保存报表</el-button>
-              <el-button 
-                size="small" 
-                icon="el-icon-download" 
-                class="action-btn-export" 
-                :disabled="isExportDisabled"
-                @click="handleExport"
-              >导出 Excel</el-button>
               <!-- 仅支持这些报表模板打印 -->
               <el-button
                 v-if="['R01', 'R03', 'R04', 'R05', 'R06', 'R08', 'R09'].includes(activeReport)"
                 size="small"
                 icon="el-icon-download"
                 class="action-btn-template"
+                :disabled="isExportDisabled"
                 @click="handleTemplatePrint"
-              >表单下载</el-button>
+              >下载统计表</el-button>
+              <el-button 
+                size="small" 
+                icon="el-icon-download" 
+                class="action-btn-export" 
+                :disabled="isExportDisabled"
+                @click="handleExport"
+              >下载详情表</el-button>
               <!-- <el-button size="small" icon="el-icon-printer" class="action-btn-print" @click="handlePrint">浏览器打印</el-button> -->
             </div>
           </div>
@@ -276,7 +277,10 @@ import {
   normalizeDetailData
 } from './components/index.js'
 import { blobSaveExcel } from '@/utils'
-import { exportReportWithTemplate } from './components/exportReportTemplate.js'
+import {
+  buildDetailTableFileName,
+  exportReportWithTemplate,
+} from './components/exportReportTemplate.js'
 
 export default {
   name: 'ReportSubmit',
@@ -533,6 +537,10 @@ export default {
       }
     },
     async handleTemplatePrint() {
+      if (this.isExportDisabled) {
+        this.$message.warning('当前报表未保存，无法下载统计表。请先点击右上角「保存报表」保存后再操作。')
+        return
+      }
       if (!this.templateData || !Object.keys(this.templateData).length) {
         this.$message.warning('请先加载或填写报表数据')
         return
@@ -572,10 +580,10 @@ export default {
         }
 
         await exportReportWithTemplate(this.activeReport, this.templateData, this.securityOptions)
-        this.$message.success('表单文件已生成并开始下载')
+        this.$message.success('统计表已生成并开始下载')
       } catch (e) {
-        console.error('表单下载失败:', e)
-        this.$message.error('表单下载失败: ' + (e.message || '未知错误'))
+        console.error('统计表下载失败:', e)
+        this.$message.error('统计表下载失败: ' + (e.message || '未知错误'))
       }
     },
     handleExport() {
@@ -598,25 +606,17 @@ export default {
         }
       }
 
-      // 如果未找到报表 ID，说明数据未保存为历史版本，直接导出后端接口会报 404/500。
-      // 提示用户先保存，或者引导其直接使用免保存的“表单下载”功能。
       if (!reportId) {
-        this.$message.warning('当前报表未保存，无法进行后端导出。请先点击右上角「保存报表」或直接点击「表单下载」进行离线下载。')
+        this.$message.warning('当前报表未保存，无法下载详情表。请先点击右上角「保存报表」保存后再操作。')
         return
       }
 
       fn.export(reportId).then(res => {
         const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
-        const disposition = res.headers && res.headers['content-disposition']
-        let fileName = `${this.activeReport}报表导出`
-        if (disposition) {
-          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
-          if (match && match[1]) fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
-        }
-        blobSaveExcel(blob, fileName)
+        blobSaveExcel(blob, buildDetailTableFileName(this.activeReport))
       }).catch(err => {
-        console.error('报表导出失败:', err)
-        this.$message.error('报表导出失败')
+        console.error('详情表下载失败:', err)
+        this.$message.error('详情表下载失败')
       })
     },
     handlePrint() {

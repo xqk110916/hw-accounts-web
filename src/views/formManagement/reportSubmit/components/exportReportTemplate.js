@@ -133,14 +133,12 @@ const OPTIONAL_CELL_MAPS = {
   }
 }
 
-const REPORT_NAMES = {
-  R01: '材料交接统计报表',
-  R03: '材料库存变化统计报表',
-  R04: '材料实际库存统计报表',
-  R05: '材料账目报表',
-  R06: '材料注释统计报表',
-  R08: '材料库存变化综合统计表',
-  R09: '材料库存变化综合统计表',
+export function buildStatisticsTableFileName(reportType) {
+  return `${reportType}-材料统计表.xlsx`
+}
+
+export function buildDetailTableFileName(reportType) {
+  return `${reportType}-材料详情表.xlsx`
 }
 
 /**
@@ -257,7 +255,5 @@ export async function exportReportWithTemplate(reportType, templateData = {}, se
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
   
-  const reportName = REPORT_NAMES[reportType] || ''
-  const fileName = `${reportType}${reportName}_${dataToExport.reportNo || new Date().toISOString().slice(0, 10)}.xlsx`
-  saveAs(blob, fileName)
+  saveAs(blob, buildStatisticsTableFileName(reportType))
 }
