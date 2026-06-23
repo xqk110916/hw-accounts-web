@@ -2,6 +2,12 @@
   <div class="wrapper">
     <div class="content">
       <div class="right">
+        <div class="operation-bar">
+          <div :class="['btn', 'primary', { disabled: downloadLoading }]" @click="handleDownloadDmp">
+            <i v-if="downloadLoading" class="el-icon-loading"></i>下载备份数据
+          </div>
+          <div :class="['btn', 'danger-btn']" @click="handleOpenRestore">恢复备份数据</div>
+        </div>
         <div class="table">
           <el-table
             ref="table"
@@ -26,20 +32,25 @@
         </div>
       </div>
     </div>
+    <restore-upload-dialog ref="restoreDialog" @saved="getTableList" />
   </div>
 </template>
 
 <script>
 import { config, handleTbaleMap } from './components/index.js'
-import { getBackupConfigList, updateBackupConfig, restoreBackup } from './components/api.js'
+import { getBackupConfigList, updateBackupConfig, restoreBackup, exportDmpStream } from './components/api.js'
+import RestoreUploadDialog from './components/RestoreUploadDialog.vue'
+import { blobSaveExcel } from '@/utils'
 
 export default {
   name: 'DataBackup',
+  components: { RestoreUploadDialog },
   data() {
     return {
       tableData: [],
       tableKeys: [],
       height: 0,
+      downloadLoading: false,
     }
   },
   created() {
@@ -55,7 +66,9 @@ export default {
     computedTableHeight() {
       let rightDom = document.querySelector('.right')
       let rightDomHeight = rightDom ? rightDom.clientHeight : 0
-      this.height = rightDomHeight - 40
+      let operationDom = document.querySelector('.operation-bar')
+      let operationH = operationDom ? operationDom.clientHeight : 0
+      this.height = rightDomHeight - operationH - 40
     },
     getTableList() {
       getBackupConfigList().then(res => {
@@ -91,6 +104,29 @@ export default {
           this.getTableList()
         })
       }).catch(() => {})
+    },
+    // 下载全量数据库 DMP 备份（流式）
+    handleDownloadDmp() {
+      if (this.downloadLoading) return
+      this.downloadLoading = true
+      exportDmpStream().then(res => {
+        const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
+        const disposition = res.headers && (res.headers['content-disposition'] || res.headers['Content-Disposition'])
+        let fileName = '数据库备份.dmp'
+        if (disposition) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
+          if (match && match[1]) fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+        }
+        blobSaveExcel(blob, fileName)
+      }).catch(() => {
+        this.$message.error('下载失败')
+      }).finally(() => {
+        this.downloadLoading = false
+      })
+    },
+    // 打开 DMP 上传恢复弹窗
+    handleOpenRestore() {
+      this.$refs.restoreDialog.open()
     },
   },
 }
@@ -135,6 +171,37 @@ export default {
           color: #1b2129;
         }
       }
+    }
+  }
+
+  .operation-bar {
+    height: 32px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+
+    // 实心按钮样式限定在操作区内，避免污染表格行内的 btn text primary 文字按钮
+    .btn.primary {
+      padding: 5px 16px;
+      border-radius: 3px;
+      background: #246fe5;
+      color: #fff;
+    }
+
+    .btn.danger-btn {
+      padding: 5px 16px;
+      border-radius: 3px;
+      background: #f56c6c;
+      color: #fff;
+    }
+
+    .btn.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn + .btn {
+      margin-left: 10px;
     }
   }
 

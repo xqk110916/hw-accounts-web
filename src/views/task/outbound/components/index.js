@@ -99,7 +99,7 @@ export const config = {
           })
         }
 
-        form.transferId = Array.from(firstLevelIds).join(',')
+        form.transferId = Array.from(firstLevelIds)
         form.goodCodes = goodCodes.join(',')
       },
     },
@@ -180,9 +180,14 @@ export const handleSearchParams = params => {
 export const beforeRecurrence = (data, that) => {
   // 复现调拨依据：将 transferId(s) 和 goodCodes 映射回级联组件的叶子路径
   if (data.transferId) {
-    const transferIds = data.transferId.split(',').filter(Boolean)
+    // transferId 已改为数组格式传参，兼容后端历史字符串返回
+    const rawIds = Array.isArray(data.transferId) ? data.transferId : String(data.transferId).split(',')
+    const transferIds = rawIds.filter(Boolean)
     const goodCodes = data.goodCodes ? data.goodCodes.split(',').filter(Boolean) : []
     const opts = (that.options && that.options['_transferSelected']) || []
+
+    // 规范化为数组，确保编辑未改动直接提交时仍以数组格式传参
+    that.$set(that.form, 'transferId', transferIds)
 
     const paths = []
     transferIds.forEach(parentId => {

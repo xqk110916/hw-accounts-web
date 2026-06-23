@@ -70,7 +70,7 @@
     <detail ref="detail" />
     <column-manage-dialog
       ref="columnManage"
-      :columns="allTableColumns"
+      :columns="tableColumns"
       @confirm="handleColumnConfirm"
     />
   </div>
@@ -100,16 +100,18 @@ export default {
       },
       tableData: [],
       height: 0,
-      allTableColumns,
       visibleColumnProps: [],
       btns,
     }
   },
   computed: {
+    tableColumns() {
+      return allTableColumns
+    },
     visibleTableKeys() {
-      if (!this.visibleColumnProps.length) return this.allTableColumns
+      if (!this.visibleColumnProps.length) return this.tableColumns
       return this.visibleColumnProps
-        .map(prop => this.allTableColumns.find(col => col.prop === prop))
+        .map(prop => this.tableColumns.find(col => col.prop === prop))
         .filter(Boolean)
     },
   },
@@ -139,15 +141,23 @@ export default {
       this.search.options.push({ type: 'slot', slotName: 'footer', col: 6 })
     },
     loadColumnConfig() {
+      const defaultProps = this.tableColumns.map(c => c.prop)
       const saved = localStorage.getItem(COLUMN_STORAGE_KEY)
       if (saved) {
         try {
-          this.visibleColumnProps = JSON.parse(saved)
+          const savedProps = JSON.parse(saved)
+          // 保留用户已保存的列顺序，自动追加后续新增的列
+          const validSaved = savedProps.filter(prop => defaultProps.includes(prop))
+          const newProps = defaultProps.filter(prop => !validSaved.includes(prop))
+          this.visibleColumnProps = [...validSaved, ...newProps]
+          if (newProps.length) {
+            localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(this.visibleColumnProps))
+          }
         } catch {
-          this.visibleColumnProps = this.allTableColumns.map(c => c.prop)
+          this.visibleColumnProps = defaultProps
         }
       } else {
-        this.visibleColumnProps = this.allTableColumns.map(c => c.prop)
+        this.visibleColumnProps = defaultProps
       }
     },
     handleColumnConfirm(selectedProps) {

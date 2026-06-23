@@ -13,6 +13,7 @@
 - `materialManagement/`：材料管理，当前已完成前端界面并对接真实材料代码接口。
 - `labelTemplate/`：标签模版管理，已接入标签数据和标签模版后端接口，并保留本机打印 JSSDK 链路。
 - `comprehensiveQuery/`：综合查询，用于跨业务流水的全局检索与快照查询。
+- `transferBasisQuery/`：调拨依据查询，按调拨依据（调出）聚合查询物资数量与重量，支持下钻容器明细。
 - `accountManagement/`：账目管理，用于处理实物资产变动产生的关联账务数据。
 
 当前维护重点：
@@ -180,3 +181,41 @@
 
 - 表单、搜索、表格和接口参数统一使用英文 key；中文仅作为 label、按钮文案、提示文案或表格列名。
 - 搜索区状态、类型、容器均使用 `select / el-select`，不使用 checkbox。
+
+## 六、调拨依据查询 transferBasisQuery
+
+入口文件：`transferBasisQuery/index.vue`
+
+调拨依据查询按调拨依据（调出）维度聚合统计物资的数量与重量，并支持点击单元格下钻查看容器明细。后端接口尚未最终确定，当前 `components/api.js` 中预留 `/busin/statist/transfer-basis/query` 与 `/busin/statist/transfer-basis/container` 两个地址，并通过 `withMock` 在接口未就绪时回退本地 Mock 数据；接口确定后移除 `buildMock*` 与 `withMock` 包装即可，字段 key 无需调整。
+
+核心文件：
+
+- `transferBasisQuery/index.vue`：列表页入口，包含搜索区、表格区和分页。
+- `transferBasisQuery/components/index.js`：列表列、搜索项、查询参数转换与下拉选项初始化。
+- `transferBasisQuery/components/api.js`：调拨依据查询与容器明细接口封装（含 Mock 回退）。
+- `transferBasisQuery/components/ContainerDetailDialog.vue`：点击数量/重量列弹出的容器明细列表。
+
+搜索条件：
+
+- 调拨依据（调出）：`outTransferId`，下拉，选项来自 `getAllTransferBasisList`。
+- 日期区间：`dateRange`，`daterange`，提交时映射为 `startDate` / `endDate`。
+- 材料（多选）：`goodCodes`，多选 `select`，选项来自 `listAllMaterialCode`，提交数组。
+
+列表字段：
+
+- 调拨依据：`transferBasis`。
+- 年份：`year`。
+- 材料：`goodName`。
+- 数量：`quantity`，可点击下钻。
+- 重量：`weight`，可点击下钻。
+
+容器明细字段（与综合查询同名字段保持一致）：
+
+- 容器号：`containerCode`。
+- 位置：`location`。
+- 入库信息：`inboundInfo`。
+- 出库信息：`outboundInfo`。
+- 材料名称：`goodName`。
+- 封记信息：由 `sealType1`/`sealCode1`/`sealType2`/`sealCode2` 组合展示。
+- 生产单位：`productionUnit`。
+- 重量（毛/皮/净）：`grossWeight` / `tareWeight` / `netWeight`。

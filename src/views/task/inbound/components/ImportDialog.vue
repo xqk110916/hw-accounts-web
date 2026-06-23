@@ -15,8 +15,8 @@
           <el-radio :label="2">信息导入2</el-radio>
         </el-radio-group>
         <div class="type-desc">
-          <div class="desc-text">* 信息导入1(材料代码、容器号、生产单位、库房)</div>
-          <div class="desc-text">* 信息导入2(容器号、封记编码1、封记类型1、封记编码2、封记类型2、重量:毛、皮、净、金属量%、货箱号、位置)</div>
+          <div class="desc-text">* 信息导入1(材料代码、容器号、生产单位、重量:毛、皮、净、金属量%)</div>
+          <div class="desc-text">* 信息导入2(容器号、封记编码1、封记类型1、封记编码2、封记类型2、库房、货箱号、位置)</div>
         </div>
       </el-form-item>
 
@@ -72,13 +72,12 @@
         <span>预览数据（共 {{ previewList.length }} 条）</span>
         <el-button type="text" size="small" style="color: #f56c6c;" @click="clearPreview">清空</el-button>
       </div>
+      <!-- 预览字段：类型1(基础信息+毛皮净/金属量) 与 类型2(封记/库房/货箱号/位置) 合并展示 -->
       <el-table :data="previewList" border stripe size="mini" max-height="280" style="width: 100%;">
-        <!-- 类型1字段 -->
         <el-table-column prop="goodCode" label="材料代码" min-width="100" show-overflow-tooltip />
         <el-table-column prop="containerCode" label="容器号" min-width="90" show-overflow-tooltip />
         <el-table-column prop="productionUnit" label="生产单位" min-width="100" show-overflow-tooltip />
         <el-table-column prop="warehouseName" label="库房" min-width="90" show-overflow-tooltip />
-        <!-- 类型2字段 -->
         <el-table-column prop="sealCode1" label="封记编码1" min-width="90" show-overflow-tooltip />
         <el-table-column prop="sealType1" label="封记类型1" min-width="80" show-overflow-tooltip />
         <el-table-column prop="sealCode2" label="封记编码2" min-width="90" show-overflow-tooltip />
@@ -161,51 +160,25 @@ export default {
     isEmptyValue(value) {
       return value === undefined || value === null || String(value).trim() === ''
     },
-    isCompleteImportRow(item, type) {
-      const type1RequiredFields = ['goodCode', 'containerCode', 'productionUnit', 'warehouseName']
-      const type2RequiredFields = [
-        'containerCode',
-        'sealCode1',
-        'sealType1',
-        'sealCode2',
-        'sealType2',
-        'grossWeight',
-        'tareWeight',
-        'netWeight',
-        'metalPercentage',
-        'boxNum',
-        'position'
-      ]
-      const fields = type === 1 ? type1RequiredFields : type2RequiredFields
-      return fields.every(field => !this.isEmptyValue(item[field]))
-    },
     isCompletePreviewRow(item) {
+      // 两类模板字段均完整方可提交：类型1(基础+重量) + 类型2(封记/库房/货箱号/位置)
       const requiredFields = [
         'goodCode',
         'containerCode',
         'productionUnit',
-        'warehouseName',
-        'sealCode1',
-        'sealType1',
-        'sealCode2',
-        'sealType2',
         'grossWeight',
         'tareWeight',
         'netWeight',
         'metalPercentage',
+        'sealCode1',
+        'sealType1',
+        'sealCode2',
+        'sealType2',
+        'warehouseName',
         'boxNum',
         'position'
       ]
       return requiredFields.every(field => !this.isEmptyValue(item[field]))
-    },
-    filterCompleteRows(list, type) {
-      const rows = Array.isArray(list) ? list : []
-      const completeRows = rows.filter(item => this.isCompleteImportRow(item, type))
-      const skippedCount = rows.length - completeRows.length
-      if (skippedCount > 0) {
-        this.$message.warning(`已跳过 ${skippedCount} 条信息不全的数据`)
-      }
-      return completeRows
     },
     downloadTemplate() {
       downloadTemplate({ tempType: this.importForm.inboundImportType }).then(res => {
@@ -250,66 +223,74 @@ export default {
       try {
         const res = await importExcel(formData)
         if (res.code === 1) {
-          // 处理预览数据
-          const importedData = (res.data && Array.isArray(res.data.successList)) ? res.data.successList : []
-          const completeImportedData = this.filterCompleteRows(importedData, this.importForm.inboundImportType)
-          
-          // 处理错误信息
-          this.remindList = (res.data && Array.isArray(res.data.remindList)) ? res.data.remindList : []
-          if (res.data && res.data.failFilePath) {
-            this.errorFiles[this.importForm.inboundImportType] = res.data.failFilePath
-          }
+          const resData = res.data || {}
+          // 后端返回的 successList 即为本次解析成功的全部数据，预览阶段不再二次过滤
+          const importedData = Array.isArray(resData.successList) ? resData.successList : []
+          const successNum = resData.successNum || 0
+          const failNum = resData.failNum || 0
 
-          if (importedData.length === 0 && this.remindList.length > 0) {
-            this.$message.warning('文件导入存在异常，请查看提示信息')
+          // 处理错误信息
+          this.remindList = Array.isArray(resData.remindList) ? resData.remindList : []
+          if (resData.failFilePath) {
+            this.errorFiles[this.importForm.inboundImportType] = resData.failFilePath
           }
 
           if (this.importForm.inboundImportType === 1) {
-            // 类型1：直接覆盖预览列表，使用类型1的字段
-            this.previewList = completeImportedData.map(item => ({
+            // 类型1：基础信息 + 重量信息(毛皮净、金属量)；库房/封记/货箱号/位置由类型2补充
+            this.previewList = importedData.map(item => ({
               goodCode: item.goodCode || '',
               containerCode: item.containerCode || '',
               productionUnit: item.productionUnit || '',
-              warehouseName: item.warehouseName || '',
-              // 类型2字段默认为空，等待后续导入
+              grossWeight: item.grossWeight || '',
+              tareWeight: item.tareWeight || '',
+              netWeight: item.netWeight || '',
+              metalPercentage: item.metalPercentage || '',
+              warehouseName: '',
               sealCode1: '', sealType1: '', sealCode2: '', sealType2: '',
-              grossWeight: '', tareWeight: '', netWeight: '',
-              metalPercentage: '', boxNum: '', position: ''
+              boxNum: '', position: ''
             }))
-            this.$message.success(`信息导入1成功，共 ${this.previewList.length} 条，请继续导入类型2补充剩余字段`)
           } else {
-            // 类型2：通过容器号匹配并合并到现有 previewList
+            // 类型2：通过容器号 containerCode 匹配并合并到现有 previewList
             if (this.previewList.length === 0) {
-              // 若还未导入类型1，直接填充类型2字段
-              this.previewList = completeImportedData.map(item => ({
-                goodCode: '', productionUnit: '', warehouseName: '',
+              // 若还未导入类型1，直接填充类型2字段(封记/库房/货箱号/位置)，基础与重量信息留空
+              this.previewList = importedData.map(item => ({
+                goodCode: '', productionUnit: '',
+                grossWeight: '', tareWeight: '', netWeight: '', metalPercentage: '',
                 containerCode: item.containerCode || '',
                 sealCode1: item.sealCode1 || '', sealType1: item.sealType1 || '',
                 sealCode2: item.sealCode2 || '', sealType2: item.sealType2 || '',
-                grossWeight: item.grossWeight || '', tareWeight: item.tareWeight || '',
-                netWeight: item.netWeight || '', metalPercentage: item.metalPercentage || '',
+                warehouseName: item.warehouseName || '',
                 boxNum: item.boxNum || '', position: item.position || ''
               }))
             } else {
-              // 通过容器号 containerCode 匹配更新
-              completeImportedData.forEach(importItem => {
+              // 通过容器号匹配，将类型2字段(封记/库房/货箱号/位置)补充到已存在的预览行
+              importedData.forEach(importItem => {
                 const target = this.previewList.find(p => p.containerCode === importItem.containerCode)
                 if (target) {
                   target.sealCode1 = importItem.sealCode1 || target.sealCode1
                   target.sealType1 = importItem.sealType1 || target.sealType1
                   target.sealCode2 = importItem.sealCode2 || target.sealCode2
                   target.sealType2 = importItem.sealType2 || target.sealType2
-                  target.grossWeight = importItem.grossWeight || target.grossWeight
-                  target.tareWeight = importItem.tareWeight || target.tareWeight
-                  target.netWeight = importItem.netWeight || target.netWeight
-                  target.metalPercentage = importItem.metalPercentage || target.metalPercentage
+                  target.warehouseName = importItem.warehouseName || target.warehouseName
                   target.boxNum = importItem.boxNum || target.boxNum
                   target.position = importItem.position || target.position
                 }
               })
             }
-            this.$message.success('信息导入2成功，数据已合并，请确认后提交')
           }
+
+          // 根据后端统计值给出准确提示
+          const typeText = this.importForm.inboundImportType === 1 ? '信息导入1' : '信息导入2'
+          if (successNum > 0) {
+            this.$message.success(`${typeText}成功，共 ${successNum} 条`)
+          }
+          if (failNum > 0 || this.remindList.length > 0) {
+            this.$message.warning(`共 ${failNum} 条数据异常，请查看下方提示`)
+          }
+          if (successNum === 0 && failNum === 0 && this.remindList.length === 0) {
+            this.$message.warning('未解析到有效数据')
+          }
+
           // 清空文件选择
           this.fileList = []
           this.$nextTick(() => {

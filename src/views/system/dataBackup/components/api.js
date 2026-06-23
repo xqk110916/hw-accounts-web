@@ -25,8 +25,31 @@ export const restoreBackup = (backType) => {
   })
 }
 
+// 全量导出数据库为 DMP 文件并下载（流式传输）
+export const exportDmpStream = () => {
+  return request({
+    url: '/busin/backup/export/dmp/stream',
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
+// 上传 DMP 文件并恢复数据库
+export const restoreByUpload = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/busin/backup/restore/upload',
+    method: 'post',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+}
+
 export const dataBackup = {
   list: getBackupConfigList,
   update: updateBackupConfig,
-  restore: restoreBackup
+  restore: restoreBackup,
+  exportDmp: exportDmpStream,
+  restoreUpload: restoreByUpload
 }

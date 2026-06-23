@@ -55,19 +55,24 @@ export function getDictionaryDetail(id) {
 通过 node 脚本调用接口创建，需要 token 信息。
 
 ### 获取 Token
-使用 MCP 工具 `mcp__cdp-bridge__browser_cookies` 获取浏览器 Cookies 中的 `tokenName` 和 `tokenValue`。如果未登录，请先登录系统。
+先用 `mcp__cdp-bridge__browser_get_tabs` 定位 `localhost:8080` 标签页取 tab id，再用 `mcp__cdp-bridge__browser_execute_js`（参数 `switch_tab_id=<tab>`、`no_monitor=true`）读取 cookie：
+```js
+var c = document.cookie.split(';').reduce(function(a,x){var p=x.trim().split('=');a[p[0]]=p[1];return a;},{});
+({ tokenName: c.tokenName, tokenValue: c.tokenValue })
+```
+> cdp-bridge **无 `browser_cookies` 工具**，统一用 `execute_js` 读 `document.cookie`。未登录则提示用户先登录系统。
 
 ### 设置 Token
-请求头为动态 key，即 `headers[tokenName] = tokenValue`，**不要**写死为 `Authorization`。`tokenName` 是后端登录接口返回的自定义 header 名称（如 `Authorization`、`X-Token` 等），具体值由运行环境决定。
+请求头为动态 key，即 `headers[tokenName] = tokenValue`，**不要**写死为 `Authorization`。
 
 ### 关键规则
 
 - **dictType 区分**：
-  - 顶层字典分类（parentId 为 "0"）：`dictType: 'category'`
-  - 子级字典项（parentId 为具体父级ID）：`dictType: '1'`
+  - 顶层字典分类（parentId 为 `"0"`）：`dictType: 'category'`
+  - 子级字典项（parentId 为具体父级ID）：`dictType: 'detail'`
 - **防重复提交**：后端有防重复提交机制，每条请求之间需间隔至少 **3秒**
 - **创建顺序**：先创建父级分类，查询获取其 ID，再创建子项
-- **认证方式**：请求头添加 `{ [tokenName]: tokenValue }`，tokenName 和 tokenValue 从浏览器 Cookies 获取
+- **认证方式**：请求头添加 `{ [tokenName]: tokenValue }`，tokenName 和 tokenValue 从浏览器 cookie 获取
 
 ### ⚠️ 中文编码规范（必读）
 
@@ -89,7 +94,9 @@ print(path)
 
 ```javascript
 const axios = require('axios');
-const BASE_URL = 'http://10.10.216.20:8080/api'; // 读取 .env.development 中的 VUE_APP_BASE_API
+// 基础地址以 .env.development 的 VUE_APP_BASE_API 为准（当前 http://10.10.41.179:40000/api）
+// 注意：勿使用已废弃的 10.10.216.20:8080 地址
+const BASE_URL = 'http://10.10.41.179:40000/api';
 const TOKEN_NAME = '<tokenName>';
 const TOKEN_VALUE = '<tokenValue>';
 
@@ -108,7 +115,7 @@ async function create(item) {
     sortNum: item.sortNum || 99,
     enableFlag: 1,
     description: '',
-    dictType: item.parentId && item.parentId !== '0' ? '1' : 'category'
+    dictType: item.parentId && item.parentId !== '0' ? 'detail' : 'category'
   };
   const res = await http.post('/base/dictionary', payload);
   console.log(res.data.code === 1 ? '+ ' + item.fullName : 'x ' + item.fullName + ' - ' + res.data.msg);
@@ -133,7 +140,7 @@ async function findParentId(keyword) {
 
 ## 接口参考
 
-- 基础地址: `.env.development` 中的 `VUE_APP_BASE_API`（当前: `http://10.10.216.20:8080/api`）
+- 基础地址: `.env.development` 中的 `VUE_APP_BASE_API`（当前: `http://10.10.41.179:40000/api`，勿用已废弃的 `10.10.216.20:8080`）
 - 新增: `POST /base/dictionary`
 - 查询分类列表: `GET /base/dictionary/list?keyword=xxx`
 - 查询子项列表: `GET /base/dictionary/list?parentId=xxx`

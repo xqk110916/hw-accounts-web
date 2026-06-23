@@ -1032,19 +1032,20 @@ export default {
       const isCompleteDetail = item => {
         const hasPosition = !isEmptyValue(item.position) ||
           (!isEmptyValue(item.shelfCode) && !isEmptyValue(item.rowCode) && !isEmptyValue(item.columnCode))
+        // 两类模板字段均完整方可回填：类型1(基础+重量) + 类型2(封记/库房/货箱号/位置)
         return [
           'goodCode',
           'containerCode',
           'productionUnit',
-          'warehouseName',
-          'sealCode1',
-          'sealType1',
-          'sealCode2',
-          'sealType2',
           'grossWeight',
           'tareWeight',
           'netWeight',
           'metalPercentage',
+          'sealCode1',
+          'sealType1',
+          'sealCode2',
+          'sealType2',
+          'warehouseName',
           'boxNum'
         ].every(field => !isEmptyValue(item[field])) && hasPosition
       }

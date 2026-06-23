@@ -14,7 +14,8 @@ export const allTableColumns = [
   { label: '封记类型2', prop: 'sealType2', minWidth: 100 },
   { label: '封记编码2', prop: 'sealCode2', minWidth: 120 },
   { label: '状态', prop: 'statusName', minWidth: 80 },
-  { label: '调拨依据', prop: 'transferBasis', minWidth: 120 },
+  { label: '入库-调拨依据', prop: 'transferBasis', minWidth: 120 },
+  { label: '出库-调拨依据', prop: 'outTransferBasis', minWidth: 120 },
   { label: '库房', prop: 'warehouseName', minWidth: 120 },
 ]
 
