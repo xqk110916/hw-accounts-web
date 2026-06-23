@@ -9,6 +9,7 @@ yarn-error.log*
 tests/**/coverage/
 tests/e2e/reports
 selenium-debug.log
+mcps
 
 # Editor directories and files
 .idea

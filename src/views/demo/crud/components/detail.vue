@@ -24,6 +24,7 @@
         <el-cascader
           v-if="item.type === 'cascader'"
           v-model="form[item.prop]"
+          class="el-cascader--fix-placeholder"
           :options="options[item.prop]"
           size="small"
           :placeholder="`请选择${item.label}`"
@@ -266,7 +267,10 @@ export default {
   padding: 20px;
 
   ::v-deep .el-cascader,
-  ::v-deep .el-select,
+  ::v-deep .el-select {
+    width: 100%;
+  }
+
   ::v-deep .el-input__inner {
     width: 100%;
   }

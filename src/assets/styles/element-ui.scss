@@ -83,6 +83,60 @@
   box-sizing: content-box;
 }
 
+// 修复 el-cascader 可搜索多选模式下主 input 与 search-input 的 placeholder 重叠
+.el-cascader:has(.el-cascader__search-input) {
+  .el-input .el-input__inner {
+    color: transparent;
+    caret-color: transparent;
+
+    &::placeholder {
+      color: transparent;
+    }
+
+    &::-webkit-input-placeholder {
+      color: transparent;
+    }
+
+    &::-moz-placeholder {
+      color: transparent;
+    }
+
+    &:-ms-input-placeholder {
+      color: transparent;
+    }
+  }
+}
+
+// 单选级联：选中值与 placeholder 同时显示时隐藏 placeholder
+.el-cascader.el-cascader--fix-placeholder:not(:has(.el-cascader__search-input)) {
+  .el-input .el-input__inner:not(:placeholder-shown) {
+    &::placeholder {
+      color: transparent;
+    }
+
+    &::-webkit-input-placeholder {
+      color: transparent;
+    }
+
+    &::-moz-placeholder {
+      color: transparent;
+    }
+
+    &:-ms-input-placeholder {
+      color: transparent;
+    }
+  }
+}
+
+.el-cascader {
+  display: block;
+  width: 100%;
+
+  .el-input {
+    width: 100%;
+  }
+}
+
 /**修改全局的滚动条*/
 ::-webkit-scrollbar {
   width: 5px; /*竖向*/
