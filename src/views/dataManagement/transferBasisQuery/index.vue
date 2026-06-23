@@ -64,6 +64,7 @@ export default {
       },
       tableKeys: allTableColumns,
       tableData: [],
+      goodCodeNameMap: {}, // goodCode -> goodName 映射，由 getDefaultOptions 初始化
       height: 0,
     }
   },
@@ -100,7 +101,7 @@ export default {
     },
     // 点击数量/重量列，查看容器明细
     openContainer(row, prop) {
-      this.$refs.containerDetail.open(row, prop)
+      this.$refs.containerDetail.open(row, prop, this.goodCodeNameMap)
     },
     getTableList() {
       this.tableData = []
@@ -109,7 +110,7 @@ export default {
         if (res.code === 1) {
           let data = res.data.list || []
           const page = res.data.pagination || {}
-          if (handleTbaleMap) data = handleTbaleMap(data)
+          if (handleTbaleMap) data = handleTbaleMap(data, this)
           this.tableData = data
           this.search.params.total = page.total
         }

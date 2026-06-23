@@ -186,36 +186,52 @@
 
 入口文件：`transferBasisQuery/index.vue`
 
-调拨依据查询按调拨依据（调出）维度聚合统计物资的数量与重量，并支持点击单元格下钻查看容器明细。后端接口尚未最终确定，当前 `components/api.js` 中预留 `/busin/statist/transfer-basis/query` 与 `/busin/statist/transfer-basis/container` 两个地址，并通过 `withMock` 在接口未就绪时回退本地 Mock 数据；接口确定后移除 `buildMock*` 与 `withMock` 包装即可，字段 key 无需调整。
+调拨依据查询按调拨依据（调出）维度聚合统计物资的数量与重量，并支持点击单元格下钻查看容器明细。已对接 `md/数据管理接口.md`「调拨统计」分组的两个接口，不再使用本地 Mock。
 
 核心文件：
 
 - `transferBasisQuery/index.vue`：列表页入口，包含搜索区、表格区和分页。
-- `transferBasisQuery/components/index.js`：列表列、搜索项、查询参数转换与下拉选项初始化。
-- `transferBasisQuery/components/api.js`：调拨依据查询与容器明细接口封装（含 Mock 回退）。
+- `transferBasisQuery/components/index.js`：列表列、搜索项、查询参数转换、响应字段映射与下拉选项初始化。
+- `transferBasisQuery/components/api.js`：调拨依据查询与容器明细接口封装。
 - `transferBasisQuery/components/ContainerDetailDialog.vue`：点击数量/重量列弹出的容器明细列表。
+
+主要接口：
+
+- 调拨单统计报表（主列表）：`POST /busin/statist/transfer/statistics`。
+- 容器明细下钻：`POST /busin/statist/transfer/container/list`。
 
 搜索条件：
 
-- 调拨依据（调出）：`outTransferId`，下拉，选项来自 `getAllTransferBasisList`。
-- 日期区间：`dateRange`，`daterange`，提交时映射为 `startDate` / `endDate`。
+- 调拨依据（调出）：`outTransferId`，下拉，选项来自 `getAllTransferBasisList({ type: '1' })`，提交时映射为 `transferId`。
+- 日期区间：`dateRange`，`daterange`，提交时映射为 `startTime` / `endTime`。
 - 材料（多选）：`goodCodes`，多选 `select`，选项来自 `listAllMaterialCode`，提交数组。
 
-列表字段：
+列表字段（后端 `TransferStatisticsVO` → 界面 prop）：
 
-- 调拨依据：`transferBasis`。
-- 年份：`year`。
-- 材料：`goodName`。
-- 数量：`quantity`，可点击下钻。
-- 重量：`weight`，可点击下钻。
+- 调拨依据：`documentNo` → `transferBasis`。
+- 年份：`outYear` → `year`。
+- 材料：`goodCode`，经前端 `goodCodeNameMap` 映射为 `goodName` 展示。
+- 数量：`count` → `quantity`，可点击下钻。
+- 重量：`grossWeight`（毛重口径）→ `weight`，可点击下钻。
 
-容器明细字段（与综合查询同名字段保持一致）：
+容器明细字段（后端 `TransferContainerVO`）：
 
 - 容器号：`containerCode`。
-- 位置：`location`。
-- 入库信息：`inboundInfo`。
-- 出库信息：`outboundInfo`。
-- 材料名称：`goodName`。
-- 封记信息：由 `sealType1`/`sealCode1`/`sealType2`/`sealCode2` 组合展示。
+- 位置：`position`。
+- 库房：`warehouseName`。
+- 入库任务号：`inboundTaskNum`。
+- 出库任务号：`outboundTaskNum`。
+- 材料名称：`goodCode` 经 `goodCodeNameMap` 映射为 `goodName` 展示。
+- 封记编码1：`sealCode1`。
+- 封记类型1：`sealType1`，经 `formatSealType`（封记类型字典父级 ID `2052628107427078145`）转义为字典名称展示。
+- 封记编码2：`sealCode2`。
+- 封记类型2：`sealType2`，同上字典转义。
 - 生产单位：`productionUnit`。
-- 重量（毛/皮/净）：`grossWeight` / `tareWeight` / `netWeight`。
+- 毛重：`grossWeight`。
+- 皮重：`tareWeight`。
+- 净重：`netWeight`。
+
+字段映射约定：
+
+- 后端统计与明细接口仅返回 `goodCode`，列表页 `getDefaultOptions` 基于材料全量列表建立 `goodCodeNameMap`，主列表 `handleTbaleMap` 与容器明细 `ContainerDetailDialog` 共用该映射补全 `goodName`。
+- `goodCodeNameMap` 由 `index.vue` 维护并透传给 `handleTbaleMap`（主列表）与 `ContainerDetailDialog`（明细弹窗）。

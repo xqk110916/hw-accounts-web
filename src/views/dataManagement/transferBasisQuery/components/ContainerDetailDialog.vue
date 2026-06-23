@@ -3,7 +3,7 @@
     :title="title"
     :visible.sync="visible"
     :close-on-click-modal="false"
-    width="1100px"
+    width="1300px"
     custom-class="container-detail-dialog"
     :before-close="handleClose">
     <div class="dialog-content">
@@ -26,28 +26,23 @@
           style="width: 100%">
           <el-table-column type="index" label="序号" width="60" align="center" />
           <el-table-column prop="containerCode" label="容器号" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="location" label="位置" min-width="140" show-overflow-tooltip />
-          <el-table-column prop="inboundInfo" label="入库信息" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="outboundInfo" label="出库信息" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="position" label="位置" min-width="140" show-overflow-tooltip />
+          <el-table-column prop="warehouseName" label="库房" min-width="120" show-overflow-tooltip />
+          <el-table-column prop="inboundTaskNum" label="入库任务号" min-width="140" show-overflow-tooltip />
+          <el-table-column prop="outboundTaskNum" label="出库任务号" min-width="140" show-overflow-tooltip />
           <el-table-column prop="goodName" label="材料名称" min-width="120" show-overflow-tooltip />
-          <el-table-column label="封记信息" min-width="220">
-            <template slot-scope="scope">
-              <div class="seal-cell">
-                <span>{{ scope.row.sealType1 }}：{{ scope.row.sealCode1 }}</span>
-                <span>{{ scope.row.sealType2 }}：{{ scope.row.sealCode2 }}</span>
-              </div>
-            </template>
+          <el-table-column prop="sealCode1" label="封记编码1" min-width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型1" min-width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType1) }}</template>
+          </el-table-column>
+          <el-table-column prop="sealCode2" label="封记编码2" min-width="120" show-overflow-tooltip />
+          <el-table-column label="封记类型2" min-width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
           </el-table-column>
           <el-table-column prop="productionUnit" label="生产单位" min-width="130" show-overflow-tooltip />
-          <el-table-column label="重量(毛/皮/净)" min-width="150" align="center">
-            <template slot-scope="scope">
-              <div class="weight-cell">
-                <span><i class="w-tag">毛</i>{{ scope.row.grossWeight }}</span>
-                <span><i class="w-tag">皮</i>{{ scope.row.tareWeight }}</span>
-                <span><i class="w-tag">净</i>{{ scope.row.netWeight }}</span>
-              </div>
-            </template>
-          </el-table-column>
+          <el-table-column prop="grossWeight" label="毛重" min-width="100" show-overflow-tooltip />
+          <el-table-column prop="tareWeight" label="皮重" min-width="100" show-overflow-tooltip />
+          <el-table-column prop="netWeight" label="净重" min-width="100" show-overflow-tooltip />
         </el-table>
         <div class="pagination">
           <el-pagination
@@ -70,6 +65,7 @@
 
 <script>
 import { listTransferBasisContainer } from './api.js'
+import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
 export default {
   name: 'ContainerDetailDialog',
@@ -79,6 +75,8 @@ export default {
       loading: false,
       field: 'quantity', // 点击来源：quantity 数量 / weight 重量
       row: {},
+      goodCodeNameMap: {}, // goodCode -> goodName 映射，由列表页透传
+      sealTypeOptions: [], // 封记类型字典项
       tableData: [],
       tableHeight: 420,
       page: {
@@ -97,30 +95,46 @@ export default {
       return `数量 ${this.row.quantity ?? '-'}`
     },
   },
+  created() {
+    this.loadSealTypeOptions()
+  },
   methods: {
-    // field: 'quantity' | 'weight'
-    open(row, field = 'quantity') {
+    // 加载封记类型字典项
+    loadSealTypeOptions() {
+      getSealTypeOptions()
+        .then(options => { this.sealTypeOptions = options })
+        .catch(() => { this.sealTypeOptions = [] })
+    },
+    // 封记类型字典值 -> 名称
+    getSealTypeLabel(value) {
+      return formatSealType(this.sealTypeOptions, value)
+    },
+    // field: 'quantity' | 'weight'；goodCodeNameMap 由列表页透传，用于 goodCode -> goodName 展示
+    open(row, field = 'quantity', goodCodeNameMap = {}) {
       this.row = { ...row }
       this.field = field
+      this.goodCodeNameMap = goodCodeNameMap || {}
       this.page.currentPage = 1
       this.visible = true
       this.getList()
     },
     getList() {
       this.loading = true
+      // 后端容器明细仅按调拨依据 transferId 查询
       const params = {
         currentPage: this.page.currentPage,
         pageSize: this.page.pageSize,
-        field: this.field,
-        transferBasis: this.row.transferBasis,
-        year: this.row.year,
-        goodCode: this.row.goodCode,
-        goodName: this.row.goodName,
+        transferId: this.row.transferId,
       }
       listTransferBasisContainer(params)
         .then(res => {
           if (res.code === 1) {
-            this.tableData = (res.data && res.data.list) || []
+            const list = (res.data && res.data.list) || []
+            // 后端仅返回 goodCode，补充 goodName 供「材料名称」列展示
+            this.tableData = list.map(item => ({
+              ...item,
+              goodName: this.goodCodeNameMap[item.goodCode] || item.goodCode,
+            }))
             this.page.total = (res.data && res.data.pagination && res.data.pagination.total) || this.tableData.length
           }
         })
@@ -172,28 +186,6 @@ export default {
 }
 
 .table {
-  .seal-cell {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.5;
-    font-size: 12.5px;
-    color: #4a5568;
-  }
-  .weight-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    line-height: 1.6;
-    font-size: 12.5px;
-    color: #2e353f;
-
-    .w-tag {
-      font-style: normal;
-      font-size: 11px;
-      color: #8a929f;
-      margin-right: 4px;
-    }
-  }
   .pagination {
     display: flex;
     justify-content: flex-end;
