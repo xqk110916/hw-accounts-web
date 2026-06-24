@@ -582,7 +582,7 @@ export default {
       this.downloadPadLoading = true
       exportToPadStream({
         taskNum: this.form.taskNum,
-        warehouseId: warehouseIds.join(','),
+        wareHouseIds: warehouseIds,
       }).then(res => {
         const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
         const disposition = res.headers && res.headers['content-disposition']

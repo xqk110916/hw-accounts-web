@@ -91,11 +91,11 @@ export const exportToPad = params => {
 }
 
 // 10.1 下载PAD盘存数据
-export const exportToPadStream = params => {
+export const exportToPadStream = data => {
   return request({
     url: '/busin/inventory/exportToPad/stream',
-    method: 'get',
-    params,
+    method: 'post',
+    data,
     responseType: 'blob',
   })
 }

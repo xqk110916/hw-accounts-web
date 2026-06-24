@@ -111,6 +111,7 @@
                   placeholder="请选择或输入"
                   :disabled="isReadonly || isEdit"
                   style="width: 100%"
+                  @change="triggerColumnsValidate"
                 >
                   <el-option
                     v-for="item in areaOptions"
@@ -123,7 +124,7 @@
             </el-table-column>
             <el-table-column label="类型" prop="type" min-width="150">
               <template slot-scope="scope">
-                <el-select v-model="scope.row.type" placeholder="请选择类型" size="mini" style="width: 100%" :disabled="isReadonly || isEdit">
+                <el-select v-model="scope.row.type" placeholder="请选择类型" size="mini" style="width: 100%" :disabled="isReadonly || isEdit" @change="triggerColumnsValidate">
                   <el-option
                     v-for="item in currentShelfTypeOptions"
                     :key="item.value"
@@ -198,7 +199,9 @@ export default {
         warehouseName: [{ required: true, message: '请输入库房名称', trigger: 'blur' }],
         warehouseCode: [{ required: true, message: '请输入库房编号', trigger: 'blur' }],
         warehouseType: [{ required: true, message: '请选择库房类型', trigger: 'change' }],
-        materialType: [{ required: true, message: '请选择材料名称', trigger: 'change' }]
+        materialType: [{ required: true, message: '请选择材料名称', trigger: 'change' }],
+        // 货架列表中的类型、区域编号等信息必填校验通过自定义validator在formRules中附加
+        columns: []
       },
       balanceAreaOptions: [],
       materialTypeOptions: [],
@@ -224,15 +227,22 @@ export default {
       return '添加库位图纸';
     },
     formRules() {
-      if (this.mode === 'edit') {
-        return {
-          balanceArea: this.rules.balanceArea,
-          warehouseName: this.rules.warehouseName,
-          warehouseCode: this.rules.warehouseCode,
-          warehouseType: this.rules.warehouseType
-        };
-      }
-      return this.rules;
+      const baseRules = this.mode === 'edit'
+        ? {
+            balanceArea: this.rules.balanceArea,
+            warehouseName: this.rules.warehouseName,
+            warehouseCode: this.rules.warehouseCode,
+            warehouseType: this.rules.warehouseType
+          }
+        : { ...this.rules };
+
+      // 始终附加货架列表必填校验（类型 + 老库时区域编号）
+      // 使用箭头函数包裹以保留 this 上下文（Element UI 调用 validator 时会丢失 method this）
+      baseRules.columns = [{
+        validator: (rule, value, callback) => this.validateColumns(rule, value, callback),
+        trigger: 'change'
+      }];
+      return baseRules;
     },
     currentShelfTypeOptions() {
       return this.form.warehouseType === '2' ? this.oldShelfTypeOptions : this.shelfTypeOptions;
@@ -241,6 +251,12 @@ export default {
   watch: {
     'form.warehouseType'(val) {
       // 库房类型切换时不再自动修改已有列的类型
+      // 但需重新校验货架列表（老库需要 areaCode）
+      this.$nextTick(() => {
+        if (this.$refs.form) {
+          this.$refs.form.validateField('columns');
+        }
+      });
     }
   },
   methods: {
@@ -342,15 +358,22 @@ export default {
         if (this.form.warehouseType === '2') col.areaCode = 'A';
         return col;
       });
+      // 初始化时不立即 validateField，避免无谓错误状态；提交时和用户操作时校验
     },
     addColumn() {
       const col = { code: `S${this.form.columns.length + 1}`, type: '' };
       if (this.form.warehouseType === '2') col.areaCode = 'A';
       this.form.columns.push(col);
+      this.$nextTick(() => {
+        if (this.$refs.form) this.$refs.form.validateField('columns');
+      });
     },
     removeColumn(index) {
       if (this.form.columns.length > 1) {
         this.form.columns.splice(index, 1);
+        this.$nextTick(() => {
+          if (this.$refs.form) this.$refs.form.validateField('columns');
+        });
       } else {
         this.$message.warning('至少需要保留一列');
       }
@@ -373,7 +396,12 @@ export default {
       }
     },
     handleSubmit() {
-      this.$refs.form.validate((valid) => {
+      // 先执行货架列表必填显式校验（保证无论 form rule 是否触发都生效）
+      if (!this.validateColumnsBeforeSubmit()) {
+        return;
+      }
+
+      this.$refs.form.validate((valid, invalidFields) => {
         if (valid) {
           const result = JSON.parse(JSON.stringify(this.form));
           result.mode = this.mode;
@@ -386,6 +414,9 @@ export default {
           this.$emit('submit', result);
         } else {
           console.log('error submit!!');
+          if (invalidFields && invalidFields.columns && invalidFields.columns.length) {
+            this.$message.error(invalidFields.columns[0].message);
+          }
           return false;
         }
       });
@@ -400,6 +431,60 @@ export default {
     },
     handleChange(value) {
       console.log(value, this.balanceAreaOptions)
+    },
+    // 货架列表信息必填校验（位置图管理 - 添加库位）
+    validateColumns(rule, value, callback) {
+      // 编辑/只读模式下跳过货架列表必填（字段已禁用）
+      if (this.isEdit || this.isReadonly) {
+        return callback();
+      }
+      const columns = Array.isArray(value) ? value : (this.form.columns || []);
+      if (!columns || columns.length === 0) {
+        return callback(new Error('货架列表至少需要保留一列'));
+      }
+      const isOld = this.form.warehouseType === '2';
+      for (let i = 0; i < columns.length; i++) {
+        const col = columns[i] || {};
+        if (!col.type) {
+          return callback(new Error(`第 ${i + 1} 列的“类型”不能为空`));
+        }
+        if (isOld && !col.areaCode) {
+          return callback(new Error(`第 ${i + 1} 列的“区域编号”不能为空`));
+        }
+      }
+      callback();
+    },
+    // 提交前同步必填校验（确保即使 form rule 未触发也生效）
+    validateColumnsBeforeSubmit() {
+      // 编辑模式下货架列表字段禁用，不再强制新校验（避免历史数据阻断）
+      if (this.isEdit || this.isReadonly) {
+        return true;
+      }
+      const columns = this.form.columns || [];
+      if (!columns.length) {
+        this.$message.error('货架列表至少需要保留一列');
+        return false;
+      }
+      const isOld = this.form.warehouseType === '2';
+      for (let i = 0; i < columns.length; i++) {
+        const col = columns[i] || {};
+        if (!col.type) {
+          this.$message.error(`第 ${i + 1} 列的“类型”不能为空`);
+          return false;
+        }
+        if (isOld && !col.areaCode) {
+          this.$message.error(`第 ${i + 1} 列的“区域编号”不能为空`);
+          return false;
+        }
+      }
+      return true;
+    },
+    triggerColumnsValidate() {
+      this.$nextTick(() => {
+        if (this.$refs.form) {
+          this.$refs.form.validateField('columns');
+        }
+      });
     }
   }
 };

@@ -291,6 +291,7 @@
 
 - 导出盘存清单：`GET /busin/inventory/export`，参数 `taskNum`，返回文件流（blob 下载）。
 - 导出到PAD：`GET /busin/inventory/exportToPad`，参数 `taskNum`，返回字符串提示。
+- 下载PAD盘存数据：`POST /busin/inventory/exportToPad/stream`（JSON），传 `taskNum` + `wareHouseIds`（数组），返回文件流（JSON，用于设备导入）。
 
 ### 6. 录入盘存结果
 

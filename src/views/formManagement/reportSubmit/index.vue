@@ -379,6 +379,15 @@ export default {
         }
       }
     },
+    clearFiltersAboveHistory(historyProp) {
+      (this.currentSearchConfig || []).forEach(searchItem => {
+        if (searchItem.prop === historyProp) return
+        const emptyValue = searchItem.multiple
+          ? []
+          : (searchItem.type === 'daterange' ? null : undefined)
+        this.$set(this.searchParams, searchItem.prop, emptyValue)
+      })
+    },
     async handleFilterChange(item) {
       const code = this.activeReport
       if (code === 'R01' && (item.prop === 'type' || item.prop === 'dateRange')) {
@@ -387,6 +396,7 @@ export default {
         return
       }
       if (item.prop === 'historyId' || item.prop === 'historyIds') {
+        this.clearFiltersAboveHistory(item.prop)
         const val = this.searchParams[item.prop]
         let targetId = null
         if (Array.isArray(val)) {
@@ -406,13 +416,6 @@ export default {
                 const norm = normalizeDetailData(code, resData)
                 this.templateData = norm.report
                 this.tableData = norm.detailList
-                if (code === 'R01') {
-                  const taskNum = norm.report.taskNum || ''
-                  if (taskNum) {
-                    const arr = taskNum.split(',').map(s => s.trim()).filter(Boolean)
-                    this.$set(this.searchParams, 'taskNums', arr)
-                  }
-                }
                 this.$nextTick(() => {
                   if (this.$refs.table) this.$refs.table.doLayout()
                 })
@@ -515,7 +518,11 @@ export default {
         const res = await fn.save(payload)
         if (res.code === 1) {
           this.$message.success('保存成功')
-          this.reloadHistoryOptions()
+          const savedId = res.data
+          if (savedId !== undefined && savedId !== null) {
+            this.$set(this.templateData, 'id', savedId)
+          }
+          await this.reloadHistoryOptions()
         }
       } catch (e) {
         console.error('保存报表失败:', e)
