@@ -203,6 +203,7 @@
                 size="small"
                 :max-height="tableHeight"
                 :cell-style="cellStyle"
+                :span-method="spanMethod"
                 class="modern-table"
                 style="width: 100%"
               >
@@ -210,7 +211,7 @@
                   <!-- 序号列 -->
                   <el-table-column v-if="col.type === 'index'" :key="'col_index_' + col.label" :label="col.label" width="55" align="center">
                     <template slot-scope="scope">
-                      <span v-if="scope.row._isGroupTotal" style="font-weight: bold; color: #b45309;">-</span>
+                      <span v-if="scope.row._isGroupTotal || scope.row._isTotalRow" style="font-weight: bold; color: #b45309;">-</span>
                       <span v-else>{{ scope.$index + 1 }}</span>
                     </template>
                   </el-table-column>
@@ -510,8 +511,8 @@ export default {
       const fn = requestFun[this.activeReport]
       if (!fn || !fn.save) return
 
-      // 过滤掉前端拼装的分组合计行，防止对数据库存储的数据造成污染
-      const realDetailList = (this.tableData || []).filter(row => !row._isGroupTotal)
+      // 过滤掉前端拼装的分组合计行（R01）以及 R04 的合计行（_isTotalRow），防止对数据库存储的数据造成污染
+      const realDetailList = (this.tableData || []).filter(row => !row._isGroupTotal && !row._isTotalRow)
 
       try {
         const payload = buildSavePayload(this.activeReport, this.templateData, realDetailList)
@@ -643,9 +644,33 @@ export default {
         if (idx > -1) this.tableData.splice(idx, 1)
       }
     },
+    // R04 合计行：材料代码与材料类型代码两列合并为一个单元格
+    spanMethod({ row, column }) {
+      if (this.activeReport !== 'R04' || !row || !row._isTotalRow) {
+        return { rowspan: 1, colspan: 1 }
+      }
+      if (column.property === 'goodsCode') {
+        // 合并材料代码 + 材料类型代码
+        return { rowspan: 1, colspan: 2 }
+      }
+      if (column.property === 'materialTypeCode') {
+        // 跳过该单元格，实现合并
+        return { rowspan: 1, colspan: 0 }
+      }
+      return { rowspan: 1, colspan: 1 }
+    },
     cellStyle({ row }) {
       if (!row) return {}
-      
+
+      // R04 合计行：使用与其他界面一致的微金色底色（与 R01 小计行保持一致）
+      if (this.activeReport === 'R04' && row._isTotalRow) {
+        return {
+          background: '#fffbeb',
+          color: '#b45309',
+          fontWeight: '700'
+        }
+      }
+
       // 如果是 R01 报表，我们根据 taskNum 字段对数据进行分组
       if (this.activeReport === 'R01' && row.taskNum) {
         const uniqueTaskNums = [...new Set(this.tableData.map(item => item.taskNum).filter(Boolean))]

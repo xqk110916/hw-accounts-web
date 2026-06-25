@@ -281,6 +281,14 @@ export const normalizeRowsForDisplay = (code, rows = []) => rows.map((row, index
   if ((code === 'R03' || code === 'R04') && item.elementQuantity === undefined) item.elementQuantity = item.elementContent
   if ((code === 'R03' || code === 'R04') && item.isotopeQuantity === undefined) item.isotopeQuantity = item.isotopeContent
   if ((code === 'R08' || code === 'R09') && item.seqNo === undefined) item.seqNo = index + 1
+
+  // R04 合计行识别：材料代码(goodsCode) 以 "物素代码" 开头即为合计行
+  // 标记 _isTotalRow，后续显示/样式/保存过滤均依赖此标记
+  if (code === 'R04' && item.goodsCode && String(item.goodsCode).startsWith('物素代码')) {
+    item._isTotalRow = true
+    item.measurePointCode = '合计'
+  }
+
   return item
 })
 

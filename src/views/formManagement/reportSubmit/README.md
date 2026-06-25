@@ -109,13 +109,14 @@ src/views/formManagement/reportSubmit/
 
 - **R06**：列配置含操作列 `{ type: 'operation', actions: ['新增', '删除'] }`，由 `handleRowAction(action, row)` 处理——"新增"复制当前行并标记 `_isNew` 后追加，"删除"按引用从 `tableData` 移除。
 - **R01**：`cellStyle` 按 `taskNum` 对行分组着色（循环色板），`_isGroupTotal` 小计行使用金色底色与加粗文字。
+- **R04**：当材料代码(goodsCode)以"物素代码"开头（如"物素代码：CL0001"）时为合计行，由 `normalizeRowsForDisplay` 标记 `_isTotalRow` 并将测量点代码置为"合计"；`span-method` 使该行"材料代码"与"材料类型代码"两列合并展示为单个单元格；`cellStyle` 使用与其他界面一致的微金色底色（`#fffbeb`，文字 `#b45309`，加粗），与 R01 的 `_isGroupTotal` 小计行保持一致；序号列显示"-"。
 - **R08 / R09**：明细带 `seqNo` 序号，由 `normalizeRowsForDisplay` 兜底生成。
 
 ### 5. 保存（handleSave）
 
 点击"保存报表"调用 `buildSavePayload(activeReport, templateData, tableData)`：
 
-- 先过滤掉前端拼装的 `_isGroupTotal` 分组合计行，避免污染存储；
+- 先过滤掉前端拼装的 `_isGroupTotal` 分组合计行以及 R04 的 `_isTotalRow` 合计行，避免污染存储；
 - `buildHeader` 按 `headerFields[code]` 白名单提取表头，并清洗 `formNo` 开头的 `X`/`x`/`Ｘ` 前缀（兼容后端历史脏数据）；
 - 明细按 `detailFields[code]` 白名单经 `normalizeRowForSave` 提取；
 - 调用 `save` 接口（`POST /{code}/save`），成功后 `reloadHistoryOptions` 刷新"从历史中选择"下拉。
