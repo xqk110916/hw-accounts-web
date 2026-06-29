@@ -7,7 +7,7 @@ import { getAllTransferBasisList } from '@/views/task/inbound/components/api.js'
 export const allTableColumns = [
   { label: '调拨依据', prop: 'transferBasis', minWidth: 160 },
   { label: '年份', prop: 'year', minWidth: 100 },
-  { label: '材料', prop: 'goodName', minWidth: 140 },
+  { label: '材料代码', prop: 'goodName', minWidth: 140 },
   { label: '数量', prop: 'quantity', minWidth: 100, clickable: true },
   { label: '重量', prop: 'weight', minWidth: 120, clickable: true },
 ]
@@ -18,7 +18,7 @@ export const config = {
   search: [
     { label: '调拨依据', prop: 'outTransferId', type: 'select', col: 6, option: [] },
     { label: '日期', prop: 'dateRange', type: 'daterange', col: 8 },
-    { label: '材料', prop: 'goodCodes', type: 'select', col: 6, multiple: true, option: [] },
+    { label: '材料代码', prop: 'goodCodes', type: 'select', col: 6, multiple: true, option: [] },
   ],
 }
 

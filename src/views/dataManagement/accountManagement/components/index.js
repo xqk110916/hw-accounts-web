@@ -6,7 +6,7 @@ import { getLocationHierarchy } from '@/views/task/inbound/components/api.js'
 export const tab1Config = {
   search: [
     { label: '年份', prop: 'year', type: 'year', col: 6 },
-    { label: '材料', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
+    { label: '材料代码', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
     { label: '库房', prop: 'warehouseName', type: 'select', col: 6, option: [] },
   ],
   table: [
@@ -41,7 +41,7 @@ export const detailTableColumns = [
 export const tab2Config = {
   search: [
     { label: '时间区间', prop: 'timeRange', type: 'daterange', col: 7 },
-    { label: '材料', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
+    { label: '材料代码', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
     { label: '库房', prop: 'warehouseName', type: 'select', col: 6, option: [] },
   ],
   titleTemplate: (params) => `总账明细`,
@@ -51,7 +51,7 @@ export const tab2Config = {
 export const tab3Config = {
   search: [
     { label: '时间区间', prop: 'timeRange', type: 'daterange', col: 7 },
-    { label: '材料', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
+    { label: '材料代码', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
     { label: '库房', prop: 'warehouseName', type: 'select', col: 6, option: [] },
   ],
   titleTemplate: (params) => {
@@ -65,7 +65,7 @@ export const tab3Config = {
 export const tab4Config = {
   search: [
     { label: '时间区间', prop: 'timeRange', type: 'daterange', col: 7 },
-    { label: '材料', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
+    { label: '材料代码', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
     { label: '生产单位', prop: 'productionUnit', type: 'text', col: 6 },
   ],
   titleTemplate: (params) => params.productionUnit ? `${params.productionUnit}生产单位总账` : '生产单位明细账',
@@ -75,7 +75,7 @@ export const tab4Config = {
 export const tab5Config = {
   search: [
     { label: '时间区间', prop: 'timeRange', type: 'daterange', col: 7 },
-    { label: '材料', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
+    { label: '材料代码', prop: 'goodsCodes', type: 'select', col: 6, multiple: true, option: [] },
   ],
   titleTemplate: () => '材料账明细',
 }

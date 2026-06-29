@@ -34,7 +34,7 @@ export const configDetail = {
 
 export const searchConfig = [
   { label: '库房', prop: 'warehouseNames', type: 'select', col: 6, multiple: true, option: [] },
-  { label: '材料类型', prop: 'materialType', type: 'select', col: 6, option: [] },
+  { label: '材料代码', prop: 'materialType', type: 'select', col: 6, option: [] },
   { label: '生产单位', prop: 'productionUnit', type: 'text', col: 6 },
   { label: '入库时间', prop: 'inboundTimeRange', type: 'daterange', col: 7 },
 ]

@@ -174,6 +174,7 @@ export default {
         'sealType1',
         'sealCode2',
         'sealType2',
+        'warehouseId',
         'warehouseName',
         'boxNum',
         'position'
@@ -245,6 +246,7 @@ export default {
               tareWeight: item.tareWeight || '',
               netWeight: item.netWeight || '',
               metalPercentage: item.metalPercentage || '',
+              warehouseId: '',  // 库房ID由类型2提供（原类型1逻辑已移至类型2）
               warehouseName: '',
               sealCode1: '', sealType1: '', sealCode2: '', sealType2: '',
               boxNum: '', position: ''
@@ -259,6 +261,7 @@ export default {
                 containerCode: item.containerCode || '',
                 sealCode1: item.sealCode1 || '', sealType1: item.sealType1 || '',
                 sealCode2: item.sealCode2 || '', sealType2: item.sealType2 || '',
+                warehouseId: item.warehouseId || '',
                 warehouseName: item.warehouseName || '',
                 boxNum: item.boxNum || '', position: item.position || ''
               }))
@@ -271,6 +274,7 @@ export default {
                   target.sealType1 = importItem.sealType1 || target.sealType1
                   target.sealCode2 = importItem.sealCode2 || target.sealCode2
                   target.sealType2 = importItem.sealType2 || target.sealType2
+                  target.warehouseId = importItem.warehouseId || target.warehouseId
                   target.warehouseName = importItem.warehouseName || target.warehouseName
                   target.boxNum = importItem.boxNum || target.boxNum
                   target.position = importItem.position || target.position

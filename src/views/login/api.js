@@ -8,7 +8,7 @@
 import request from '@/utils/request';
 
 // 登录方法
-export const login = data => request({ url: '/base/login/withPwd', headers: { isToken: true }, method: 'post', data: data });
+export const login = data => request({ url: '/base/loginNew/withPwd', headers: { isToken: true }, method: 'post', data: data });
 // 退出方法
 export const logout = () => request({ url: '/base/logout', method: 'post' });
 

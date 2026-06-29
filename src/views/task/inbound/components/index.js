@@ -60,7 +60,7 @@ export const config = {
       type: 'select',
       col: 4,
       option: () => getLocationHierarchy(2).then(res => {
-        return (res.data || []).map(item => ({ label: item.warehouseName, value: item.warehouseName }))
+        return (res.data || []).map(item => ({ label: `${item.warehouseName} (${item.warehouseCode})`, value: item.warehouseCode }))
       }),
     },
     { label: '入库时间', prop: 'timeRange', type: 'daterange', col: 4 },

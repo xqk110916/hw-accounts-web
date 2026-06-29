@@ -199,8 +199,11 @@ export default {
       ring.position.y = 0.31;
       group.add(ring);
 
-      // 名称标签
-      const label = this.createTextLabel(wh.name, wh.description || '');
+      // 名称标签：库房名称（库房编号），中文括号 + 名称与编号间加间隙
+      const whName = wh.warehouseName || wh.name || wh.nodeName || '库房';
+      const whCode = wh.warehouseCode || wh.nodeCode || '';
+      const labelName = whCode ? `${whName}（ ${whCode} ）` : whName;
+      const label = this.createTextLabel(labelName, wh.description || '');
       label.position.set(0, 5.5, 0);
       group.add(label);
 
@@ -244,7 +247,10 @@ export default {
         const mesh = intersects[0].object;
         if (mesh.userData.warehouse) {
           const wh = mesh.userData.warehouse;
-          this.tooltip = { visible: true, x: event.clientX - rect.left + 15, y: event.clientY - rect.top - 40, name: wh.name, desc: wh.description || '' };
+          const whName = wh.warehouseName || wh.name || wh.nodeName || '库房';
+          const whCode = wh.warehouseCode || wh.nodeCode || '';
+          const displayName = whCode ? `${whName}（ ${whCode} ）` : whName;
+          this.tooltip = { visible: true, x: event.clientX - rect.left + 15, y: event.clientY - rect.top - 40, name: displayName, desc: wh.description || '' };
           canvas.style.cursor = 'pointer';
           if (this.hoveredMesh !== mesh) {
             if (this.hoveredMesh) { this.hoveredMesh.material.emissive.setHex(0x000000); }
