@@ -487,7 +487,8 @@ export default {
       this.positionOptions = [];
     },
     handleViewHistory() {
-      this.$emit('view-history');
+      // 将任务编号传给父组件，由父组件跳转入库管理并代入查询条件
+      this.$emit('view-history', this.detailValueRaw('taskNum'));
     }
   }
 };

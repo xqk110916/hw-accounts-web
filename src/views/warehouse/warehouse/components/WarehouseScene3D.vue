@@ -199,40 +199,44 @@ export default {
       ring.position.y = 0.31;
       group.add(ring);
 
-      // 名称标签：库房名称（库房编号），中文括号 + 名称与编号间加间隙
+      // 名称标签：库房名称 / 库房编号 / 备注 分三行显示，名称加大加粗
       const whName = wh.warehouseName || wh.name || wh.nodeName || '库房';
       const whCode = wh.warehouseCode || wh.nodeCode || '';
-      const labelName = whCode ? `${whName}（ ${whCode} ）` : whName;
-      const label = this.createTextLabel(labelName, wh.description || '');
+      const label = this.createTextLabel(whName, whCode, wh.description || '');
       label.position.set(0, 5.5, 0);
       group.add(label);
 
       this.scene.add(group);
     },
 
-    createTextLabel(name, desc) {
+    createTextLabel(name, code, desc) {
       const canvas = document.createElement('canvas');
       canvas.width = 256;
-      canvas.height = 80;
+      canvas.height = 112;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = 'rgba(10, 37, 64, 0.85)';
-      ctx.roundRect(0, 0, 256, 80, 10);
+      ctx.roundRect(0, 0, 256, 112, 10);
       ctx.fill();
       ctx.strokeStyle = '#4488ff';
       ctx.lineWidth = 2;
-      ctx.roundRect(1, 1, 254, 78, 10);
+      ctx.roundRect(1, 1, 254, 110, 10);
       ctx.stroke();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 26px Microsoft YaHei, Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(name, 128, 30);
-      ctx.fillStyle = 'rgba(180,210,255,0.8)';
+      // 第一行：库房名称（字体加大加粗，突出主体）
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 30px Microsoft YaHei, Arial';
+      ctx.fillText(name, 128, 34);
+      // 第二行：库房编号（沿用中文括号 + 间隙，小字浅蓝）
+      ctx.fillStyle = 'rgba(180,210,255,0.85)';
       ctx.font = '16px Microsoft YaHei, Arial';
-      ctx.fillText(desc, 128, 58);
+      if (code) ctx.fillText(`（ ${code} ）`, 128, 62);
+      // 第三行：备注（沿用小字浅蓝）
+      if (desc) ctx.fillText(desc, 128, 90);
       const texture = new THREE.CanvasTexture(canvas);
       const mat = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(mat);
-      sprite.scale.set(3.2, 1.0, 1);
+      // canvas 比例 256:112，保持宽度不变按比例抬高
+      sprite.scale.set(3.2, 1.4, 1);
       return sprite;
     },
 

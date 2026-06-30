@@ -615,9 +615,9 @@ export default {
       if (this.warehouseOptions.length) return Promise.resolve(this.warehouseOptions)
       return this.loadWarehouseOptions().then(() => this.warehouseOptions)
     },
-    getWarehouseName(warehouseId) {
+    getWarehouseCode(warehouseId) {
       const warehouse = this.warehouseOptions.find(item => String(item.id) === String(warehouseId)) || {}
-      return warehouse.warehouseName
+      return warehouse.warehouseCode
     },
     normalizePositionOption(item = {}) {
       const inboundGoods = item.inboundGoodsEntity || {}
@@ -662,7 +662,7 @@ export default {
     handleSourceWarehouseChange(warehouseId) {
       this.detailEditForm.sourcePositionId = ''
       this.sourcePositionOptions = []
-      this.detailEditForm.sourceWarehouse = this.getWarehouseName(warehouseId)
+      this.detailEditForm.sourceWarehouse = this.getWarehouseCode(warehouseId)
       this.clearSourceGoodsFields()
       this.containerCodeInput = ''
       if (warehouseId) this.loadSourcePositions(warehouseId)
@@ -670,7 +670,7 @@ export default {
     handleTargetWarehouseChange(warehouseId) {
       this.detailEditForm.targetPositionId = ''
       this.targetPositionOptions = []
-      this.detailEditForm.targetWarehouse = this.getWarehouseName(warehouseId)
+      this.detailEditForm.targetWarehouse = this.getWarehouseCode(warehouseId)
       this.detailEditForm.targetShelf = ''
       this.detailEditForm.targetRow = ''
       this.detailEditForm.targetColumn = ''

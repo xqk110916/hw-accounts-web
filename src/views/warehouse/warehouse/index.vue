@@ -464,8 +464,13 @@ export default {
       return `${(this.currentWarehouse && this.currentWarehouse.name) || '库房'} - ${position}`;
     },
 
-    viewContainerHistory() {
-      this.$message.info('跳转到入库信息页面...');
+    viewContainerHistory(taskNum) {
+      // 关闭容器详情弹窗，跳转入库管理并自动代入任务编号查询
+      this.containerDialogVisible = false;
+      this.$router.push({
+        path: '/task/inbound',
+        query: taskNum ? { taskNum } : {}
+      });
     },
 
     getCurrentUserName() {
