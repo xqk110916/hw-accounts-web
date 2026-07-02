@@ -29,7 +29,7 @@
                     <el-input v-else v-model="formData[item.key]" size="small" placeholder="请输入" @input="onInput" class="edit-input" />
                   </template>
                   <template v-else-if="mode === 'preview'">
-                    <span class="preview-text">{{ formData[item.key] || '' }}</span>
+                    <span class="preview-text">{{ getPreviewValue(item) }}</span>
                   </template>
                   <template v-else-if="mode === 'design'">
                   </template>
@@ -53,7 +53,7 @@
 </template>
 
 <script>
-import { getPrinterConfig } from './storage'
+import { formatDisplayDateValue, getPrinterConfig } from './storage'
 
 export default {
   name: 'LabelTemplatePreview',
@@ -129,6 +129,13 @@ export default {
     onSelectChange(fieldKey, value) {
       this.$emit('select-change', { fieldKey, value })
       this.onInput()
+    },
+    getPreviewValue(item) {
+      const value = this.formData[item.key] || ''
+      if (item.fileValue === 'storageTime' || item.name === '入库时间') {
+        return formatDisplayDateValue(value)
+      }
+      return value
     },
   },
 }

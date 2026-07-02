@@ -136,10 +136,21 @@ export default {
         const file = this.fileList[0].raw || this.fileList[0]
         const res = await importSealRecord(file)
         if (res.code === 1) {
-          this.importResult = res.data || {}
-          this.$message.success('导入完成')
-          this.$emit('saved')
-          this.handleReImport()
+          const data = res.data || {}
+          this.importResult = data
+          const failNum = Number(data.failNum) || 0
+          const remindList = Array.isArray(data.remindList) ? data.remindList : []
+          const hasFailure = failNum > 0 && remindList.length > 0
+          if (hasFailure) {
+            // 有失败记录：保持弹窗打开，展示异常信息和问题文件下载入口
+            this.$message.warning(`共 ${failNum} 条数据导入失败，请查看下方提示`)
+            this.clearFile()
+          } else {
+            // 全部成功：关闭弹窗，刷新列表
+            this.$message.success('导入成功')
+            this.$emit('saved')
+            this.visible = false
+          }
         }
       } finally {
         this.uploadLoading = false

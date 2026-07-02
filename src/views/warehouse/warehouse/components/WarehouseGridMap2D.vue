@@ -1177,7 +1177,7 @@ export default {
       border: 1px solid #aeb8c5;
       border-radius: 2px;
       vertical-align: -1px;
-      &.free { background: #409EFF; border-color: #3070cc; }
+      &.free { background: #fff; }
       &.used { background: #67C23A; border-color: #529b2e; }
       &.locked { background: #E6A23C; border-color: #b88230; }
       &.aisle { background: #d9dde6; }

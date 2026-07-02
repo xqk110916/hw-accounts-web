@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "bypassPermissions",
     "allow": [
       "Edit(/.claude/skills/menu_management/**)",
       "mcp__cdp-bridge__browser_cookies",

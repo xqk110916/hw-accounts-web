@@ -1,4 +1,4 @@
-import { getPrinterConfig } from './storage'
+import { formatDisplayDateValue, getPrinterConfig } from './storage'
 
 // 字号映射（基准值，会乘以 DPI 缩放系数）
 const fontDotMap = {
@@ -27,15 +27,21 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 // 安全占位符：不含任何特殊字符，SDK 内部 JSON 拼接不会破坏结构
 const QR_PLACEHOLDER = '__ZPL_QR_DATA__'
 
+const isDateField = field => field && (field.fileValue === 'storageTime' || field.name === '入库时间')
+
 /**
  * 构建二维码 JSON 数据（用户期望的扫描结果格式）
  */
 export const buildQrContent = (template, formData) => {
-  const fields = (template.fields || []).map(field => ({
-    fileValue: field.fileValue || '',
-    fileName: field.name || '',
-    value: formData[field.key] || '',
-  }))
+  const fields = (template.fields || []).map(field => {
+    const rawValue = formData[field.key] || ''
+    const value = isDateField(field) ? formatDisplayDateValue(rawValue) : rawValue
+    return {
+      fileValue: field.fileValue || '',
+      fileName: field.name || '',
+      value,
+    }
+  })
   return JSON.stringify(fields)
 }
 

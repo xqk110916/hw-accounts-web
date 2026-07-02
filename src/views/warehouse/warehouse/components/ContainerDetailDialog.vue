@@ -25,7 +25,7 @@
             <td class="value">{{ detailValue('taskNum') }}</td>
           </tr>
           <tr>
-            <td class="label">物料编码</td>
+            <td class="label">材料代码</td>
             <td class="value">{{ detailValue('goodCode') }}</td>
             <td class="label">入库时间</td>
             <td class="value">{{ inboundTime }}</td>
@@ -473,6 +473,7 @@ export default {
       }
       this.$emit('move-container', {
         warehouseId: this.targetWarehouseId,
+        warehouseCode: (this.targetWarehouse && this.targetWarehouse.warehouseCode) || '',
         warehouseName: (this.targetWarehouse && this.targetWarehouse.warehouseName) || (this.targetWarehouse && this.targetWarehouse.nodeName) || (this.targetWarehouse && this.targetWarehouse.name) || '',
         positionId: this.targetPositionId,
         shelfCode: this.targetPosition.shelfCode || '',

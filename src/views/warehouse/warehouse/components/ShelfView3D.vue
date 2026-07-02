@@ -42,7 +42,7 @@
       </div>
       <div class="tooltip-body">
         <div class="info-row">
-          <span class="label">物料代码:</span>
+          <span class="label">材料代码:</span>
           <span class="value">{{ tooltip.container.materialCode || '-' }}</span>
         </div>
         <div class="info-row">

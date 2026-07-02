@@ -100,6 +100,24 @@ const readBoolean = value => yesValues.includes(value)
 
 const withDefault = (value, fallback) => (value === undefined || value === null || value === '' ? fallback : value)
 
+// Excel 日期序列号（如 46162）转 yyyy-MM-dd；非数字或无法识别时原样返回
+const isDateSerialNumber = value => /^\d+(\.\d+)?$/.test(String(value || '')) && Number(value) > 0
+
+const formatSerialDate = value => {
+  const serial = Number(value)
+  if (!Number.isFinite(serial) || serial <= 0) return value
+  const date = new Date((serial - 25569) * 86400 * 1000)
+  if (Number.isNaN(date.getTime())) return value
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+export const formatDisplayDateValue = value => (isDateSerialNumber(value) ? formatSerialDate(value) : value)
+
+const isDateField = item => item && (item.fileValue === 'storageTime' || item.fileName === '入库时间')
+
 export const backendToTemplate = data => {
   const source = data || {}
   const fields = Array.isArray(source.fieldsConfig) ? [...source.fieldsConfig] : []
@@ -173,7 +191,7 @@ export const labelDataToRow = data => {
   const dataJson = Array.isArray(source.dataJson) ? source.dataJson : []
   const fieldMap = dataJson.reduce((result, item, index) => {
     const key = (defaultFields[index] && defaultFields[index].key) || `customField${index + 1}`
-    result[key] = item.value || ''
+    result[key] = isDateField(item) ? formatDisplayDateValue(item.value) : item.value || ''
     return result
   }, {})
   return {

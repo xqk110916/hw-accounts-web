@@ -1,18 +1,18 @@
 /**
  * 容器颜色工具函数
- * 根据容器状态和物料代码生成颜色
+ * 根据容器状态和材料代码生成颜色
  */
 
 /**
  * 获取容器颜色
  * @param {string|number} status - 容器状态：'2'=占用锁定
- * @param {string} materialCode - 物料代码，非空表示有物料
+ * @param {string} materialCode - 材料代码，非空表示有物料
  * @returns {string} hex颜色值
  */
 export function getContainerColor(status, materialCode) {
   if (String(status) === '2') return '#E6A23C'  // 🟡 占用锁定 - 黄色
   if (materialCode) return '#67C23A'             // 🟢 有物料 - 绿色
-  return '#409EFF'                               // 🔵 空闲 - 蓝色
+  return '#fff'                               // 🔵 空闲 - 白色
 }
 
 /**

@@ -52,6 +52,10 @@ export default {
       type: Object,
       default: null
     },
+    currentArea: {
+      type: Object,
+      default: null
+    },
     shelves: {
       type: Array,
       default: () => []
@@ -112,7 +116,10 @@ export default {
     async fetchProductStats() {
       this.chartLoading = true;
       try {
+        const currentWarehouse = this.currentWarehouse || this.warehouseList[0];
         const res = await getProductStatistics({
+          balanceAreaId: this.currentArea ? this.currentArea.id : '',
+          warehouseId: currentWarehouse ? currentWarehouse.id : '',
           statisticType: this.statsType === 'quantity' ? 2 : 1
         });
         const list = res.data || res || [];

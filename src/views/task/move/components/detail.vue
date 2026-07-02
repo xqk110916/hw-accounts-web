@@ -654,7 +654,9 @@ export default {
       this.targetPositionLoading = true
       try {
         const res = await getPositionMap({ nodeId: warehouseId, nodeType: '2' })
-        this.targetPositionOptions = (res.data || []).map(this.normalizePositionOption)
+        this.targetPositionOptions = (res.data || [])
+          .map(this.normalizePositionOption)
+          // .filter(item => Number(item.status) === 0)
       } finally {
         this.targetPositionLoading = false
       }

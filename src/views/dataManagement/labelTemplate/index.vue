@@ -77,7 +77,7 @@
 import PrintImportDialog from './components/PrintImportDialog.vue'
 import PrintRecordDialog from './components/PrintRecordDialog.vue'
 import TemplateManageDialog from './components/TemplateManageDialog.vue'
-import { templateListToOptions } from './components/storage'
+import { formatDisplayDateValue, templateListToOptions } from './components/storage'
 import { deleteLabelData, listAllTemplate, listLabelData } from './components/api'
 
 export default {
@@ -122,7 +122,11 @@ export default {
     getDataJsonValue(row, fileName) {
       const dataJson = row.dataJson || []
       const field = dataJson.find(item => item.fileName === fileName)
-      return field ? field.value || '' : ''
+      const value = field ? field.value || '' : ''
+      if (fileName === '入库时间' || (field && field.fileValue === 'storageTime')) {
+        return formatDisplayDateValue(value)
+      }
+      return value
     },
     computedTableHeight() {
       let rightDom = document.querySelector('.right')

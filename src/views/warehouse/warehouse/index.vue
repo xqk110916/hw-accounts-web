@@ -28,7 +28,7 @@
         </el-breadcrumb>
       </div>
       <div class="header-right">
-        <el-date-picker
+        <!-- <el-date-picker
           v-model="dateRange"
           type="daterange"
           size="small"
@@ -38,11 +38,12 @@
           value-format="yyyy-MM-dd"
           style="width: 260px"
           @change="handleDateFilter"
-        ></el-date-picker>
+        ></el-date-picker> -->
 
         <!-- 统计信息弹窗 -->
         <StatisticsPanel
           v-if="currentLevel === 'shelf'"
+          :current-area="currentArea"
           :warehouse-list="warehouseList"
           :current-warehouse="currentWarehouse"
           :shelves="shelves"
@@ -504,11 +505,11 @@ export default {
         sealType1: inboundGoods.sealType1 || container.sealType1 || '',
         sealType2: inboundGoods.sealType2 || container.sealType2 || '',
         taskNum: inboundGoods.taskNum || container.taskNum || '',
-        sourceWarehouse: this.currentWarehouse ? this.currentWarehouse.name : '',
+        sourceWarehouse: this.currentWarehouse ? this.currentWarehouse.warehouseCode : '',
         sourceShelf: container.shelfCode || (this.selectedShelf && this.selectedShelf.columnCode) || '',
         sourceRow: container.rowCode || (this.selectedShelf && this.selectedShelf.rowCode) || '',
         sourceColumn: container.columnCode || '',
-        targetWarehouse: targetLocation.warehouseName || '',
+        targetWarehouse: targetLocation.warehouseCode || '',
         targetShelf: targetLocation.shelfCode || '',
         targetRow: targetLocation.rowCode || '',
         targetColumn: targetLocation.columnCode || ''
@@ -535,7 +536,7 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(async () => {
-        const batchRes = await generateBatchNo({ batchType: 'move' });
+        const batchRes = await generateBatchNo({ batchType: 2 });
         if (batchRes.code !== 1) return;
         const res = await submitMove({
           taskNum: batchRes.data,
