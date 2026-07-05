@@ -82,8 +82,7 @@
         <el-form-item label="标记结果">
           <el-radio-group v-model="markErrorForm.result">
             <el-radio label="0">正常</el-radio>
-            <el-radio label="1">盘亏</el-radio>
-            <el-radio label="2">盘盈</el-radio>
+            <el-radio label="1">不正常</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="备注">

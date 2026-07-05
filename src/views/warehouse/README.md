@@ -66,6 +66,9 @@
 核心组件：
 
 - `components/LocationAddDialog.vue`：新增/编辑树节点弹窗。货架类型字典需要保留 `bizCode`，尺寸解析优先使用 `bizCode`。
+  - 列号（`col.code`）生成规则：新库（`warehouseType='0'`）去掉 `S` 前缀，按行序号 `1,2,3...`；老库（`warehouseType='2'`）为「区域编号 + 同区域全局计数」，如 `A,A,A,B → A1,A2,A3,B1`，`A,A,B,B,C,C → A1,A2,B1,B2,C1,C2`。
+  - 触发时机：新增/删除列、切换库房类型、修改某行区域编号时立即重算所有行列号（`recomputeColumnCodes`）。
+  - 列号既显示在「列」列，也作为 `shelfCode` 提交给后端，两者一致。
 - `components/NodeDetailDrawer.vue`：节点详情抽屉。
 - `components/WarehousePositionMapDialog.vue`：库房位置图弹窗，包含 2D 编辑和 3D 查看。
 - `../warehouse/components/WarehouseGridMap2D.vue`：复用的 2D 网格编辑组件。
@@ -165,6 +168,18 @@
 - 字典项优先解析 `bizCode`。
 - 示例 `bizCode=5-3-2-10` 表示 `5排、3层、2m*10m`。
 - 2D 占位优先使用尺寸中的长宽；缺少类型时根据树结构生成默认尺寸。
+
+渲染约定（3D / 2D）：
+
+- 3D 容器统一渲染为固定边长 `C` 的正方体（不再是圆柱），且不带顶部盖子。数据上「1 层 = 1 个容器」，货架为多层垂直堆叠。
+- 3D 每层高度 = 货架占位宽/深 = `1.2C`；货架整体高 = 层数 × `1.2C`。新库保留立柱+层板，老库保留底座，均保留底部光圈。
+- 3D 货架不再按布局网格坐标定位，而是按「列/排索引紧凑摆放」（见 `WarehouseInterior3D.getPlacement`）；`aisleSettings` 的过道按索引换算成固定世界间隙插入到对应列/排之后。新库与老库都适用。
+- 2D 中老库货架（`warehouseType='2'`）占位宽度由 5 格缩为 3 格（高度不变），仅在新生成布局（`generateInitialLayout`）时生效，已缓存的旧布局不追溯修改。
+
+列编码与布局防撞：
+
+- 列定位统一使用 `buildColumnOrder(shelves)` 生成「完整 columnCode → 列序号」映射，`A1`/`B1` 视为不同列；不再用「只取数字」的 `parseCodeNumber` 判定列身份，避免老库 `A1`、`B1` 落到同一列而重叠。
+- `parseCodeNumber` 仅保留用于纯数字场景的兼容函数。
 
 ## 六、修改注意事项
 

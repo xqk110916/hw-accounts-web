@@ -8,7 +8,7 @@ export const allTableColumns = [
   { label: '材料名称', prop: 'goodName', minWidth: 120 },
   { label: '入库信息', prop: 'inboundInfo', minWidth: 200, type: 'slot' },
   { label: '出库信息', prop: 'outboundInfo', minWidth: 200, type: 'slot' },
-  { label: '位置', prop: 'location', minWidth: 120 },
+  { label: '位置', prop: 'locationDisplay', minWidth: 140 },
   { label: '封记类型1', prop: 'sealType1', minWidth: 100 },
   { label: '封记编码1', prop: 'sealCode1', minWidth: 120 },
   { label: '封记类型2', prop: 'sealType2', minWidth: 100 },
@@ -110,4 +110,14 @@ export const buildQueryParams = (params) => {
   return data
 }
 
-export const handleTbaleMap = (data) => data
+export const formatLocationDisplay = row => {
+  const location = row.location || row.position || ''
+  if (!location) return ''
+  const warehouseCode = row.warehouseCode || row.warehouseName || ''
+  return warehouseCode ? `${warehouseCode} - ${location}` : location
+}
+
+export const handleTbaleMap = (data) => (data || []).map(row => ({
+  ...row,
+  locationDisplay: formatLocationDisplay(row),
+}))

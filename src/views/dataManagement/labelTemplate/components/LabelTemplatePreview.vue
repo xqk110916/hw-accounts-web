@@ -22,8 +22,8 @@
                       <el-option v-for="opt in (selectFieldOptions[item.key] || [])" :key="opt.value" :label="opt.label" :value="opt.value" />
                     </el-select>
                     <el-date-picker v-else-if="dateFieldValues.includes(item.fileValue)"
-                      v-model="formData[item.key]" size="small" type="datetime"
-                      value-format="yyyy-MM-dd HH:mm:ss"
+                      v-model="formData[item.key]" size="small" type="date"
+                      value-format="yyyy-MM-dd"
                       :placeholder="`请选择${item.name || item.label}`" class="edit-input"
                       @change="onInput" />
                     <el-input v-else v-model="formData[item.key]" size="small" placeholder="请输入" @input="onInput" class="edit-input" />

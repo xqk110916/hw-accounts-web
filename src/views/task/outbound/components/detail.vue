@@ -63,6 +63,17 @@
                     @change="value => changeFormValue(value, item)"
                   />
                   <el-date-picker
+                    v-if="item.type === 'date'"
+                    v-model="form[item.prop]"
+                    type="date"
+                    size="small"
+                    value-format="yyyy-MM-dd"
+                    :placeholder="`请选择${item.label}`"
+                    clearable
+                    :disabled="isReadonlyMode"
+                    @change="value => changeFormValue(value, item)"
+                  />
+                  <el-date-picker
                     v-if="item.type === 'datetime'"
                     v-model="form[item.prop]"
                     type="datetime"
@@ -237,11 +248,12 @@ import { generateBatchNo } from '@/api/common/batchNo.js'
 import { cancelOutboundApply, confirmAuditOutbound, executeAuditedOutboundUpdate } from './api.js'
 import { formatSealType, getSealTypeOptions } from '@/utils/sealType.js'
 
-function formatDefaultDate(value) {
+function formatDefaultDate(value, type) {
   if (!(value instanceof Date)) return value
   const y = value.getFullYear()
   const m = String(value.getMonth() + 1).padStart(2, '0')
   const d = String(value.getDate()).padStart(2, '0')
+  if (type === 'date') return `${y}-${m}-${d}`
   const H = String(value.getHours()).padStart(2, '0')
   const M = String(value.getMinutes()).padStart(2, '0')
   const S = String(value.getSeconds()).padStart(2, '0')
@@ -252,7 +264,7 @@ function getDefaultFormValue(item) {
   if (item.defaultValue === undefined) return ''
   const value = typeof item.defaultValue === 'function' ? item.defaultValue() : item.defaultValue
   if (Array.isArray(value)) return []
-  const formattedValue = formatDefaultDate(value)
+  const formattedValue = formatDefaultDate(value, item.type)
   if (formattedValue && typeof formattedValue === 'object') return { ...formattedValue }
   return formattedValue
 }
@@ -380,7 +392,8 @@ export default {
         const data = (res.data && res.data.operation) || res.data || {}
         config.detail.forEach(item => {
           if (data[item.prop] !== undefined && data[item.prop] !== null) {
-            this.$set(this.form, item.prop, data[item.prop])
+            const value = item.type === 'date' ? String(data[item.prop]).substring(0, 10) : data[item.prop]
+            this.$set(this.form, item.prop, value)
           }
         })
         if (data.transferId) this.$set(this.form, 'transferId', data.transferId)

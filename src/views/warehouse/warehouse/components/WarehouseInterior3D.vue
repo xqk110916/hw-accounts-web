@@ -208,29 +208,67 @@ export default {
       canvas.addEventListener('click', this.onMouseClick);
     },
 
-    getRoomSize() {
-      const grid = (this.layout && this.layout.grid) || { cols: 20, rows: 12 };
-      const aisleSettings = (this.layout && this.layout.aisleSettings) || { rows: [], cols: [] };
-      const totalRowShift = aisleSettings.rows.reduce((sum, r) => sum + r.width, 0);
-      const totalColShift = aisleSettings.cols.reduce((sum, c) => sum + c.width, 0);
-      
-      const scale = 0.7;
-      const scaleZ = 1.75; // 0.7 * 2.5，将行方向（Z轴）的间距拓宽 2.5 倍，确保多行排布时，后排货架容器不被前排遮挡
-      
-      const width = Math.max(28, ((grid.cols || 20) + totalColShift) * scale + 4);
-      // 行间距（货架本身的占位）用 scaleZ，但过道的占位用 scale，使得行列过道视觉厚度保持一致
-      const depth = Math.max(22, (grid.rows || 12) * scaleZ + totalRowShift * scale + 4);
+    // 3D 摆放模型：脱离布局网格，按列/排索引紧凑摆放，过道按索引换算成固定间隙插入。
+    // 容器为固定边长 CUBE 的正方体；货架宽/深占位 = 1.2C；新库层高 = 1.4C。
+    getPlacement() {
+      const CUBE = 2.0;             // 容器正方体边长 C
+      const CELL = CUBE * 1.2;      // 货架宽/深占位 = 1.2C
+      const LAYER_H_NEW = CUBE * 1.4; // 新库房层高 = 1.4C（容器高度的 1.4 倍）
+      const STEP_X = CELL + 0.8;    // 列方向单元步长（含间隙）
+      const STEP_Z = CELL + 2.6;    // 排方向步长（拉宽避免后排被遮挡）
+      const AISLE_W = 0.7;          // 每 1 单位过道宽度对应的世界宽度
+      const MARGIN = 4;
+
+      const shelves = this.shelves || [];
+      const sortCode = (a, b) => {
+        const an = Number(a), bn = Number(b);
+        if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+        return String(a).localeCompare(String(b), 'zh-CN', { numeric: true });
+      };
+      const colCodes = [...new Set(shelves.map(s => String(s.columnCode || s.columnId || '1')))].sort(sortCode);
+      const rowCodes = [...new Set(shelves.map(s => String(s.rowCode || s.rowId || '1')))].sort(sortCode);
+      const colOrder = {}; colCodes.forEach((c, i) => { colOrder[c] = i; });
+      const rowOrder = {}; rowCodes.forEach((c, i) => { rowOrder[c] = i; });
+
+      const aisle = (this.layout && this.layout.aisleSettings) || { rows: [], cols: [] };
+      const colAisles = (aisle.cols || []).slice().sort((a, b) => a.afterIndex - b.afterIndex);
+      const rowAisles = (aisle.rows || []).slice().sort((a, b) => a.afterIndex - b.afterIndex);
+      // 0-based 索引 i（序号 i+1）之前累计的过道世界偏移：含所有 afterIndex <= i 的过道
+      const colShiftBefore = i => colAisles.reduce((s, a) => s + (a.afterIndex <= i ? a.width : 0), 0) * AISLE_W;
+      const rowShiftBefore = i => rowAisles.reduce((s, a) => s + (a.afterIndex <= i ? a.width : 0), 0) * AISLE_W;
+
+      const totalColAisle = colAisles.reduce((s, a) => s + a.width, 0) * AISLE_W;
+      const totalRowAisle = rowAisles.reduce((s, a) => s + a.width, 0) * AISLE_W;
+      const contentW = Math.max(colCodes.length, 1) * STEP_X + totalColAisle;
+      const contentD = Math.max(rowCodes.length, 1) * STEP_Z + totalRowAisle;
 
       return {
-        scale,
-        scaleZ,
-        width,
-        depth,
-        baseCols: grid.cols || 20,
-        baseRows: grid.rows || 12,
-        totalColShift,
-        totalRowShift
+        CUBE, CELL, LAYER_H_NEW, STEP_X, STEP_Z, AISLE_W,
+        colCodes, rowCodes, colOrder, rowOrder,
+        colAisles, rowAisles, colShiftBefore, rowShiftBefore,
+        contentW, contentD,
+        originX: -contentW / 2,
+        originZ: -contentD / 2,
+        cols: colCodes.length,
+        rows: rowCodes.length,
+        width: Math.max(28, contentW + MARGIN),
+        depth: Math.max(22, contentD + MARGIN)
       };
+    },
+
+    // 兼容旧调用：房间尺寸从摆放模型推导
+    getRoomSize() {
+      const p = this.getPlacement();
+      return { width: p.width, depth: p.depth, cols: p.cols, rows: p.rows };
+    },
+
+    // 计算单个货架中心的世界坐标 (x, z)
+    shelfCenter(shelf, p) {
+      const ci = p.colOrder[String(shelf.columnCode || shelf.columnId || '1')] || 0;
+      const ri = p.rowOrder[String(shelf.rowCode || shelf.rowId || '1')] || 0;
+      const x = p.originX + ci * p.STEP_X + p.STEP_X / 2 + p.colShiftBefore(ci);
+      const z = p.originZ + ri * p.STEP_Z + p.STEP_Z / 2 + p.rowShiftBefore(ri);
+      return { x, z };
     },
 
     buildScene() {
@@ -308,79 +346,35 @@ export default {
     },
 
     createAisles3D() {
-      const layout = this.layout || {};
-      const aisleSettings = layout.aisleSettings || { rows: [], cols: [] };
+      const aisleSettings = (this.layout && this.layout.aisleSettings) || { rows: [], cols: [] };
       if (!aisleSettings.rows.length && !aisleSettings.cols.length) return;
-      
-      const { scale, scaleZ, baseCols, baseRows, totalColShift, totalRowShift } = this.getRoomSize();
-      const originX = -((baseCols + totalColShift) * scale) / 2;
-      const originZ = -(baseRows * scaleZ + totalRowShift * scale) / 2;
 
-      const shelves = layout.shelves || [];
-      const rowLayoutMap = {};
-      const colLayoutMap = {};
-      shelves.forEach(s => {
-        const rowIdx = Number(s.rowCode) || 0;
-        if (rowIdx) {
-          if (!rowLayoutMap[rowIdx]) rowLayoutMap[rowIdx] = { y: s.y, h: s.h };
-          else {
-            rowLayoutMap[rowIdx].y = Math.min(rowLayoutMap[rowIdx].y, s.y);
-            rowLayoutMap[rowIdx].h = Math.max(rowLayoutMap[rowIdx].h, s.h);
-          }
-        }
-        const colIdx = parseInt(String(s.columnCode).replace(/[^\d]/g, ''), 10) || 0;
-        if (colIdx) {
-          if (!colLayoutMap[colIdx]) colLayoutMap[colIdx] = { x: s.x, w: s.w };
-          else {
-            colLayoutMap[colIdx].x = Math.min(colLayoutMap[colIdx].x, s.x);
-            colLayoutMap[colIdx].w = Math.max(colLayoutMap[colIdx].w, s.w);
-          }
-        }
-      });
-
-      const rowShiftMap = {};
-      const colShiftMap = {};
-      aisleSettings.rows.slice().sort((a, b) => a.afterIndex - b.afterIndex).reduce((cum, r) => {
-        cum += r.width; rowShiftMap[r.afterIndex] = cum; return cum;
-      }, 0);
-      aisleSettings.cols.slice().sort((a, b) => a.afterIndex - b.afterIndex).reduce((cum, c) => {
-        cum += c.width; colShiftMap[c.afterIndex] = cum; return cum;
-      }, 0);
-
+      const p = this.getPlacement();
       const mat = new THREE.MeshStandardMaterial({ color: 0xb9c0ca, roughness: 0.85, transparent: true, opacity: 0.9 });
-      
-      aisleSettings.rows.forEach(r => {
-        const rowInfo = rowLayoutMap[r.afterIndex];
-        if (!rowInfo) return;
-        let dy = 0;
-        Object.keys(rowShiftMap).forEach(k => { if (r.afterIndex > Number(k)) dy = rowShiftMap[k]; });
-        
-        const baseY = rowInfo.y + rowInfo.h;
-        const startZ = originZ + baseY * scaleZ + dy * scale;
-        const depth = r.width * scale;
-        const width = (baseCols + totalColShift) * scale;
-        
-        const geo = new THREE.BoxGeometry(width, 0.04, depth);
+
+      // 列间过道：位于第 afterIndex 列（1-based）之后的间隙，沿 Z 方向铺满
+      p.colAisles.forEach(c => {
+        const idx = c.afterIndex - 1; // 0-based：该列右侧
+        if (idx < 0 || idx >= p.cols) return;
+        // 该间隙左边界 = 前 (idx+1) 列的宽度 + 该列之前累计过道
+        const leftX = p.originX + (idx + 1) * p.STEP_X + p.colShiftBefore(idx);
+        const width = c.width * p.AISLE_W;
+        const geo = new THREE.BoxGeometry(width, 0.04, p.contentD);
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(originX + width / 2, 0.05, startZ + depth / 2);
+        mesh.position.set(leftX + width / 2, 0.05, 0);
         mesh.receiveShadow = true;
         this.scene.add(mesh);
       });
 
-      aisleSettings.cols.forEach(c => {
-        const colInfo = colLayoutMap[c.afterIndex];
-        if (!colInfo) return;
-        let dx = 0;
-        Object.keys(colShiftMap).forEach(k => { if (c.afterIndex > Number(k)) dx = colShiftMap[k]; });
-
-        const baseX = colInfo.x + colInfo.w;
-        const startX = originX + baseX * scale + dx * scale;
-        const width = c.width * scale;
-        const depth = baseRows * scaleZ + totalRowShift * scale;
-
-        const geo = new THREE.BoxGeometry(width, 0.04, depth);
+      // 排间过道：位于第 afterIndex 排（1-based）之后的间隙，沿 X 方向铺满
+      p.rowAisles.forEach(r => {
+        const idx = r.afterIndex - 1;
+        if (idx < 0 || idx >= p.rows) return;
+        const topZ = p.originZ + (idx + 1) * p.STEP_Z + p.rowShiftBefore(idx);
+        const depth = r.width * p.AISLE_W;
+        const geo = new THREE.BoxGeometry(p.contentW, 0.04, depth);
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(startX + width / 2, 0.05, originZ + depth / 2);
+        mesh.position.set(0, 0.05, topZ + depth / 2);
         mesh.receiveShadow = true;
         this.scene.add(mesh);
       });
@@ -392,58 +386,27 @@ export default {
     createShelvesInstanced() {
       if (!this.shelves || this.shelves.length === 0) return;
 
-      const shelfW = 3.0, shelfD = 1.4, shelfH = 3.0;
-      const layout = this.layout || {};
-      const { scale, scaleZ, baseCols, baseRows, totalColShift, totalRowShift } = this.getRoomSize();
-      const originX = -((baseCols + totalColShift) * scale) / 2;
-      const originZ = -(baseRows * scaleZ + totalRowShift * scale) / 2;
-      const segments = this.shelves.length > 500 ? LOW_SEGMENTS : HIGH_SEGMENTS;
+      const p = this.getPlacement();
+      const CUBE = p.CUBE;     // 容器正方体边长
+      const CELL = p.CELL;     // 货架宽/深占位 = 1.2C
 
       // ---- 第一遍：预计算每个货架的位置和尺寸，统计各类实例数量 ----
       let totalPillars = 0;
       let totalBoards = 0;
       let totalContainers = 0;
-      let totalLids = 0;
       let totalRings = 0;
       let totalOldBases = 0;
 
-      const aisleSettings = layout.aisleSettings || { rows: [], cols: [] };
-      const rowShiftMap = {};
-      const colShiftMap = {};
-      aisleSettings.rows.slice().sort((a, b) => a.afterIndex - b.afterIndex).reduce((cum, r) => {
-        cum += r.width; rowShiftMap[r.afterIndex] = cum; return cum;
-      }, 0);
-      aisleSettings.cols.slice().sort((a, b) => a.afterIndex - b.afterIndex).reduce((cum, c) => {
-        cum += c.width; colShiftMap[c.afterIndex] = cum; return cum;
-      }, 0);
-
       const shelfInfos = this.shelves.map((shelf, idx) => {
-        let x, z, w = shelfW, d = shelfD;
-        if (shelf.position && layout.grid) {
-          w = Math.max((shelf.width || 2) * scale, 1.2);
-          d = Math.max((shelf.height || 1) * scale, 0.8);
-          
-          let dx = 0, dy = 0;
-          const rowIdx = Number(shelf.rowCode) || 0;
-          const colIdx = parseInt(String(shelf.columnCode).replace(/[^\d]/g, ''), 10) || 0;
-          Object.keys(rowShiftMap).forEach(k => { if (rowIdx > Number(k)) dy = rowShiftMap[k]; });
-          Object.keys(colShiftMap).forEach(k => { if (colIdx > Number(k)) dx = colShiftMap[k]; });
-
-          x = originX + (shelf.position.x + dx) * scale + w / 2;
-          z = originZ + shelf.position.y * scaleZ + dy * scale + d / 2;
-        } else {
-          const cols = this.shelfLayout.cols || 3;
-          const row = Math.floor(idx / cols);
-          const col = idx % cols;
-          x = (col - 1) * 4;
-          z = row * 7;
-        }
-
+        const { x, z } = this.shelfCenter(shelf, p);
+        const w = CELL, d = CELL;   // 货架占位 = 1.2C 正方
         const isOld = String(shelf.warehouseType) === '2';
         const layerCount = shelf.layers ? shelf.layers.length : 3;
-        const displayH = isOld ? 1.0 : shelfH;
+        const layerH = isOld ? CELL : p.LAYER_H_NEW;   // 新库层高 1.4C，老库平台沿用 1.2C
+        const shelfH = layerCount * layerH;    // 货架高 = 层数 × 层高
+        const displayH = shelfH;
 
-        // 统计该货架的容器数
+        // 统计该货架的容器数（1 层最多 1 个容器）
         let containerCount = 0;
         if (shelf.layers) {
           shelf.layers.forEach(layer => {
@@ -460,10 +423,9 @@ export default {
           totalBoards += layerCount + 1;
         }
         totalContainers += containerCount;
-        totalLids += containerCount;
         totalRings++;
 
-        return { shelf, x, z, w, d, isOld, layerCount, displayH, containerCount };
+        return { shelf, x, z, w, d, isOld, layerCount, layerH, shelfH, displayH, containerCount };
       });
 
       this.shelfPositions = shelfInfos.map(info => ({
@@ -473,9 +435,9 @@ export default {
       const dummy = new THREE.Object3D();
       const tempColor = new THREE.Color();
 
-      // ---- 创建新库立柱 InstancedMesh ----
+      // ---- 创建新库立柱 InstancedMesh（高度按各自货架，用 scale 适配）----
       if (totalPillars > 0) {
-        const pillarGeo = new THREE.BoxGeometry(0.1, shelfH, 0.1);
+        const pillarGeo = new THREE.BoxGeometry(0.1, 1, 0.1);
         const pillarMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, metalness: 0.5, roughness: 0.5 });
         const pillarMesh = new THREE.InstancedMesh(pillarGeo, pillarMat, totalPillars);
         pillarMesh.castShadow = false;
@@ -483,14 +445,14 @@ export default {
         shelfInfos.forEach(info => {
           if (info.isOld) return;
           const offsets = [
-            [-info.w / 2, shelfH / 2, -info.d / 2],
-            [info.w / 2, shelfH / 2, -info.d / 2],
-            [-info.w / 2, shelfH / 2, info.d / 2],
-            [info.w / 2, shelfH / 2, info.d / 2]
+            [-info.w / 2, -info.d / 2],
+            [info.w / 2, -info.d / 2],
+            [-info.w / 2, info.d / 2],
+            [info.w / 2, info.d / 2]
           ];
-          offsets.forEach(([ox, oy, oz]) => {
-            dummy.position.set(info.x + ox, oy, info.z + oz);
-            dummy.scale.set(1, 1, 1);
+          offsets.forEach(([ox, oz]) => {
+            dummy.position.set(info.x + ox, info.shelfH / 2, info.z + oz);
+            dummy.scale.set(1, info.shelfH, 1);
             dummy.rotation.set(0, 0, 0);
             dummy.updateMatrix();
             pillarMesh.setMatrixAt(pillarIdx++, dummy.matrix);
@@ -503,7 +465,6 @@ export default {
 
       // ---- 创建新库层板 InstancedMesh ----
       if (totalBoards > 0) {
-        // 层板尺寸可能不同（因为 w, d 可能不同），但差异不大，使用统一几何体 + 缩放
         const boardGeo = new THREE.BoxGeometry(1, 0.06, 1); // 单位尺寸，通过 scale 控制
         const boardMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.7 });
         const boardMesh = new THREE.InstancedMesh(boardGeo, boardMat, totalBoards);
@@ -511,9 +472,8 @@ export default {
         let boardIdx = 0;
         shelfInfos.forEach(info => {
           if (info.isOld) return;
-          const layerH = shelfH / info.layerCount;
           for (let li = 0; li <= info.layerCount; li++) {
-            dummy.position.set(info.x, li * layerH, info.z);
+            dummy.position.set(info.x, li * CELL, info.z);
             dummy.scale.set(info.w - 0.05, 1, info.d - 0.05);
             dummy.rotation.set(0, 0, 0);
             dummy.updateMatrix();
@@ -552,85 +512,46 @@ export default {
         this.instancedMeshes.push(baseMesh);
       }
 
-      // ---- 创建容器圆柱 InstancedMesh（含每实例颜色）----
+      // ---- 创建容器正方体 InstancedMesh（含每实例颜色，无盖子）----
       if (totalContainers > 0) {
-        // 使用统一半径的几何体，通过 scale 适配不同货架
-        const cylGeo = new THREE.CylinderGeometry(1, 1, 1, segments);
-        const cylMat = new THREE.MeshStandardMaterial({ metalness: 0.4, roughness: 0.5 });
-        const cylMesh = new THREE.InstancedMesh(cylGeo, cylMat, totalContainers);
-        const cylColors = new Float32Array(totalContainers * 3);
+        const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+        const boxMat = new THREE.MeshStandardMaterial({ metalness: 0.4, roughness: 0.5 });
+        const boxMesh = new THREE.InstancedMesh(boxGeo, boxMat, totalContainers);
+        const boxColors = new Float32Array(totalContainers * 3);
 
-        const lidGeo = new THREE.CylinderGeometry(1, 0.92, 0.04, segments);
-        const lidMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
-        const lidMesh = new THREE.InstancedMesh(lidGeo, lidMat, totalLids);
-
-        let cylIdx = 0;
-        let lidIdx = 0;
+        let boxIdx = 0;
 
         shelfInfos.forEach(info => {
           if (!info.shelf.layers) return;
           info.shelf.layers.forEach((layer, layerIdx) => {
             const containers = layer.containers || [];
-            const containerCount = containers.length;
-            if (containerCount === 0) return;
+            if (containers.length === 0) return;
+            const container = containers[0];   // 1 层 1 容器
+            if (!container.materialCode) return;
 
-            const spacing = (info.w - 0.2) / containerCount;
-            const startCX = -(info.w - 0.2) / 2 + spacing / 2;
+            // 每层的容器居中放在该层空间内；老库底座在 0.2，其余从 0 起
+            const layerBase = info.isOld ? 0.2 : layerIdx * CELL;
+            const cy = layerBase + CELL / 2;
 
-            let baseY;
-            if (info.isOld) {
-              baseY = 0.2;
-            } else {
-              const layerH = shelfH / info.layerCount;
-              baseY = layerIdx * layerH + 0.06;
-            }
+            dummy.position.set(info.x, cy, info.z);
+            dummy.scale.set(CUBE, CUBE, CUBE);
+            dummy.rotation.set(0, 0, 0);
+            dummy.updateMatrix();
+            boxMesh.setMatrixAt(boxIdx, dummy.matrix);
 
-            containers.forEach((container, cIdx) => {
-              if (!container.materialCode) return;
-
-              const cx = startCX + cIdx * spacing;
-              const radius = Math.min(spacing * 0.42, info.d * 0.42, 0.55);
-              let cylH;
-              if (info.isOld) {
-                cylH = 0.65;
-              } else {
-                const layerH = shelfH / info.layerCount;
-                cylH = layerH * 0.65;
-              }
-
-              // 设置容器位置和缩放
-              dummy.position.set(info.x + cx, baseY + cylH / 2, info.z);
-              dummy.scale.set(radius, cylH, radius);
-              dummy.rotation.set(0, 0, 0);
-              dummy.updateMatrix();
-              cylMesh.setMatrixAt(cylIdx, dummy.matrix);
-
-              // 根据容器状态确定颜色
-              const hexColor = getContainerColor(container.status, container.materialCode || container.goodCode);
-              const color = parseInt(hexColor.replace('#', ''), 16);
-              tempColor.setHex(color);
-              cylColors[cylIdx * 3] = tempColor.r;
-              cylColors[cylIdx * 3 + 1] = tempColor.g;
-              cylColors[cylIdx * 3 + 2] = tempColor.b;
-              cylIdx++;
-
-              // 设置盖子位置和缩放
-              dummy.position.set(info.x + cx, baseY + cylH + 0.02, info.z);
-              dummy.scale.set(radius, 1, radius);
-              dummy.rotation.set(0, 0, 0);
-              dummy.updateMatrix();
-              lidMesh.setMatrixAt(lidIdx++, dummy.matrix);
-            });
+            const hexColor = getContainerColor(container.status, container.materialCode || container.goodCode);
+            tempColor.setHex(parseInt(hexColor.replace('#', ''), 16));
+            boxColors[boxIdx * 3] = tempColor.r;
+            boxColors[boxIdx * 3 + 1] = tempColor.g;
+            boxColors[boxIdx * 3 + 2] = tempColor.b;
+            boxIdx++;
           });
         });
 
-        // 应用颜色
-        cylMesh.instanceColor = new THREE.InstancedBufferAttribute(cylColors, 3);
-        cylMesh.instanceMatrix.needsUpdate = true;
-        lidMesh.instanceMatrix.needsUpdate = true;
-        this.scene.add(cylMesh);
-        this.scene.add(lidMesh);
-        this.instancedMeshes.push(cylMesh, lidMesh);
+        boxMesh.instanceColor = new THREE.InstancedBufferAttribute(boxColors, 3);
+        boxMesh.instanceMatrix.needsUpdate = true;
+        this.scene.add(boxMesh);
+        this.instancedMeshes.push(boxMesh);
       }
 
       // ---- 创建底部光圈 InstancedMesh ----
@@ -722,47 +643,12 @@ export default {
     // =====================================================
     createShelves3D() {
       if (!this.shelves || this.shelves.length === 0) return;
-      const shelfW = 3.0, shelfD = 1.4, shelfH = 3.0;
-      const layout = this.layout || {};
-      const { scale, scaleZ, baseCols, baseRows, totalColShift, totalRowShift } = this.getRoomSize();
-      const originX = -((baseCols + totalColShift) * scale) / 2;
-      const originZ = -(baseRows * scaleZ + totalRowShift * scale) / 2;
-
-      const aisleSettings = layout.aisleSettings || { rows: [], cols: [] };
-      const rowShiftMap = {};
-      const colShiftMap = {};
-      aisleSettings.rows.slice().sort((a, b) => a.afterIndex - b.afterIndex).reduce((cum, r) => {
-        cum += r.width; rowShiftMap[r.afterIndex] = cum; return cum;
-      }, 0);
-      aisleSettings.cols.slice().sort((a, b) => a.afterIndex - b.afterIndex).reduce((cum, c) => {
-        cum += c.width; colShiftMap[c.afterIndex] = cum; return cum;
-      }, 0);
-
-      this.shelves.forEach((shelf, idx) => {
-        let x;
-        let z;
-        let w = shelfW;
-        let d = shelfD;
-        if (shelf.position && layout.grid) {
-          w = Math.max((shelf.width || 2) * scale, 1.2);
-          d = Math.max((shelf.height || 1) * scale, 0.8);
-          
-          let dx = 0, dy = 0;
-          const rowIdx = Number(shelf.rowCode) || 0;
-          const colIdx = parseInt(String(shelf.columnCode).replace(/[^\d]/g, ''), 10) || 0;
-          Object.keys(rowShiftMap).forEach(k => { if (rowIdx > Number(k)) dy = rowShiftMap[k]; });
-          Object.keys(colShiftMap).forEach(k => { if (colIdx > Number(k)) dx = colShiftMap[k]; });
-
-          x = originX + (shelf.position.x + dx) * scale + w / 2;
-          z = originZ + shelf.position.y * scaleZ + dy * scale + d / 2;
-        } else {
-          const cols = this.shelfLayout.cols || 3;
-          const row = Math.floor(idx / cols);
-          const col = idx % cols;
-          x = (col - 1) * 4;
-          z = row * 7; // 兜底无网格位置信息时，也将行间距从 5.0 拓宽到 7.0
-        }
-        this.createShelf3D(shelf, x, z, w, d, shelfH);
+      const p = this.getPlacement();
+      this.shelves.forEach(shelf => {
+        const { x, z } = this.shelfCenter(shelf, p);
+        const layerCount = shelf.layers ? shelf.layers.length : 3;
+        const shelfH = layerCount * p.CELL;   // 货架高 = 层数 × 1.2C
+        this.createShelf3D(shelf, x, z, p.CELL, p.CELL, shelfH);
       });
     },
 
@@ -773,69 +659,55 @@ export default {
 
       const layerCount = shelf.layers ? shelf.layers.length : 3;
       const isOldWarehouse = String(shelf.warehouseType) === '2';
-      const displayH = isOldWarehouse ? 1.0 : h;
+      const displayH = h;                 // 货架高 = 层数 × 1.2C（新老库一致）
+      const CELL = h / Math.max(layerCount, 1);   // 每层高度 = 1.2C
+      const CUBE = CELL / 1.2;             // 容器正方体边长
 
       // 老库房区域色（areaCode）：染底座 + 光圈
       const areaColor = this.getShelfAreaColorHex(shelf);
 
+      // 渲染每层容器为正方体（1 层 1 容器，居中；无盖子）
+      const addContainerCubes = (baseOffset) => {
+        if (!shelf.layers) return;
+        shelf.layers.forEach((layer, layerIdx) => {
+          const containers = layer.containers || [];
+          if (containers.length === 0) return;
+          const container = containers[0];
+          if (!container.materialCode) return;
+
+          const layerBase = baseOffset + layerIdx * CELL;
+          const hexColor = getContainerColor(container.status, container.materialCode || container.goodCode);
+          const color = parseInt(hexColor.replace('#', ''), 16);
+          const boxGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
+          const boxMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
+          const box = new THREE.Mesh(boxGeo, boxMat);
+          box.position.set(0, layerBase + CELL / 2, 0);
+          box.castShadow = true;
+          box.receiveShadow = true;
+          group.add(box);
+        });
+      };
+
       if (isOldWarehouse) {
-        // 老库：只渲染底座（区域色，无区域时回退默认深色）
+        // 老库：底座（区域色）+ 底座上的正方体容器
         const baseGeo = new THREE.BoxGeometry(w, 0.2, d);
         const baseMat = new THREE.MeshStandardMaterial({ color: areaColor != null ? areaColor : 0x2d3748, roughness: 0.8 });
         const base = new THREE.Mesh(baseGeo, baseMat);
         base.position.set(0, 0.1, 0);
         base.receiveShadow = true;
         group.add(base);
-
-        // 渲染底座上的物料容器（老库房为平台模式且只有一层）
-        if (shelf.layers) {
-          shelf.layers.forEach((layer) => {
-            const baseY = 0.2; // 放在底座顶面
-            const containers = layer.containers || [];
-            const containerCount = containers.length;
-            if (containerCount === 0) return;
-
-            const spacing = (w - 0.2) / containerCount;
-            const startCX = -(w - 0.2) / 2 + spacing / 2;
-
-            containers.forEach((container, cIdx) => {
-              if (!container.materialCode) return;
-
-              const cx = startCX + cIdx * spacing;
-              const radius = Math.min(spacing * 0.42, d * 0.42, 0.55);
-              const cylH = 0.65; // 与新库房（layerH = 1.0 时 cylH = 0.65）一致
-
-              const hexColor = getContainerColor(container.status, container.materialCode || container.goodCode);
-              const color = parseInt(hexColor.replace('#', ''), 16);
-
-              const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 18);
-              const cylMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
-              const cyl = new THREE.Mesh(cylGeo, cylMat);
-              cyl.position.set(cx, baseY + cylH / 2, 0);
-              cyl.castShadow = true;
-              cyl.receiveShadow = true;
-              group.add(cyl);
-
-              const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 18);
-              const lidMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
-              const lid = new THREE.Mesh(lidGeo, lidMat);
-              lid.position.set(cx, baseY + cylH + 0.02, 0);
-              group.add(lid);
-            });
-          });
-        }
+        addContainerCubes(0.2);
       } else {
-        // 新库：渲染完整货架（立柱+层板）
+        // 新库：渲染完整货架（立柱+层板）+ 每层正方体容器
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, metalness: 0.5, roughness: 0.5 });
-        const layerH = h / layerCount;
 
         // 四根立柱
         const pillarGeo = new THREE.BoxGeometry(0.1, h, 0.1);
         [[-w / 2, h / 2, -d / 2], [w / 2, h / 2, -d / 2], [-w / 2, h / 2, d / 2], [w / 2, h / 2, d / 2]].forEach(([px, py, pz]) => {
-          const p = new THREE.Mesh(pillarGeo, frameMat);
-          p.position.set(px, py, pz);
-          p.castShadow = true;
-          group.add(p);
+          const pillar = new THREE.Mesh(pillarGeo, frameMat);
+          pillar.position.set(px, py, pz);
+          pillar.castShadow = true;
+          group.add(pillar);
         });
 
         // 层板（含底板）
@@ -843,48 +715,12 @@ export default {
         const boardMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.7 });
         for (let li = 0; li <= layerCount; li++) {
           const board = new THREE.Mesh(boardGeo, boardMat);
-          board.position.set(0, li * layerH, 0);
+          board.position.set(0, li * CELL, 0);
           board.receiveShadow = true;
           group.add(board);
         }
 
-        // 在每层货架上渲染物料容器
-        if (shelf.layers) {
-          shelf.layers.forEach((layer, layerIdx) => {
-            const baseY = layerIdx * layerH + 0.06;
-            const containers = layer.containers || [];
-            const containerCount = containers.length;
-            if (containerCount === 0) return;
-
-            const spacing = (w - 0.2) / containerCount;
-            const startCX = -(w - 0.2) / 2 + spacing / 2;
-
-            containers.forEach((container, cIdx) => {
-              if (!container.materialCode) return;
-
-              const cx = startCX + cIdx * spacing;
-              const radius = Math.min(spacing * 0.42, d * 0.42, 0.55);
-              const cylH = layerH * 0.65;
-
-              const hexColor = getContainerColor(container.status, container.materialCode || container.goodCode);
-              const color = parseInt(hexColor.replace('#', ''), 16);
-
-              const cylGeo = new THREE.CylinderGeometry(radius, radius, cylH, 18);
-              const cylMat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
-              const cyl = new THREE.Mesh(cylGeo, cylMat);
-              cyl.position.set(cx, baseY + cylH / 2, 0);
-              cyl.castShadow = true;
-              cyl.receiveShadow = true;
-              group.add(cyl);
-
-              const lidGeo = new THREE.CylinderGeometry(radius, radius * 0.92, 0.04, 18);
-              const lidMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
-              const lid = new THREE.Mesh(lidGeo, lidMat);
-              lid.position.set(cx, baseY + cylH + 0.02, 0);
-              group.add(lid);
-            });
-          });
-        }
+        addContainerCubes(0);
       }
 
       // 透明框体（可点击区域）

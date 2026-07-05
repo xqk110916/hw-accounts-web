@@ -44,11 +44,20 @@ export default {
     }
   },
   methods: {
+    formatLocationDisplay(row) {
+      const location = row.location || row.position || ''
+      if (!location) return ''
+      const warehouseCode = row.warehouseCode || row.warehouseName || ''
+      return warehouseCode ? `${warehouseCode} - ${location}` : location
+    },
     loadData(apiFn, params) {
       const query = { ...params, currentPage: this.page.currentPage, pageSize: this.page.pageSize }
       return apiFn(query).then(res => {
         if (res.code === 1) {
-          this.tableData = (res.data && res.data.list) || []
+          this.tableData = ((res.data && res.data.list) || []).map(row => ({
+            ...row,
+            locationDisplay: this.formatLocationDisplay(row),
+          }))
           this.page.total = (res.data && res.data.pagination && res.data.pagination.total) || 0
         }
       })

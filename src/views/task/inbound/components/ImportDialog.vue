@@ -15,7 +15,7 @@
           <el-radio :label="2">信息导入2</el-radio>
         </el-radio-group>
         <div class="type-desc">
-          <div class="desc-text">* 信息导入1(材料代码、容器号、生产单位、重量:毛、皮、净、金属量%)</div>
+          <div class="desc-text">* 信息导入1(材料代码、容器号、生产单位、重量:毛、皮、净、百分比含量)</div>
           <div class="desc-text">* 信息导入2(容器号、封记编码1、封记类型1、封记编码2、封记类型2、库房、货箱号、位置)</div>
         </div>
       </el-form-item>
@@ -72,7 +72,7 @@
         <span>预览数据（共 {{ previewList.length }} 条）</span>
         <el-button type="text" size="small" style="color: #f56c6c;" @click="clearPreview">清空</el-button>
       </div>
-      <!-- 预览字段：类型1(基础信息+毛皮净/金属量) 与 类型2(封记/库房/货箱号/位置) 合并展示 -->
+      <!-- 预览字段：类型1(基础信息+毛皮净/百分比含量) 与 类型2(封记/库房/货箱号/位置) 合并展示 -->
       <el-table :data="previewList" border stripe size="mini" max-height="280" style="width: 100%;">
         <el-table-column prop="goodCode" label="材料代码" min-width="100" show-overflow-tooltip />
         <el-table-column prop="containerCode" label="容器号" min-width="90" show-overflow-tooltip />
@@ -85,7 +85,8 @@
         <el-table-column prop="grossWeight" label="毛重" min-width="70" show-overflow-tooltip />
         <el-table-column prop="tareWeight" label="皮重" min-width="70" show-overflow-tooltip />
         <el-table-column prop="netWeight" label="净重" min-width="70" show-overflow-tooltip />
-        <el-table-column prop="metalPercentage" label="金属量%" min-width="80" show-overflow-tooltip />
+        <el-table-column prop="metalPercentage" label="百分比含量" min-width="90" show-overflow-tooltip />
+        <el-table-column prop="elementQuantity" label="元素量" min-width="90" show-overflow-tooltip />
         <el-table-column prop="boxNum" label="货箱号" min-width="80" show-overflow-tooltip />
         <el-table-column prop="position" label="位置" min-width="80" show-overflow-tooltip />
       </el-table>
@@ -159,6 +160,39 @@ export default {
     },
     isEmptyValue(value) {
       return value === undefined || value === null || String(value).trim() === ''
+    },
+    parseNumberValue(value) {
+      if (this.isEmptyValue(value)) return NaN
+      return Number(String(value).replace('%', '').trim())
+    },
+    getDecimalLength(value) {
+      if (this.isEmptyValue(value)) return 0
+      const normalized = String(value).replace('%', '').trim()
+      const decimal = normalized.split('.')[1]
+      return decimal ? decimal.length : 0
+    },
+    formatMinDecimal(value, decimalLength) {
+      if (Number.isNaN(value)) return ''
+      const precision = Math.min(Math.max(decimalLength, 3), 12)
+      const [integerPart, decimalPart = ''] = Number(value).toFixed(precision).split('.')
+      let decimals = decimalPart
+      while (decimals.length > 3 && decimals.endsWith('0')) {
+        decimals = decimals.slice(0, -1)
+      }
+      while (decimals.length < 3) {
+        decimals += '0'
+      }
+      return `${integerPart}.${decimals}`
+    },
+    formatElementQuantity(percentage, netWeight, rawPercentage = percentage, rawNetWeight = netWeight) {
+      const decimalLength = this.getDecimalLength(rawPercentage) + this.getDecimalLength(rawNetWeight) + 2
+      return this.formatMinDecimal((percentage / 100) * netWeight, decimalLength)
+    },
+    calcElementQuantity(item) {
+      const percentage = this.parseNumberValue(item.metalPercentage)
+      const netWeight = this.parseNumberValue(item.netWeight)
+      if (Number.isNaN(percentage) || Number.isNaN(netWeight)) return ''
+      return this.formatElementQuantity(percentage, netWeight, item.metalPercentage, item.netWeight)
     },
     isCompletePreviewRow(item) {
       // 两类模板字段均完整方可提交：类型1(基础+重量) + 类型2(封记/库房/货箱号/位置)
@@ -237,7 +271,7 @@ export default {
           }
 
           if (this.importForm.inboundImportType === 1) {
-            // 类型1：基础信息 + 重量信息(毛皮净、金属量)；库房/封记/货箱号/位置由类型2补充
+            // 类型1：基础信息 + 重量信息(毛皮净、百分比含量)；库房/封记/货箱号/位置由类型2补充
             this.previewList = importedData.map(item => ({
               goodCode: item.goodCode || '',
               containerCode: item.containerCode || '',
@@ -246,6 +280,7 @@ export default {
               tareWeight: item.tareWeight || '',
               netWeight: item.netWeight || '',
               metalPercentage: item.metalPercentage || '',
+              elementQuantity: item.elementQuantity || this.calcElementQuantity(item),
               warehouseId: '',  // 库房ID由类型2提供（原类型1逻辑已移至类型2）
               warehouseName: '',
               sealCode1: '', sealType1: '', sealCode2: '', sealType2: '',
@@ -257,7 +292,7 @@ export default {
               // 若还未导入类型1，直接填充类型2字段(封记/库房/货箱号/位置)，基础与重量信息留空
               this.previewList = importedData.map(item => ({
                 goodCode: '', productionUnit: '',
-                grossWeight: '', tareWeight: '', netWeight: '', metalPercentage: '',
+                grossWeight: '', tareWeight: '', netWeight: '', metalPercentage: '', elementQuantity: '',
                 containerCode: item.containerCode || '',
                 sealCode1: item.sealCode1 || '', sealType1: item.sealType1 || '',
                 sealCode2: item.sealCode2 || '', sealType2: item.sealType2 || '',

@@ -105,7 +105,10 @@
       </div>
 
       <div class="right-panel">
-        <div class="right-title">已选容器</div>
+        <div class="right-title">
+          <span>已选容器</span>
+          <span class="net-total">净重合计：{{ selectedNetWeightTotal }}</span>
+        </div>
         <el-table :data="selectedContainers" border size="small" height="calc(100% - 30px)">
           <el-table-column prop="containerCode" label="容器号" show-overflow-tooltip />
           <el-table-column prop="taskNum" label="任务编号" show-overflow-tooltip />
@@ -210,6 +213,11 @@ export default {
     },
     selectedContainerCodesList() {
       return this.selectedContainers.map(c => c.containerCode).filter(Boolean)
+    },
+    selectedNetWeightTotal() {
+      return this.selectedContainers
+        .reduce((sum, item) => sum + (Number(item.netWeight) || 0), 0)
+        .toFixed(5)
     },
   },
   methods: {
@@ -514,10 +522,21 @@ export default {
   }
 
   .right-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     font-weight: 700;
     color: #1b2129;
     margin-bottom: 10px;
     flex-shrink: 0;
+
+    .net-total {
+      font-size: 12px;
+      font-weight: 500;
+      color: #409eff;
+      white-space: nowrap;
+    }
   }
 }
 

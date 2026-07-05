@@ -168,7 +168,10 @@ export default {
     },
     formatLocation(row) {
       const values = [row.shelfCode, row.rowCode, row.columnCode].filter(Boolean)
-      return values.length ? values.join('-') : '-'
+      const location = values.length ? values.join('-') : ''
+      if (!location) return '-'
+      const warehouseCode = row.warehouseCode || row.warehouseName || ''
+      return warehouseCode ? `${warehouseCode} - ${location}` : location
     },
     handleDetailSizeChange(value) {
       this.detailPagination.pageSize = value

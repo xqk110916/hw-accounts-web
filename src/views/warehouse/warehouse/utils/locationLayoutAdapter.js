@@ -10,6 +10,23 @@ export function parseCodeNumber(code) {
   return match ? Number(match[1]) : 0;
 }
 
+// 列编码排序：纯数字按数值比较，否则按 zh-CN 自然序（A1<A2<B1）
+export function sortColumnCode(a, b) {
+  const an = Number(a);
+  const bn = Number(b);
+  if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+  return String(a).localeCompare(String(b), 'zh-CN', { numeric: true });
+}
+
+// 构建“列编码 -> 列序号(1-based)”映射。
+// 用于列定位/过道，避免老库 A1/B1 被 parseCodeNumber 都当成第 1 列而重叠。
+export function buildColumnOrder(shelves = []) {
+  const codes = [...new Set(shelves.map(s => String(s.columnCode || s.columnId || '1')))].sort(sortColumnCode);
+  const map = {};
+  codes.forEach((code, index) => { map[code] = index + 1; });
+  return map;
+}
+
 // 生成默认过道配置：两边为单（靠墙只显示一排/列），中间两个一组
 // 与 WarehouseGridMap2D 内部逻辑保持完全一致，作为 2D/3D 共享的单一数据源
 export function generateDefaultAisles(count) {
@@ -159,7 +176,9 @@ export function generateInitialLayout(shelves = []) {
   const rowHeights = Array.from({ length: rowCodes.length }, () => 0);
   const measured = shelves.map(shelf => {
     const typeInfo = shelf.typeInfo || parseShelfType(shelf.shelfType);
-    const w = Math.max(typeInfo.width || shelf.width || 5, 2);
+    const isOld = String(shelf.warehouseType) === '2';
+    // 老库每列只有一个容器，2D 占位宽度由 5 格缩为 3 格（高度不变）
+    const w = isOld ? 3 : Math.max(typeInfo.width || shelf.width || 5, 2);
     const h = Math.max(typeInfo.length || shelf.height || 2, 1);
     const columnKey = shelf.columnCode || shelf.columnId || '1';
     const rowKey = shelf.rowCode || shelf.rowId || '1';
@@ -200,9 +219,9 @@ export function generateInitialLayout(shelves = []) {
   const aisles = rows > 3 ? [{ id: 'aisle_main_1', x: 0, y: 0, w: cols, h: 1 }] : [];
 
   // 默认过道：与 2D 组件保持一致，按"排数/列数"奇偶规则生成
-  // 排数 = rowCode 最大值；列数 = columnCode 数字部分最大值
+  // 排数 = rowCode 最大值；列数 = 去重后的列编码数量（A1/B1 视为不同列，不能只取数字）
   const shelfRowCount = Math.max(1, ...shelves.map(s => Number(s.rowCode) || 0));
-  const shelfColCount = Math.max(1, ...shelves.map(s => parseCodeNumber(s.columnCode)));
+  const shelfColCount = Math.max(1, columnCodes.length);
   const aisleSettings = {
     rows: generateDefaultAisles(shelfRowCount),
     cols: generateDefaultAisles(shelfColCount)

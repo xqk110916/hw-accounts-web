@@ -162,7 +162,7 @@ import { getHierarchyDetail, getHierarchyTree, getPositionMap, updateHierarchyNo
 import WarehouseGridMap2D from '../../warehouse/components/WarehouseGridMap2D.vue';
 import WarehouseInterior3D from '../../warehouse/components/WarehouseInterior3D.vue';
 import { SHELF_TYPE_PARENT_ID, normalizeExtra, normalizeShelfTypeOptions, saveLocalExtra, getLocalExtra } from '../../warehouse/utils/locationLayoutStorage';
-import { buildShelvesFromWarehouse, findNodeById, generateInitialLayout, applyLayoutToShelves, generateDefaultAisles, parseCodeNumber } from '../../warehouse/utils/locationLayoutAdapter';
+import { buildShelvesFromWarehouse, findNodeById, generateInitialLayout, applyLayoutToShelves, generateDefaultAisles, buildColumnOrder } from '../../warehouse/utils/locationLayoutAdapter';
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value || {}));
@@ -279,7 +279,7 @@ export default {
       // 保证 3D 也能按默认过道显示（单一数据源）
       if (layout && !layout.aisleSettings) {
         const shelfRowCount = Math.max(1, ...this.shelves.map(s => Number(s.rowCode) || 0));
-        const shelfColCount = Math.max(1, ...this.shelves.map(s => parseCodeNumber(s.columnCode)));
+        const shelfColCount = Math.max(1, Object.keys(buildColumnOrder(this.shelves)).length);
         layout = {
           ...layout,
           aisleSettings: {

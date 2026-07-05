@@ -39,7 +39,9 @@
             <el-table-column prop="templateId" label="模板名称" min-width="140" show-overflow-tooltip>
               <template slot-scope="scope">{{ templateMap[scope.row.templateId] || '' }}</template>
             </el-table-column>
-            <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip>
+              <template slot-scope="scope">{{ formatDisplayDateValue(scope.row.createTime) }}</template>
+            </el-table-column>
             <el-table-column prop="remark" label="备注" min-width="220" show-overflow-tooltip></el-table-column>
             <el-table-column label="操作" width="190" fixed="right">
               <template slot-scope="scope">

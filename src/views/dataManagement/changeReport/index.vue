@@ -67,7 +67,7 @@
 
 <script>
 import SummaryDetailDialog from './components/SummaryDetailDialog.vue'
-import { configSummary, configDetail, searchConfig, requestFun, getDefaultOptions, buildQueryParams } from './components/index.js'
+import { configSummary, configDetail, searchConfig, requestFun, getDefaultOptions, buildQueryParams, formatLocationDisplay } from './components/index.js'
 import { blobSaveExcel } from '@/utils'
 
 export default {
@@ -139,7 +139,10 @@ export default {
       const fn = this.activeTab === 'summary' ? requestFun.summaryList : requestFun.detailList
       fn(params).then(res => {
         if (res.code === 1) {
-          this.tableData = (res.data && res.data.list) || []
+          const list = (res.data && res.data.list) || []
+          this.tableData = this.activeTab === 'detail'
+            ? list.map(row => ({ ...row, locationDisplay: formatLocationDisplay(row) }))
+            : list
           this.search.params.total = (res.data && res.data.pagination && res.data.pagination.total) || 0
         }
       })

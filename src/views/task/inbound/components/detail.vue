@@ -201,14 +201,15 @@
           <el-table-column label="封记类型2" width="120" show-overflow-tooltip>
             <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType2) }}</template>
           </el-table-column>
-          <el-table-column prop="metalPercentage" label="金属量%" width="90" show-overflow-tooltip />
           <el-table-column label="重量(毛,皮,净)" width="180" show-overflow-tooltip>
             <template slot-scope="scope">
-              {{ scope.row.grossWeight || 0 }}、{{ scope.row.tareWeight || 0 }}、{{
-                scope.row.netWeight || 0
+              {{ formatWeightDisplay(scope.row.grossWeight) }}、{{ formatWeightDisplay(scope.row.tareWeight) }}、{{
+                formatWeightDisplay(scope.row.netWeight)
               }}
             </template>
           </el-table-column>
+          <el-table-column prop="metalPercentage" label="百分比含量" width="110" show-overflow-tooltip />
+          <el-table-column prop="elementQuantity" label="元素量" width="100" show-overflow-tooltip />
           <el-table-column v-if="type !== 'view' && type !== 'audit'" label="操作" width="120" fixed="right">
             <template slot-scope="scope">
               <span class="table_operation">
@@ -260,6 +261,7 @@
           placeholder="请选择材料代码"
           clearable
           filterable
+          @change="handleMaterialCodeChange"
         >
           <el-option
             v-for="item in availableMaterialCodes"
@@ -333,9 +335,6 @@
           <el-option v-for="item in sealTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="金属量%" prop="metalPercentage">
-        <el-input v-model="detailEditForm.metalPercentage" size="small" placeholder="请输入金属量%" />
-      </el-form-item>
       <el-row :gutter="10">
         <el-col :span="8">
           <el-form-item label="皮重" prop="tareWeight">
@@ -350,6 +349,18 @@
         <el-col :span="8">
           <el-form-item label="毛重" prop="grossWeight">
             <el-input v-model="detailEditForm.grossWeight" size="small" placeholder="毛重(皮重+净重)" @blur="handleWeightChange('grossWeight')" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="10">
+        <el-col :span="12">
+          <el-form-item label="百分比含量" prop="metalPercentage">
+            <el-input v-model="detailEditForm.metalPercentage" size="small" placeholder="请输入百分比含量" @blur="handlePercentageChange" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="元素量" prop="elementQuantity">
+            <el-input v-model="detailEditForm.elementQuantity" size="small" placeholder="自动计算" disabled />
           </el-form-item>
         </el-col>
       </el-row>
@@ -441,6 +452,7 @@ export default {
         }],
       },
       materialCodeOptions: [],
+      materialPercentageMap: {},
       sealTypeOptions: [],
       warehouseOptions: [], // 库房下拉选项
       positionOptions: [],  // 位置下拉选项
@@ -492,22 +504,26 @@ export default {
         }
       })
       if (codes.length === 0) return []
-      return this.materialCodeOptions.filter(opt => codes.includes(opt.value))
+      const materialMap = this.materialCodeOptions.reduce((map, opt) => {
+        map[opt.value] = opt
+        return map
+      }, {})
+      return [...new Set(codes)].map(code => {
+        const material = materialMap[code]
+        return {
+          label: material ? material.label : code,
+          value: code,
+        }
+      })
     },
     totalWeightGross() {
-      return this.detailList
-        .reduce((sum, item) => sum + (Number(item.grossWeight) || 0), 0)
-        .toFixed(5)
+      return this.formatWeightSum('grossWeight')
     },
     totalWeightTare() {
-      return this.detailList
-        .reduce((sum, item) => sum + (Number(item.tareWeight) || 0), 0)
-        .toFixed(5)
+      return this.formatWeightSum('tareWeight')
     },
     totalWeightNet() {
-      return this.detailList
-        .reduce((sum, item) => sum + (Number(item.netWeight) || 0), 0)
-        .toFixed(5)
+      return this.formatWeightSum('netWeight')
     },
   },
   created() {
@@ -815,36 +831,114 @@ export default {
       if (field === 'tareWeight' || field === 'netWeight') {
         this.calcGrossWeight()
       }
+      if (field === 'netWeight') {
+        this.calcElementQuantity()
+      }
     },
-    // 毛重 = 皮重 + 净重，自动计算并补全5位小数
+    // 毛重 = 皮重 + 净重，按重量精度规则格式化
     calcGrossWeight() {
-      const tare = Number(this.detailEditForm.tareWeight)
-      const net = Number(this.detailEditForm.netWeight)
+      const rawTare = this.detailEditForm.tareWeight
+      const rawNet = this.detailEditForm.netWeight
+      const tare = Number(rawTare)
+      const net = Number(rawNet)
       const gross = !isNaN(tare) && !isNaN(net) ? tare + net : 0
-      this.$set(this.detailEditForm, 'grossWeight', gross.toFixed(5))
+      const decimalLength = Math.max(this.getDecimalLength(rawTare), this.getDecimalLength(rawNet))
+      this.$set(this.detailEditForm, 'grossWeight', this.formatMinDecimal(gross, decimalLength))
     },
-    // 毛皮净重量自动补全5位小数
+    // 毛皮净重量至少保留3位小数，超过3位保留有效位
     formatWeightField(field) {
       const val = this.detailEditForm[field]
       if (val !== '' && val !== null && val !== undefined && !isNaN(Number(val))) {
-        this.$set(this.detailEditForm, field, Number(val).toFixed(5))
+        this.$set(this.detailEditForm, field, this.formatMinDecimal(Number(val), this.getDecimalLength(val)))
       }
+    },
+    parseNumberValue(value) {
+      if (value === '' || value === null || value === undefined) return NaN
+      const normalized = String(value).replace('%', '').trim()
+      return Number(normalized)
+    },
+    getDecimalLength(value) {
+      if (value === '' || value === null || value === undefined) return 0
+      const normalized = String(value).replace('%', '').trim()
+      const decimal = normalized.split('.')[1]
+      return decimal ? decimal.length : 0
+    },
+    formatMinDecimal(value, decimalLength) {
+      if (Number.isNaN(value)) return ''
+      const precision = Math.min(Math.max(decimalLength, 3), 12)
+      const [integerPart, decimalPart = ''] = Number(value).toFixed(precision).split('.')
+      let decimals = decimalPart
+      while (decimals.length > 3 && decimals.endsWith('0')) {
+        decimals = decimals.slice(0, -1)
+      }
+      while (decimals.length < 3) {
+        decimals += '0'
+      }
+      return `${integerPart}.${decimals}`
+    },
+    formatElementQuantity(percentage, netWeight, rawPercentage = percentage, rawNetWeight = netWeight) {
+      const decimalLength = this.getDecimalLength(rawPercentage) + this.getDecimalLength(rawNetWeight) + 2
+      return this.formatMinDecimal((percentage / 100) * netWeight, decimalLength)
+    },
+    formatWeightDisplay(value) {
+      if (value === '' || value === null || value === undefined) return '0.000'
+      const numberValue = Number(value)
+      if (Number.isNaN(numberValue)) return value
+      return this.formatMinDecimal(numberValue, this.getDecimalLength(value))
+    },
+    formatWeightSum(field) {
+      let decimalLength = 0
+      const total = this.detailList.reduce((sum, item) => {
+        decimalLength = Math.max(decimalLength, this.getDecimalLength(item[field]))
+        return sum + (Number(item[field]) || 0)
+      }, 0)
+      return this.formatMinDecimal(total, decimalLength)
+    },
+    calcElementQuantity() {
+      const rawPercentage = this.detailEditForm.metalPercentage
+      const rawNetWeight = this.detailEditForm.netWeight
+      const percentage = this.parseNumberValue(rawPercentage)
+      const netWeight = this.parseNumberValue(rawNetWeight)
+      if (Number.isNaN(percentage) || Number.isNaN(netWeight)) {
+        this.$set(this.detailEditForm, 'elementQuantity', '')
+        return
+      }
+      this.$set(this.detailEditForm, 'elementQuantity', this.formatElementQuantity(percentage, netWeight, rawPercentage, rawNetWeight))
+    },
+    handlePercentageChange() {
+      this.calcElementQuantity()
+    },
+    handleMaterialCodeChange(value) {
+      const percentage = this.materialPercentageMap[value]
+      if (percentage !== undefined && percentage !== null && String(percentage).trim() !== '') {
+        this.$set(this.detailEditForm, 'metalPercentage', percentage)
+      } else {
+        this.$set(this.detailEditForm, 'metalPercentage', '')
+      }
+      this.calcElementQuantity()
     },
     // 库房/位置接口联动
     loadMaterialCodeOptions() {
       getMaterialCodeListAll().then(res => {
+        const percentageMap = {}
         this.materialCodeOptions = (res.data || [])
           .map(item => {
             const goodCode = item.goodCode
             const name = item.goodName
+            const firstElement = Array.isArray(item.elements) ? item.elements[0] : null
+            if (goodCode) {
+              percentageMap[goodCode] = firstElement ? firstElement.content : ''
+            }
             return {
               label: name && name !== goodCode ? `${goodCode} - ${name}` : goodCode,
               value: goodCode,
             }
           })
           .filter(item => item.value)
+        this.materialPercentageMap = percentageMap
       }).catch(() => {
         this.materialCodeOptions = []
+        this.materialPercentageMap = {}
       })
     },
     loadSealTypeOptions() {
@@ -913,6 +1007,7 @@ export default {
         tareWeight: 0,
         netWeight: 0,
         metalPercentage: '',
+        elementQuantity: '',
       }
       this.positionOptions = []
       this.detailEditVisible = true
@@ -920,6 +1015,13 @@ export default {
     editDetailRow(row, index) {
       this.detailEditIndex = index
       const rowData = deepClone(row)
+      if (!rowData.elementQuantity) {
+        const percentage = this.parseNumberValue(rowData.metalPercentage)
+        const netWeight = this.parseNumberValue(rowData.netWeight)
+        if (!Number.isNaN(percentage) && !Number.isNaN(netWeight)) {
+          rowData.elementQuantity = this.formatElementQuantity(percentage, netWeight, rowData.metalPercentage, rowData.netWeight)
+        }
+      }
       
       // 如果没有 warehouseId 但有 warehouseName，尝试从选项中匹配（兼容导入数据）
       if (!rowData.warehouseId && rowData.warehouseName && this.warehouseOptions.length > 0) {
@@ -970,6 +1072,7 @@ export default {
     submitDetailForm() {
       this.$refs.detailForm.validate(valid => {
         if (valid) {
+          this.calcElementQuantity()
           if (this.detailEditIndex >= 0) {
             this.$set(this.detailList, this.detailEditIndex, deepClone(this.detailEditForm))
           } else {
@@ -1051,7 +1154,15 @@ export default {
         ].every(field => !isEmptyValue(item[field])) && hasPosition
       }
       const appendCompleteRows = async rows => {
-        const parsedRows = rows.map(parsePosition)
+        const parsedRows = rows.map(item => {
+          const parsed = parsePosition(item)
+          const percentage = this.parseNumberValue(parsed.metalPercentage)
+          const netWeight = this.parseNumberValue(parsed.netWeight)
+          if (!parsed.elementQuantity && !Number.isNaN(percentage) && !Number.isNaN(netWeight)) {
+            parsed.elementQuantity = this.formatElementQuantity(percentage, netWeight, parsed.metalPercentage, parsed.netWeight)
+          }
+          return parsed
+        })
         const completeRows = parsedRows.filter(isCompleteDetail)
         const skippedCount = parsedRows.length - completeRows.length
         if (skippedCount > 0) {

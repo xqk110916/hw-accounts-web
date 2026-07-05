@@ -23,7 +23,9 @@
         <el-table-column type="index" label="序号" width="60" align="center" show-overflow-tooltip></el-table-column>
         <el-table-column prop="templateName" label="模板名称" min-width="180" show-overflow-tooltip></el-table-column>
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="createTime" label="创建时间" min-width="160" show-overflow-tooltip>
+          <template slot-scope="scope">{{ formatDisplayDateValue(scope.row.createTime) }}</template>
+        </el-table-column>
         <el-table-column prop="createUname" label="创建人" min-width="110" show-overflow-tooltip></el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template slot-scope="scope">
@@ -57,6 +59,7 @@
 <script>
 import TemplateDialog from './TemplateDialog.vue'
 import { deleteTemplate, listTemplate } from './api'
+import { formatDisplayDateValue } from './storage'
 
 export default {
   name: 'TemplateManageDialog',
@@ -75,6 +78,7 @@ export default {
     }
   },
   methods: {
+    formatDisplayDateValue,
     open() {
       this.visible = true
       this.handleQuery()

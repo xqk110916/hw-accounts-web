@@ -114,7 +114,11 @@ const formatSerialDate = value => {
   return `${y}-${m}-${d}`
 }
 
-export const formatDisplayDateValue = value => (isDateSerialNumber(value) ? formatSerialDate(value) : value)
+export const formatDisplayDateValue = value => {
+  if (isDateSerialNumber(value)) return formatSerialDate(value)
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.substring(0, 10)
+  return value
+}
 
 const isDateField = item => item && (item.fileValue === 'storageTime' || item.fileName === '入库时间')
 

@@ -78,8 +78,9 @@
               :style="{ background: getShelfAreaColor(shelf) }"
             >{{ getShelfAreaLabel(shelf) }}</span>
             <span class="shelf-name">{{ shelf.name }}</span>
-            <span class="shelf-meta-inline" v-if="shelf.layers && shelf.layers.length">{{ shelf.layers.length }}层</span>
-            <span class="shelf-count" :class="getUsageClass(shelf)">{{ getFilledCount(shelf) }}/{{ getTotalCount(shelf) }}</span>
+            <!-- 老库房只有一层，层数与占位统计无意义，隐藏 -->
+            <span class="shelf-meta-inline" v-if="!isOldShelf(shelf) && shelf.layers && shelf.layers.length">{{ shelf.layers.length }}层</span>
+            <span class="shelf-count" v-if="!isOldShelf(shelf)" :class="getUsageClass(shelf)">{{ getFilledCount(shelf) }}/{{ getTotalCount(shelf) }}</span>
           </div>
           <!-- 所有容器色块平铺展示（2D模式下新老库统一） -->
           <div class="layers-grid">
@@ -151,6 +152,7 @@
 
 <script>
 import { getContainerColor, buildAreaColorMap, normalizeAreaCode } from '../utils/colorHelper';
+import { buildColumnOrder } from '../utils/locationLayoutAdapter';
 
 function cloneLayout(layout) {
   return JSON.parse(JSON.stringify(layout || { grid: { rows: 12, cols: 20, cellSize: 32 }, shelves: [], aisles: [], aisleSettings: { rows: [], cols: [] } }));
@@ -158,12 +160,6 @@ function cloneLayout(layout) {
 
 function isOverlap(a, b) {
   return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
-}
-
-// 从 columnCode（如 'S3'、'A2'）中提取数字部分
-function parseCodeNumber(code) {
-  const match = String(code || '').match(/(\d+)/);
-  return match ? Number(match[1]) : 0;
 }
 
 // 生成默认过道配置：两边为单（靠墙只显示一排/列），中间两个一组
@@ -226,9 +222,13 @@ export default {
     shelfRowCount() {
       return Math.max(1, ...this.shelves.map(s => Number(s.rowCode) || 0));
     },
-    // 列数：从 columnCode（如 S3）提取数字
+    // 列编码 -> 列序号(1-based) 映射：A1/B1 视为不同列，避免只取数字导致的重叠
+    columnOrderMap() {
+      return buildColumnOrder(this.shelves);
+    },
+    // 列数：去重后的列编码数量
     shelfColCount() {
-      return Math.max(1, ...this.shelves.map(s => parseCodeNumber(s.columnCode)));
+      return Math.max(1, Object.keys(this.columnOrderMap).length);
     },
     // 构建排索引 -> 布局 y 位置和高度的映射
     rowLayoutMap() {
@@ -251,7 +251,7 @@ export default {
       const map = {};
       const shelves = this.baseLayout.shelves;
       shelves.forEach(s => {
-        const colIdx = parseCodeNumber(s.columnCode);
+        const colIdx = this.columnOrderMap[String(s.columnCode || s.columnId || '1')] || 0;
         if (!colIdx) return;
         if (!map[colIdx]) {
           map[colIdx] = { x: s.x, w: s.w };
@@ -292,7 +292,7 @@ export default {
       return shelves.map(s => {
         let dx = 0, dy = 0;
         const rowIdx = Number(s.rowCode) || 0;
-        const colIdx = parseCodeNumber(s.columnCode);
+        const colIdx = this.columnOrderMap[String(s.columnCode || s.columnId || '1')] || 0;
         // 累积所有 afterIndex < 当前排/列的偏移
         Object.keys(this.rowShiftMap).forEach(k => {
           if (rowIdx > Number(k)) dy = this.rowShiftMap[k];
@@ -613,6 +613,9 @@ export default {
       if (container.code) parts.push(container.code);
       if (container.storageDate) parts.push(container.storageDate);
       return parts.join(' | ');
+    },
+    isOldShelf(shelf) {
+      return String(shelf.warehouseType) === '2';
     },
     getUsageClass(shelf) {
       const total = this.getTotalCount(shelf);

@@ -26,7 +26,7 @@ src/views/dataManagement/labelTemplate/
 
 - **筛选区**：按打印时间范围、模板筛选记录
 - **操作区**：导入、添加、模板管理三个按钮
-- **表格列**：容器号、库房、材料代码、模板名称、创建时间、备注、操作（详情/编辑/删除）
+- **表格列**：容器号、库房、材料代码、模板名称、创建时间、备注、操作（详情/编辑/删除）；创建时间只展示日期部分，格式为 `yyyy-MM-dd`
 - **分页**：支持切换每页条数和页码
 - 页面加载时自动拉取模板选项供筛选使用；模板管理变更后同步刷新筛选选项和已打开的打印记录弹窗
 
@@ -52,6 +52,8 @@ src/views/dataManagement/labelTemplate/
 日期字段由 `dateFieldKeys` 控制，使用 `el-date-picker` 组件：
 
 - `inboundTime`（入库时间）：日期选择器，格式 `yyyy-MM-dd`
+
+列表、模板管理弹窗和标签预览中展示日期时统一经过 `formatDisplayDateValue()` 处理，字符串日期会截取为 `yyyy-MM-dd`。
 
 选择控件通过 `selectBindValues` 存储选中值的 ID，通过 `formData` 存储显示文本（label），两者分开管理。
 

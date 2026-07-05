@@ -26,7 +26,7 @@
           style="width: 100%">
           <el-table-column type="index" label="序号" width="60" align="center" />
           <el-table-column prop="containerCode" label="容器号" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="position" label="位置" min-width="140" show-overflow-tooltip />
+          <el-table-column prop="locationDisplay" label="位置" min-width="160" show-overflow-tooltip />
           <el-table-column prop="warehouseName" label="库房" min-width="120" show-overflow-tooltip />
           <el-table-column prop="inboundTaskNum" label="入库任务号" min-width="140" show-overflow-tooltip />
           <el-table-column prop="outboundTaskNum" label="出库任务号" min-width="140" show-overflow-tooltip />
@@ -109,6 +109,12 @@ export default {
     getSealTypeLabel(value) {
       return formatSealType(this.sealTypeOptions, value)
     },
+    formatLocationDisplay(row) {
+      const location = row.position || row.location || ''
+      if (!location) return ''
+      const warehouseCode = row.warehouseCode || row.warehouseName || ''
+      return warehouseCode ? `${warehouseCode} - ${location}` : location
+    },
     // field: 'quantity' | 'weight'；goodCodeNameMap 由列表页透传，用于 goodCode -> goodName 展示
     open(row, field = 'quantity', goodCodeNameMap = {}) {
       this.row = { ...row }
@@ -134,6 +140,7 @@ export default {
             this.tableData = list.map(item => ({
               ...item,
               goodName: this.goodCodeNameMap[item.goodCode] || item.goodCode,
+              locationDisplay: this.formatLocationDisplay(item),
             }))
             this.page.total = (res.data && res.data.pagination && res.data.pagination.total) || this.tableData.length
           }

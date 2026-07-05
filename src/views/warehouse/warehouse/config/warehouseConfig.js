@@ -8,7 +8,7 @@ import { getWarehouseListByBalanceArea } from '@/api/warehouse/warehouse';
 import { getHierarchyDetail, getHierarchyListByNodeType, getPositionMap } from '@/api/warehouse/locationMap';
 import { getDictionaryList } from '@/api/common/dictionary';
 import { normalizeExtra, getLocalExtra, parseShelfType, SHELF_TYPE_PARENT_ID, normalizeShelfTypeOptions } from '../utils/locationLayoutStorage';
-import { generateInitialLayout, applyLayoutToShelves, buildShelfTypeMap, generateDefaultAisles, parseCodeNumber } from '../utils/locationLayoutAdapter';
+import { generateInitialLayout, applyLayoutToShelves, buildShelfTypeMap, generateDefaultAisles, buildColumnOrder } from '../utils/locationLayoutAdapter';
 
 // ==================== 默认本地布局/样式配置 ====================
 
@@ -972,7 +972,7 @@ export async function getWarehouseById(warehouseId) {
       // 历史布局回填：旧 layout2d 缺 aisleSettings 时补默认过道，保证 3D 按默认过道显示
       if (layout && !layout.aisleSettings) {
         const shelfRowCount = Math.max(1, ...baseShelves.map(s => Number(s.rowCode) || 0));
-        const shelfColCount = Math.max(1, ...baseShelves.map(s => parseCodeNumber(s.columnCode)));
+        const shelfColCount = Math.max(1, Object.keys(buildColumnOrder(baseShelves)).length);
         layout = {
           ...layout,
           aisleSettings: {

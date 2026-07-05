@@ -32,7 +32,6 @@
       <div class="elements-section">
         <div class="elements-header">
           <span>元素及同位素含量列表</span>
-          <el-button type="text" icon="el-icon-plus" @click="addElement">添加元素</el-button>
         </div>
         <el-table :data="form.elements" border stripe size="mini" max-height="300">
           <el-table-column type="index" label="序号" width="60" align="center" show-overflow-tooltip></el-table-column>
@@ -46,14 +45,9 @@
               <el-input v-model="scope.row.isotope" placeholder="请输入" size="mini" />
             </template>
           </el-table-column>
-          <el-table-column prop="content" label="含量">
+          <el-table-column prop="content" label="百分比含量">
             <template slot-scope="scope">
               <el-input v-model="scope.row.content" placeholder="请输入" size="mini" />
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="80" align="center">
-            <template slot-scope="scope">
-              <el-button type="text" style="color: #f56c6c" @click="removeElement(scope.$index)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -82,7 +76,7 @@ export default {
         goodName: '', 
         commonName: '', 
         commonUnit: '', 
-        elements: [] 
+        elements: [this.createDefaultElement()]
       },
       unitOptions: [],
       rules: {
@@ -99,7 +93,8 @@ export default {
         requestFun.detail(row.id).then(res => {
           if (res.code === 1) {
             this.form = { ...res.data }
-            if (!this.form.elements) this.form.elements = []
+            if (!this.form.elements || !this.form.elements.length) this.form.elements = [this.createDefaultElement()]
+            else this.form.elements = [this.form.elements[0]]
           }
         })
       } else { 
@@ -122,22 +117,20 @@ export default {
       })
     },
     resetForm() {
-      this.form = { id: '', goodCode: '', goodName: '', commonName: '', commonUnit: '', elements: [] }
+      this.form = { id: '', goodCode: '', goodName: '', commonName: '', commonUnit: '', elements: [this.createDefaultElement()] }
       this.$nextTick(() => { this.$refs.form && this.$refs.form.clearValidate() })
     },
     handleClose() { 
       this.resetForm()
       this.visible = false 
     },
-    addElement() {
-      this.form.elements.push({ element: '', isotope: '', content: '' })
-    },
-    removeElement(index) {
-      this.form.elements.splice(index, 1)
+    createDefaultElement() {
+      return { element: '', isotope: '', content: '' }
     },
     submit() { 
       this.$refs.form.validate(valid => {
         if (valid) {
+          this.form.elements = [this.form.elements && this.form.elements[0] ? this.form.elements[0] : this.createDefaultElement()]
           const apiMethod = this.form.id ? requestFun.update : requestFun.add
           apiMethod(this.form).then(res => {
             if (res.code === 1) {

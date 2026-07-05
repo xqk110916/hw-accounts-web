@@ -14,7 +14,7 @@
         <el-table-column prop="taskNum" label="批号" min-width="120" show-overflow-tooltip />
         <el-table-column prop="productionUnit" label="生产单位" min-width="120" show-overflow-tooltip />
         <el-table-column prop="inboundTime" label="入库时间" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="location" label="位置" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="locationDisplay" label="位置" min-width="140" show-overflow-tooltip />
         <el-table-column prop="sealCode1" label="封记编码1" min-width="120" show-overflow-tooltip />
         <el-table-column prop="grossWeight" label="毛重" min-width="100" />
         <el-table-column prop="tareWeight" label="皮重" min-width="100" />
@@ -72,9 +72,18 @@ export default {
     loadData() {
       getStockSummaryDetail(this.goodsCode, { currentPage: 1, pageSize: 999, taskNum: this.taskNum }).then(res => {
         if (res.code === 1) {
-          this.detailData = (res.data && res.data.list) || []
+          this.detailData = ((res.data && res.data.list) || []).map(row => ({
+            ...row,
+            locationDisplay: this.formatLocationDisplay(row),
+          }))
         }
       })
+    },
+    formatLocationDisplay(row) {
+      const location = row.location || row.position || ''
+      if (!location) return ''
+      const warehouseCode = row.warehouseCode || row.warehouseName || ''
+      return warehouseCode ? `${warehouseCode} - ${location}` : location
     },
     handleClose() {
       this.visible = false

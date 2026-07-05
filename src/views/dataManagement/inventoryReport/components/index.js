@@ -24,7 +24,7 @@ export const configDetail = {
     { label: '批号', prop: 'taskNum', minWidth: 120 },
     { label: '生产单位', prop: 'productionUnit', minWidth: 120 },
     { label: '入库时间', prop: 'inboundTime', minWidth: 140 },
-    { label: '位置', prop: 'location', minWidth: 120 },
+    { label: '位置', prop: 'locationDisplay', minWidth: 140 },
     { label: '封记编码', prop: 'sealCode1', minWidth: 120 },
     { label: '毛重', prop: 'grossWeight', minWidth: 100 },
     { label: '皮重', prop: 'tareWeight', minWidth: 100 },
@@ -83,3 +83,10 @@ export const buildQueryParams = (params) => {
 }
 
 export const handleTbaleMap = (data) => data
+
+export const formatLocationDisplay = row => {
+  const location = row.location || row.position || ''
+  if (!location) return ''
+  const warehouseCode = row.warehouseCode || row.warehouseName || ''
+  return warehouseCode ? `${warehouseCode} - ${location}` : location
+}

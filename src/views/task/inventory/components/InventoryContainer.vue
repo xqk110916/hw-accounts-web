@@ -56,19 +56,9 @@
                   <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].supervisor || '' }}</span>
                 </td>
               </tr>
-              <!-- 盘存结果区域：左侧label合并3行，右侧3列布局 -->
               <tr>
-                <td class="label-cell result-label" rowspan="3">盘存结果</td>
-                <td class="empty-cell"></td>
-                <td class="label-cell">正常数</td>
-                <td>
-                  <el-input-number v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].normalCount" @input="updateForm(tab.id, 'normalCount', $event)" size="small" :min="0" controls-position="right" style="width: 100%" />
-                  <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].normalCount }}</span>
-                </td>
-                <td colspan="2"></td>
-              </tr>
-              <tr>
-                <td>
+                <td class="label-cell result-label" rowspan="2">盘存结果</td>
+                <td rowspan="2">
                   <el-radio-group
                     v-if="type === 'inputResult'"
                     :value="inventoryFormMap[tab.id].inventoryResult"
@@ -80,51 +70,27 @@
                   </el-radio-group>
                   <span class="cell-value" v-if="isReadonlyResultMode">{{ getInventoryResultText(inventoryFormMap[tab.id].inventoryResult) }}</span>
                 </td>
-                <td class="label-cell">盘盈数</td>
+                <td class="label-cell">正常数量</td>
                 <td>
-                  <el-input-number v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].excessCount" @input="updateForm(tab.id, 'excessCount', $event)" size="small" :min="0" controls-position="right" style="width: 100%" />
-                  <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].excessCount }}</span>
+                  <el-input-number v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].normalCount" @input="updateForm(tab.id, 'normalCount', $event)" size="small" :min="0" controls-position="right" style="width: 100%" />
+                  <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].normalCount }}</span>
                 </td>
                 <td class="label-cell">备注</td>
                 <td>
-                  <el-input v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].excessRemark" @input="updateForm(tab.id, 'excessRemark', $event)" size="small" placeholder="备注" />
+                  <el-input v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].excessRemark" @input="updateForm(tab.id, 'excessRemark', $event)" size="small" placeholder="请输入" />
                   <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].excessRemark || '' }}</span>
                 </td>
               </tr>
               <tr>
-                <td class="empty-cell"></td>
-                <td class="label-cell">盘亏数</td>
+                <td class="label-cell">不正常数量</td>
                 <td>
-                  <el-input-number v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].deficitCount" @input="updateForm(tab.id, 'deficitCount', $event)" size="small" :min="0" controls-position="right" style="width: 100%" />
-                  <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].deficitCount }}</span>
+                  <el-input-number v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].abnormalCount" @input="updateForm(tab.id, 'abnormalCount', $event)" size="small" :min="0" controls-position="right" style="width: 100%" />
+                  <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].abnormalCount }}</span>
                 </td>
                 <td class="label-cell">备注</td>
                 <td>
-                  <el-input v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].deficitRemark" @input="updateForm(tab.id, 'deficitRemark', $event)" size="small" placeholder="备注" />
+                  <el-input v-if="type === 'inputResult'" :value="inventoryFormMap[tab.id].deficitRemark" @input="updateForm(tab.id, 'deficitRemark', $event)" size="small" placeholder="请输入" />
                   <span class="cell-value" v-else>{{ inventoryFormMap[tab.id].deficitRemark || '' }}</span>
-                </td>
-              </tr>
-              <!-- 异常时：不正常容器 -->
-              <tr v-if="type === 'inputResult' && inventoryFormMap[tab.id].inventoryResult === 'partial_abnormal'">
-                <td class="label-cell">不正常容器</td>
-                <td colspan="5">
-                  <el-select
-                    :value="inventoryFormMap[tab.id].abnormalContainerCodes || []"
-                    multiple
-                    filterable
-                    collapse-tags
-                    size="small"
-                    placeholder="请选择不正常容器"
-                    style="width: 100%"
-                    @input="handleAbnormalContainerChange(tab.id, $event)"
-                  >
-                    <el-option
-                      v-for="(item, idx) in goodsListMap[tab.id] || []"
-                      :key="'abnormal_' + idx"
-                      :label="item.containerCode || '-'"
-                      :value="getGoodsKey(item, idx)"
-                    />
-                  </el-select>
                 </td>
               </tr>
             </tbody>
@@ -142,12 +108,13 @@
               <el-button type="danger" size="mini" @click="batchSetResult(tab.id, '1')">批量设为不正常</el-button>
             </div>
           </div>
-          <el-table
+            <el-table
             ref="goodsTable"
             :data="goodsListMap[tab.id] || []"
             border
             size="small"
             max-height="400"
+            :row-class-name="getGoodsRowClassName"
             @selection-change="(selection) => handleSelectionChange(tab.id, selection)"
           >
             <el-table-column v-if="type === 'inputResult'" type="selection" width="45" fixed="left" />
@@ -161,7 +128,7 @@
             <el-table-column label="结果" width="220" v-if="type === 'inputResult'" fixed="right">
               <template slot-scope="scope">
                 <div class="result-cell">
-                  <el-radio-group v-model="scope.row.result" size="mini" @change="handleGoodsResultChange(tab.id)">
+                  <el-radio-group :value="scope.row.result" size="mini" @input="value => handleSingleResultInput(tab.id, scope.row, value)">
                     <el-radio label="0">正常</el-radio>
                     <el-radio label="1">不正常</el-radio>
                   </el-radio-group>
@@ -256,6 +223,29 @@ export default {
         warehouseId,
       })
     },
+    escapeHtml(value) {
+      return String(value === undefined || value === null || value === '' ? '-' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+    },
+    handleSingleResultInput(warehouseId, row, value) {
+      if (String(row.result) === String(value)) return
+      const labelMap = { '0': '正常', '1': '不正常' }
+      const location = this.escapeHtml(row.location)
+      const containerCode = this.escapeHtml(row.containerCode)
+      this.$confirm(`位置：${location}<br/>容器号：${containerCode}<br/>确定将该容器结果修改为「${labelMap[value] || value}」吗？`, '结果修改确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        dangerouslyUseHTMLString: true,
+        type: 'warning',
+      }).then(() => {
+        this.$set(row, 'result', value)
+        this.handleGoodsResultChange(warehouseId)
+      }).catch(() => {})
+    },
     handleSelectionChange(warehouseId, selection) {
       this.$set(this.selectedGoodsMap, warehouseId, selection)
     },
@@ -301,6 +291,9 @@ export default {
     getResultClass(result) {
       const map = { '0': 'result-normal', '1': 'result-deficit' }
       return map[result] || ''
+    },
+    getGoodsRowClassName({ row }) {
+      return String(row.result) === '1' || String(row.result) === '2' ? 'abnormal-row' : ''
     },
   },
 }
@@ -476,6 +469,10 @@ export default {
 .result-normal { color: #2e7d32; }
 .result-deficit { color: #c62828; }
 .result-excess { color: #e68600; }
+
+::v-deep .el-table__body tr.abnormal-row > td {
+  background: #fde2e2 !important;
+}
 
 .tab-label {
   display: inline-flex;

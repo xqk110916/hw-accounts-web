@@ -29,7 +29,7 @@ export const detailTableColumns = [
   { label: '材料代码', prop: 'goodsCode', minWidth: 120 },
   { label: '生产单位', prop: 'productionUnit', minWidth: 120 },
   { label: '出入库时间', prop: 'changeTime', minWidth: 140 },
-  { label: '位置', prop: 'location', minWidth: 120 },
+  { label: '位置', prop: 'locationDisplay', minWidth: 140 },
   { label: '封记编码1', prop: 'sealCode1', minWidth: 120 },
   { label: '封记编码2', prop: 'sealCode2', minWidth: 120 },
   { label: '毛重', prop: 'grossWeight', minWidth: 100 },

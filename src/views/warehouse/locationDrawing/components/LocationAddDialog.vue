@@ -111,7 +111,7 @@
                   placeholder="请选择或输入"
                   :disabled="isReadonly || isEdit"
                   style="width: 100%"
-                  @change="triggerColumnsValidate"
+                  @change="handleAreaChange"
                 >
                   <el-option
                     v-for="item in areaOptions"
@@ -251,6 +251,14 @@ export default {
   watch: {
     'form.warehouseType'(val) {
       // 库房类型切换时不再自动修改已有列的类型
+      // 老库需要 areaCode 用于生成列号，切到老库时补默认区域
+      if (val === '2') {
+        this.form.columns.forEach(col => {
+          if (!col.areaCode) this.$set(col, 'areaCode', 'A');
+        });
+      }
+      // 新库/老库列号规则不同，切换时立即重算
+      this.recomputeColumnCodes();
       // 但需重新校验货架列表（老库需要 areaCode）
       this.$nextTick(() => {
         if (this.$refs.form) {
@@ -353,17 +361,19 @@ export default {
     },
     initDefaultColumns() {
       const len = this.form.columns.length || 6;
-      this.form.columns = Array.from({ length: len }, (_, i) => {
-        const col = { code: `S${i + 1}`, type: '' };
+      this.form.columns = Array.from({ length: len }, () => {
+        const col = { code: '', type: '' };
         if (this.form.warehouseType === '2') col.areaCode = 'A';
         return col;
       });
+      this.recomputeColumnCodes();
       // 初始化时不立即 validateField，避免无谓错误状态；提交时和用户操作时校验
     },
     addColumn() {
-      const col = { code: `S${this.form.columns.length + 1}`, type: '' };
+      const col = { code: '', type: '' };
       if (this.form.warehouseType === '2') col.areaCode = 'A';
       this.form.columns.push(col);
+      this.recomputeColumnCodes();
       this.$nextTick(() => {
         if (this.$refs.form) this.$refs.form.validateField('columns');
       });
@@ -371,12 +381,36 @@ export default {
     removeColumn(index) {
       if (this.form.columns.length > 1) {
         this.form.columns.splice(index, 1);
+        this.recomputeColumnCodes();
         this.$nextTick(() => {
           if (this.$refs.form) this.$refs.form.validateField('columns');
         });
       } else {
         this.$message.warning('至少需要保留一列');
       }
+    },
+    // 重算“列”列的编码：
+    // 新库：去掉 S 前缀，按行序号 1,2,3...
+    // 老库：区域编号前缀 + 同区域全局计数，如 A1,A2,B1,B2,C1
+    recomputeColumnCodes() {
+      // 编辑/查看模式货架配置只读，沿用后端返回的 shelfCode，不重算
+      if (this.isEdit || this.isReadonly) return;
+      const isOld = this.form.warehouseType === '2';
+      const areaCounter = {};
+      this.form.columns.forEach((col, i) => {
+        if (isOld) {
+          const area = String(col.areaCode || 'A').trim().toUpperCase();
+          areaCounter[area] = (areaCounter[area] || 0) + 1;
+          col.code = `${area}${areaCounter[area]}`;
+        } else {
+          col.code = String(i + 1);
+        }
+      });
+    },
+    // 区域编号改变时立即重算列号，再触发校验
+    handleAreaChange() {
+      this.recomputeColumnCodes();
+      this.triggerColumnsValidate();
     },
     handleCancel() {
       if (this.mode === 'add') {

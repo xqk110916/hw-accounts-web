@@ -15,8 +15,7 @@ export const selectTypeOptions = [
 
 export const resultOptions = [
   { label: '正常', value: '0' },
-  { label: '盘亏', value: '1' },
-  { label: '盘盈', value: '2' },
+  { label: '不正常', value: '1' },
 ]
 
 export const config = {

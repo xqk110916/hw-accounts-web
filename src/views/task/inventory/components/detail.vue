@@ -48,12 +48,8 @@
           <span class="stat-value stat-normal">{{ statistics.totalNormalCount || 0 }}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">总盘亏数：</span>
-          <span class="stat-value stat-deficit">{{ statistics.totalDeficitCount || 0 }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">总盘盈数：</span>
-          <span class="stat-value stat-excess">{{ statistics.totalExcessCount || 0 }}</span>
+          <span class="stat-label">总不正常数：</span>
+          <span class="stat-value stat-deficit">{{ statistics.totalAbnormalCount || 0 }}</span>
         </div>
       </div>
 
@@ -162,6 +158,7 @@ export default {
         supervisor: '',
         inventoryResult: '', // all_normal, partial_abnormal
         normalCount: 0,
+        abnormalCount: 0,
         abnormalContainerCodes: [],
         deficitCount: 0,
         deficitRemark: '',
@@ -298,6 +295,7 @@ export default {
         // 统计数据
         this.statistics = {
           totalNormalCount: data.totalNormalCount || 0,
+          totalAbnormalCount: data.totalAbnormalCount || ((Number(data.totalDeficitCount) || 0) + (Number(data.totalExcessCount) || 0)),
           totalDeficitCount: data.totalDeficitCount || 0,
           totalExcessCount: data.totalExcessCount || 0,
         }
@@ -330,6 +328,7 @@ export default {
         supervisor: warehouse.supervisor || warehouse.superviseMan || '',
         inventoryResult: this.normalizeResultStatus(warehouse.inventoryResult || warehouse.resultStatus),
         normalCount: warehouse.normalCount || 0,
+        abnormalCount: warehouse.abnormalCount || ((Number(warehouse.deficitCount) || 0) + (Number(warehouse.excessCount) || 0)),
         abnormalContainerCodes: [],
         deficitCount: warehouse.deficitCount || 0,
         deficitRemark: warehouse.deficitRemark || '',
@@ -407,6 +406,7 @@ export default {
                 supervisor: '',
                 inventoryResult: '',
                 normalCount: 0,
+                abnormalCount: 0,
                 abnormalContainerCodes: [],
                 deficitCount: 0,
                 deficitRemark: '',
@@ -459,6 +459,7 @@ export default {
               supervisor: '',
               inventoryResult: '',
               normalCount: 0,
+              abnormalCount: 0,
               abnormalContainerCodes: [],
               deficitCount: 0,
               deficitRemark: '',
@@ -628,8 +629,8 @@ export default {
       // 人员信息
       const hasPersonnel = ['inventoryTime', 'inventoryUser', 'sealChecker', 'responsibleUser', 'supervisor']
         .some(k => form[k] !== undefined && form[k] !== null && String(form[k]).trim() !== '')
-      // 统计(正常/盘盈/盘亏数 或 盘存结果)
-      const hasStats = ['normalCount', 'excessCount', 'deficitCount'].some(k => Number(form[k]) > 0)
+      // 统计(正常/不正常数量或盘存结果)
+      const hasStats = ['normalCount', 'abnormalCount', 'excessCount', 'deficitCount'].some(k => Number(form[k]) > 0)
         || (form.inventoryResult && form.inventoryResult !== '')
       // 明细
       const hasGoods = (this.goodsListMap[wId] || []).some(item => {
@@ -868,9 +869,10 @@ export default {
         resultStatus: this.toResultStatus(wForm.inventoryResult),
         inventoryResult: this.normalizeResultStatus(wForm.inventoryResult),
         normalCount: wForm.normalCount || 0,
-        deficitCount: wForm.deficitCount || 0,
+        abnormalCount: wForm.abnormalCount || 0,
+        deficitCount: wForm.abnormalCount || 0,
         deficitRemark: wForm.deficitRemark || '',
-        excessCount: wForm.excessCount || 0,
+        excessCount: 0,
         excessRemark: wForm.excessRemark || '',
         // 导入标记一并提交(暂存/提交结果都带)
         dataStatus: wForm.dataStatus === 1 ? 1 : 0,
@@ -996,7 +998,7 @@ export default {
       this.selectedGoods = []
       this.warehouseList = []
       this.activeWarehouses = []
-      this.statistics = { totalNormalCount: 0, totalDeficitCount: 0, totalExcessCount: 0 }
+      this.statistics = { totalNormalCount: 0, totalAbnormalCount: 0, totalDeficitCount: 0, totalExcessCount: 0 }
       // 清空实物盘存清单数据
       this.goodsListMap = {}
       this.inventoryFormMap = {}
@@ -1031,11 +1033,12 @@ export default {
     updateInventoryCounts(warehouseId) {
       const goods = this.goodsListMap[warehouseId] || []
       this.$set(this.inventoryFormMap[warehouseId], 'normalCount', goods.filter(item => String(item.result) === '0').length)
+      this.$set(this.inventoryFormMap[warehouseId], 'abnormalCount', goods.filter(item => String(item.result) === '1' || String(item.result) === '2').length)
     },
     syncAbnormalContainerCodes(warehouseId, forceUpdateCounts = false) {
       if (!this.inventoryFormMap[warehouseId]) return
       const goods = this.goodsListMap[warehouseId] || []
-      const hasResultValue = goods.some(item => ['0', '1'].includes(String(item.result)))
+      const hasResultValue = goods.some(item => ['0', '1', '2'].includes(String(item.result)))
       const abnormalContainerCodes = []
       goods.forEach((item, idx) => {
         const key = this.getGoodsKey(item, idx)
@@ -1058,6 +1061,7 @@ export default {
       })
       this.$set(this.inventoryFormMap[warehouseId], 'abnormalContainerCodes', [])
       this.$set(this.inventoryFormMap[warehouseId], 'normalCount', goods.length)
+      this.$set(this.inventoryFormMap[warehouseId], 'abnormalCount', 0)
       this.$set(this.inventoryFormMap[warehouseId], 'deficitCount', 0)
       this.$set(this.inventoryFormMap[warehouseId], 'excessCount', 0)
     },
