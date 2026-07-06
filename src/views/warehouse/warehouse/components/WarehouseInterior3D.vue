@@ -212,7 +212,7 @@ export default {
     // 容器为固定边长 CUBE 的正方体；货架宽/深占位 = 1.2C；新库层高 = 1.4C。
     getPlacement() {
       const CUBE = 2.0;             // 容器正方体边长 C
-      const CELL = CUBE * 1.2;      // 货架宽/深占位 = 1.2C
+      const CELL = CUBE * 1.4;      // 货架宽/深占位 = 1.2C
       const LAYER_H_NEW = CUBE * 1.4; // 新库房层高 = 1.4C（容器高度的 1.4 倍）
       const STEP_X = CELL + 0.8;    // 列方向单元步长（含间隙）
       const STEP_Z = CELL + 2.6;    // 排方向步长（拉宽避免后排被遮挡）

@@ -177,8 +177,8 @@
           <div class="paper-desk-wrapper">
             <browser-print ref="browserPrint" :title="`${activeReport}报表打印`">
               <div class="report-paper-container">
-                <r01-template v-if="activeReport === 'R01'" :form-data="templateData" :security-options="securityOptions" @update="updateTemplateData" />
-                <common-template v-else :code="activeReport" :form-data="templateData" :security-options="securityOptions" @update="updateTemplateData" />
+                <r01-template v-if="activeReport === 'R01'" :form-data="templateData" :security-options="securityOptions" :unit-list="unitList" @update="updateTemplateData" />
+                <common-template v-else :code="activeReport" :form-data="templateData" :security-options="securityOptions" :unit-list="unitList" @update="updateTemplateData" />
               </div>
             </browser-print>
           </div>
@@ -285,6 +285,7 @@ import {
   buildDetailTableFileName,
   exportReportWithTemplate,
 } from './components/exportReportTemplate.js'
+import { getUnitDictionaryList } from '@/api/common/dictionary.js'
 
 export default {
   name: 'ReportSubmit',
@@ -299,6 +300,7 @@ export default {
       tableHeight: 450, // 限制表格高度，防止大页面无限拉长
       searchOptions: { taskNums: [], historyId: [], historyIds: [], goodsCodes: [] },
       securityOptions: [],
+      unitList: [],
     }
   },
   computed: {
@@ -336,21 +338,31 @@ export default {
     openReport(code) {
       this.activeReport = code
       this.currentView = 'detail'
-      
+
       // 默认选择当前年份与当前季度
       const now = new Date()
       const currentYear = String(now.getFullYear())
       const currentQuarter = Math.floor(now.getMonth() / 3) + 1
-      
+
       this.searchParams = {
         year: currentYear,
         quarter: currentQuarter,
       }
-      
+
       this.templateData = {}
       this.tableData = []
       this.searchOptions = { taskNums: [], historyId: [], historyIds: [], goodsCodes: [] }
+      this.unitList = []
       loadDefaultOptions(this, code)
+      this.loadUnitList()
+    },
+    async loadUnitList() {
+      try {
+        this.unitList = await getUnitDictionaryList()
+      } catch (e) {
+        console.error('获取单位信息字典失败:', e)
+        this.unitList = []
+      }
     },
     goBack() {
       this.currentView = 'list'

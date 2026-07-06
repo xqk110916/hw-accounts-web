@@ -100,7 +100,7 @@
         <!-- 明细列表 -->
         <div class="detail-section-wrap mt-15">
           <div class="detail-section-header">
-            <div class="detail-section-title">明细</div>
+            <div class="detail-section-title">明细（共 {{ (goodsListMap[tab.id] || []).length }} 条）</div>
             <!-- 批量设置状态按钮（仅录入结果模式显示） -->
             <div v-if="type === 'inputResult' && selectedGoodsMap[tab.id] && selectedGoodsMap[tab.id].length > 0" class="batch-actions">
               <span class="batch-info">已选 {{ selectedGoodsMap[tab.id].length }} 项</span>
@@ -190,14 +190,30 @@ export default {
     },
   },
   methods: {
-    isWarehouseImported(wId) {
-      return this.inventoryFormMap[wId] && this.inventoryFormMap[wId].dataStatus === 1
+    // 获取库房导入状态：not_imported-未导入、partial-部分导入、imported-已导入
+    getImportStatus(wId) {
+      const form = this.inventoryFormMap[wId]
+      if (!form || form.dataStatus !== 1) return 'not_imported'
+      const goodsList = this.goodsListMap[wId] || []
+      if (goodsList.length === 0) return 'not_imported'
+      const hasResult = goodsList.some(item => this.hasInventoryResult(item))
+      const hasMissing = goodsList.some(item => !this.hasInventoryResult(item))
+      if (hasResult && hasMissing) return 'partial'
+      if (hasResult) return 'imported'
+      return 'not_imported'
+    },
+    // 判断单条明细是否已有盘存结果
+    hasInventoryResult(item) {
+      const result = item && item.result
+      return result !== undefined && result !== null && result !== '' && String(result) !== '-1'
     },
     getImportTagType(wId) {
-      return this.isWarehouseImported(wId) ? 'success' : 'info'
+      const statusMap = { imported: 'success', partial: 'warning', not_imported: 'info' }
+      return statusMap[this.getImportStatus(wId)]
     },
     getImportTagText(wId) {
-      return this.isWarehouseImported(wId) ? '已导入' : '未导入'
+      const textMap = { imported: '已导入', partial: '部分导入(有漏盘)', not_imported: '未导入' }
+      return textMap[this.getImportStatus(wId)]
     },
     updateForm(warehouseId, field, value) {
       this.$emit('update:inventoryFormMap', {

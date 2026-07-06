@@ -51,7 +51,16 @@
               </td>
               <td class="label-cell">单位名称</td>
               <td colspan="3">
-                <el-input v-model="form.senderUnitName" size="mini" placeholder="请输入单位名称" class="modern-input no-print" />
+                <el-autocomplete
+                  v-model="form.senderUnitName"
+                  :fetch-suggestions="(queryString, cb) => queryUnitSearch(queryString, cb, 'unitName')"
+                  value-key="unitName"
+                  placeholder="请选择或输入单位名称"
+                  size="mini"
+                  clearable
+                  class="modern-input no-print"
+                  @select="item => handleUnitSelect(item, 'sender')"
+                />
                 <span class="print-only print-text">{{ form.senderUnitName }}</span>
               </td>
               <!-- 最右侧盖章列，完美跨满发方 6 行，显示在表内，面积放大 -->
@@ -68,12 +77,28 @@
             <tr>
               <td class="label-cell">单位代号</td>
               <td>
-                <el-input v-model="form.senderUnitCode" size="mini" placeholder="单位代号" class="modern-input no-print" />
+                <el-autocomplete
+                  v-model="form.senderUnitCode"
+                  :fetch-suggestions="(queryString, cb) => queryUnitSearch(queryString, cb, 'unitCode')"
+                  value-key="unitCode"
+                  placeholder="单位代号"
+                  size="mini"
+                  clearable
+                  class="modern-input no-print"
+                />
                 <span class="print-only print-text">{{ form.senderUnitCode }}</span>
               </td>
               <td class="label-cell">许可证号</td>
               <td>
-                <el-input v-model="form.senderLicenseNo" size="mini" placeholder="许可证号" class="modern-input no-print" />
+                <el-autocomplete
+                  v-model="form.senderLicenseNo"
+                  :fetch-suggestions="(queryString, cb) => queryUnitSearch(queryString, cb, 'licenseNo')"
+                  value-key="licenseNo"
+                  placeholder="许可证号"
+                  size="mini"
+                  clearable
+                  class="modern-input no-print"
+                />
                 <span class="print-only print-text">{{ form.senderLicenseNo }}</span>
               </td>
             </tr>
@@ -123,7 +148,16 @@
               </td>
               <td class="label-cell">单位名称</td>
               <td colspan="3">
-                <el-input v-model="form.receiverUnitName" size="mini" placeholder="请输入单位名称" class="modern-input no-print" />
+                <el-autocomplete
+                  v-model="form.receiverUnitName"
+                  :fetch-suggestions="(queryString, cb) => queryUnitSearch(queryString, cb, 'unitName')"
+                  value-key="unitName"
+                  placeholder="请选择或输入单位名称"
+                  size="mini"
+                  clearable
+                  class="modern-input no-print"
+                  @select="item => handleUnitSelect(item, 'receiver')"
+                />
                 <span class="print-only print-text">{{ form.receiverUnitName }}</span>
               </td>
               <!-- 最右侧盖章列，完美跨满收方 6 行，显示在表内，面积放大 -->
@@ -140,12 +174,28 @@
             <tr>
               <td class="label-cell">单位代号</td>
               <td>
-                <el-input v-model="form.receiverUnitCode" size="mini" placeholder="单位代号" class="modern-input no-print" />
+                <el-autocomplete
+                  v-model="form.receiverUnitCode"
+                  :fetch-suggestions="(queryString, cb) => queryUnitSearch(queryString, cb, 'unitCode')"
+                  value-key="unitCode"
+                  placeholder="单位代号"
+                  size="mini"
+                  clearable
+                  class="modern-input no-print"
+                />
                 <span class="print-only print-text">{{ form.receiverUnitCode }}</span>
               </td>
               <td class="label-cell">许可证号</td>
               <td>
-                <el-input v-model="form.receiverLicenseNo" size="mini" placeholder="许可证号" class="modern-input no-print" />
+                <el-autocomplete
+                  v-model="form.receiverLicenseNo"
+                  :fetch-suggestions="(queryString, cb) => queryUnitSearch(queryString, cb, 'licenseNo')"
+                  value-key="licenseNo"
+                  placeholder="许可证号"
+                  size="mini"
+                  clearable
+                  class="modern-input no-print"
+                />
                 <span class="print-only print-text">{{ form.receiverLicenseNo }}</span>
               </td>
             </tr>
@@ -243,6 +293,7 @@ export default {
   props: {
     formData: { type: Object, default: () => ({}) },
     securityOptions: { type: Array, default: () => [] },
+    unitList: { type: Array, default: () => [] },
   },
   data() {
     return {
@@ -286,6 +337,24 @@ export default {
     securityLevelLabel() {
       const option = this.securityOptions.find(opt => opt.value === this.form.securityLevel)
       return option ? option.label : this.form.securityLevel
+    },
+  },
+  methods: {
+    queryUnitSearch(queryString, cb, field) {
+      const list = this.unitList || []
+      const keyword = (queryString || '').toLowerCase()
+      const results = keyword
+        ? list.filter(item => (item[field] || '').toLowerCase().includes(keyword))
+        : list
+      cb(results)
+    },
+    handleUnitSelect(item, side) {
+      // 选择单位名称时，自动填充对应侧的单位代号和许可证号
+      if (!item) return
+      const prefix = side === 'sender' ? 'sender' : 'receiver'
+      this.$set(this.form, `${prefix}UnitName`, item.unitName || '')
+      this.$set(this.form, `${prefix}UnitCode`, item.unitCode || '')
+      this.$set(this.form, `${prefix}LicenseNo`, item.licenseNo || '')
     },
   },
 }

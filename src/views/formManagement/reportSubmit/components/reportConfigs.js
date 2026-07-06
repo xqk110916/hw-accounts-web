@@ -244,9 +244,9 @@ export const templateConfigs = {
   R03: {
     leftRows: [
       { label: '报表编号', prop: 'reportNo', placeholder: '请输入' },
-      { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
-      { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
-      { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
+      { label: '单位名称', prop: 'unitName', type: 'autocomplete', placeholder: '请选择或输入单位名称' },
+      { label: '单位代码', prop: 'unitCode', type: 'autocomplete', placeholder: '请选择或输入单位代号' },
+      { label: '许可证号', prop: 'licenseNo', type: 'autocomplete', placeholder: '请选择或输入许可证号' },
       { label: '起止年季', prop: 'yearQuarterRange', type: 'monthrange', placeholders: ['请选择开始月份', '请选择结束月份'] },
       { label: '实际日期', prop: 'actualDateRange', type: 'daterange', placeholders: ['请选择开始日期', '请选择结束日期'] },
     ],
@@ -254,9 +254,9 @@ export const templateConfigs = {
   R04: {
     leftRows: [
       { label: '报表编号', prop: 'reportNo', placeholder: '请输入' },
-      { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
-      { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
-      { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
+      { label: '单位名称', prop: 'unitName', type: 'autocomplete', placeholder: '请选择或输入单位名称' },
+      { label: '单位代码', prop: 'unitCode', type: 'autocomplete', placeholder: '请选择或输入单位代号' },
+      { label: '许可证号', prop: 'licenseNo', type: 'autocomplete', placeholder: '请选择或输入许可证号' },
       { label: '账面盘存日期', prop: 'bookInventoryDate', type: 'date', placeholder: '请选择盘存日期' },
       { label: '实际日期', prop: 'actualDate', type: 'date', placeholder: '请选择实际日期' },
     ],
@@ -264,9 +264,9 @@ export const templateConfigs = {
   R05: {
     leftRows: [
       { label: '报表编号', prop: 'reportNo', placeholder: '请输入' },
-      { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
-      { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
-      { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
+      { label: '单位名称', prop: 'unitName', type: 'autocomplete', placeholder: '请选择或输入单位名称' },
+      { label: '单位代码', prop: 'unitCode', type: 'autocomplete', placeholder: '请选择或输入单位代号' },
+      { label: '许可证号', prop: 'licenseNo', type: 'autocomplete', placeholder: '请选择或输入许可证号' },
       { label: '起止年季', prop: 'yearQuarterRange', type: 'monthrange', placeholders: ['请选择开始月份', '请选择结束月份'] },
       { label: '实际日期', prop: 'actualDateRange', type: 'daterange', placeholders: ['请选择开始日期', '请选择结束日期'] },
     ],
@@ -274,18 +274,18 @@ export const templateConfigs = {
   R06: {
     leftRows: [
       { label: '报表编号', prop: 'reportNo', placeholder: '请输入' },
-      { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
-      { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
-      { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
+      { label: '单位名称', prop: 'unitName', type: 'autocomplete', placeholder: '请选择或输入单位名称' },
+      { label: '单位代码', prop: 'unitCode', type: 'autocomplete', placeholder: '请选择或输入单位代号' },
+      { label: '许可证号', prop: 'licenseNo', type: 'autocomplete', placeholder: '请选择或输入许可证号' },
       { label: '报告日期', prop: 'reportDate', type: 'date', placeholder: '请选择报告日期' },
     ],
   },
   R08: {
     leftRows: [
       { label: '报表编号', prop: 'reportNo', placeholder: '请输入' },
-      { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
-      { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
-      { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
+      { label: '单位名称', prop: 'unitName', type: 'autocomplete', placeholder: '请选择或输入单位名称' },
+      { label: '单位代码', prop: 'unitCode', type: 'autocomplete', placeholder: '请选择或输入单位代号' },
+      { label: '许可证号', prop: 'licenseNo', type: 'autocomplete', placeholder: '请选择或输入许可证号' },
       { label: '起止年季', prop: 'yearQuarterRange', type: 'monthrange', placeholders: ['请选择开始月份', '请选择结束月份'] },
       { label: '实际日期', prop: 'actualDateRange', type: 'daterange', placeholders: ['请选择开始日期', '请选择结束日期'] },
     ],
@@ -293,9 +293,9 @@ export const templateConfigs = {
   R09: {
     leftRows: [
       { label: '报表编号', prop: 'reportNo', placeholder: '请输入' },
-      { label: '单位名称', prop: 'unitName', placeholder: '系统预设可修改' },
-      { label: '单位代码', prop: 'unitCode', placeholder: '系统预设可修改' },
-      { label: '许可证号', prop: 'licenseNo', placeholder: '系统预设可修改' },
+      { label: '单位名称', prop: 'unitName', type: 'autocomplete', placeholder: '请选择或输入单位名称' },
+      { label: '单位代码', prop: 'unitCode', type: 'autocomplete', placeholder: '请选择或输入单位代号' },
+      { label: '许可证号', prop: 'licenseNo', type: 'autocomplete', placeholder: '请选择或输入许可证号' },
       { label: '起止年季', prop: 'yearQuarterRange', type: 'monthrange', placeholders: ['请选择开始月份', '请选择结束月份'] },
       { label: '实际日期', prop: 'actualDateRange', type: 'daterange', placeholders: ['请选择开始日期', '请选择结束日期'] },
     ],

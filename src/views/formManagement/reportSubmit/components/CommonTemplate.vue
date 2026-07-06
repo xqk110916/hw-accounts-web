@@ -106,6 +106,20 @@
                   </div>
                 </td>
               </template>
+              <template v-else-if="row.type === 'autocomplete'">
+                <td style="width: 50%;">
+                  <el-autocomplete
+                    v-model="form[row.prop]"
+                    :fetch-suggestions="(queryString, cb) => queryUnitSearch(queryString, cb, row.prop)"
+                    :value-key="getUnitValueKey(row.prop)"
+                    :placeholder="row.placeholder"
+                    size="mini"
+                    clearable
+                    class="modern-input"
+                    @select="item => handleUnitSelect(item, row.prop)"
+                  />
+                </td>
+              </template>
               <template v-else>
                 <td style="width: 50%;">
                   <el-input v-model="form[row.prop]" size="mini" :placeholder="row.placeholder" class="modern-input" />
@@ -177,6 +191,7 @@ export default {
     code: { type: String, required: true },
     formData: { type: Object, default: () => ({}) },
     securityOptions: { type: Array, default: () => [] },
+    unitList: { type: Array, default: () => [] },
   },
   data() {
     return {
@@ -272,7 +287,29 @@ export default {
     formatPrintMonth(val) {
       if (!val) return ''
       return val.length > 7 ? val.substring(0, 7) : val
-    }
+    },
+    getUnitValueKey(prop) {
+      if (prop === 'unitName') return 'unitName'
+      if (prop === 'unitCode') return 'unitCode'
+      if (prop === 'licenseNo') return 'licenseNo'
+      return 'unitName'
+    },
+    queryUnitSearch(queryString, cb, prop) {
+      const list = this.unitList || []
+      const key = this.getUnitValueKey(prop)
+      const keyword = (queryString || '').toLowerCase()
+      const results = keyword
+        ? list.filter(item => (item[key] || '').toLowerCase().includes(keyword))
+        : list
+      cb(results)
+    },
+    handleUnitSelect(item, prop) {
+      // 仅选择单位名称时联动填充单位代号和许可证号
+      if (prop === 'unitName' && item) {
+        this.$set(this.form, 'unitCode', item.unitCode || '')
+        this.$set(this.form, 'licenseNo', item.licenseNo || '')
+      }
+    },
   },
 }
 </script>

@@ -304,46 +304,33 @@ export default {
         const originalIndex = containers.findIndex(c => c.id === container.id);
         const x = -shelfWidth/2 + spacing * (originalIndex + 1);
         
-        // 容器圆柱体 (模拟核废料储存罐，自适应货架宽度变宽，避免空余)
-        const radius = Math.min(spacing * 0.42, shelfDepth * 0.45, 0.85);
-        const height = 1.1;
-        const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, 24);
-        
+        // 容器正方体 (与整体3D库房位置图保持一致)
+        const size = Math.min(spacing * 0.8, shelfDepth * 0.85, 1.25);
+        const boxGeometry = new THREE.BoxGeometry(size, size, size);
+
         // 根据容器状态确定颜色
         const hexColor = getContainerColor(container.status, container.materialCode || container.goodCode);
         const color = parseInt(hexColor.replace('#', ''), 16);
 
-        const material = new THREE.MeshStandardMaterial({ 
+        const material = new THREE.MeshStandardMaterial({
           color: color,
           metalness: 0.4,
           roughness: 0.6
         });
 
-        const cylinder = new THREE.Mesh(cylinderGeometry, material);
-        cylinder.position.set(x, y + height/2 + 0.1, 0);
-        cylinder.castShadow = true;
-        cylinder.receiveShadow = true;
-        
+        const box = new THREE.Mesh(boxGeometry, material);
+        box.position.set(x, y + size / 2, 0);
+        box.castShadow = true;
+        box.receiveShadow = true;
+
         // 存储容器数据用于点击交互
-        cylinder.userData = {
+        box.userData = {
           type: 'container',
           container: container
         };
-        
-        this.scene.add(cylinder);
-        this.containerMeshes.push(cylinder);
 
-        // 添加顶部盖子
-        const lidGeometry = new THREE.CylinderGeometry(radius, radius * 0.95, 0.05, 24);
-        const lidMaterial = new THREE.MeshStandardMaterial({ 
-          color: 0x1a1a1a,
-          metalness: 0.8,
-          roughness: 0.3
-        });
-        const lid = new THREE.Mesh(lidGeometry, lidMaterial);
-        lid.position.set(x, y + height + 0.125, 0);
-        lid.castShadow = true;
-        this.scene.add(lid);
+        this.scene.add(box);
+        this.containerMeshes.push(box);
       });
     },
 

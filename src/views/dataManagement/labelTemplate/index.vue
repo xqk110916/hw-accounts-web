@@ -121,6 +121,7 @@ export default {
     window.removeEventListener('resize', this.computedTableHeight)
   },
   methods: {
+    formatDisplayDateValue,
     getDataJsonValue(row, fileName) {
       const dataJson = row.dataJson || []
       const field = dataJson.find(item => item.fileName === fileName)

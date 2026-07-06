@@ -21,6 +21,7 @@
 | 菜单名称 | 路由标示 (path) | 权限标识 (perms) | 业务功能概述 |
 | --- | --- | --- | --- |
 | 数据备份 | `dataBackup` | `system_dataBackup` | 系统数据的导入导出与备份记录管理 |
+| 单位许可证管理 | `licenseManagement` | `licenseManagement` | 维护单位名称、单位代号、许可证号等基础字典数据，供表单报送模块自动补全使用 |
 
 ### 📊 模块 B：数据管理 (Data Management)
 *核心职责：主数据维护与多维度统计报表分析*
