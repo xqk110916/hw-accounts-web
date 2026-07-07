@@ -498,7 +498,6 @@ export default {
         const warehousePromises = warehouseIds.map(wId => {
           return getWarehouseById(wId)
             .then(warehouse => ({ wId, warehouse }))
-            .catch(() => ({ wId, warehouse: null }))
         })
 
         const [excelRes, ZipClass, ...warehouseResults] = await Promise.all([

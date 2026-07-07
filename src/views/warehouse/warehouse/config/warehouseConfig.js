@@ -723,6 +723,10 @@ let balanceAreaPending = null;
 const warehouseListPending = new Map();
 const warehouseDetailPending = new Map();
 
+// 货架类型字典全局缓存（页面生命周期内只请求一次，所有库房复用）
+let shelfTypeDictCache = null;
+let shelfTypeDictPending = null;
+
 function getWarehouseListPendingKey(balanceAreaId) {
   return balanceAreaId == null || balanceAreaId === '' ? '__all__' : String(balanceAreaId);
 }
@@ -939,6 +943,34 @@ function resolveExtra(detail) {
 }
 
 /**
+ * 获取货架类型字典（全局缓存，页面生命周期内只请求一次）
+ */
+async function getShelfTypeDict() {
+  if (shelfTypeDictCache) return shelfTypeDictCache;
+  if (shelfTypeDictPending) return shelfTypeDictPending;
+
+  shelfTypeDictPending = (async () => {
+    try {
+      const [newDictRes, oldDictRes] = await Promise.all([
+        getDictionaryList({ parentId: SHELF_TYPE_PARENT_ID, currentPage: 1, pageSize: 999 }),
+        getDictionaryList({ parentId: '2051955496598659073', currentPage: 1, pageSize: 999 })
+      ]);
+      const newDictList = (newDictRes.data && newDictRes.data.list) || [];
+      const oldDictList = (oldDictRes.data && oldDictRes.data.list) || [];
+      shelfTypeDictCache = buildShelfTypeMap(normalizeShelfTypeOptions([...newDictList, ...oldDictList]));
+      return shelfTypeDictCache;
+    } catch (error) {
+      console.error('获取货架类型字典失败', error);
+      throw error;
+    } finally {
+      shelfTypeDictPending = null;
+    }
+  })();
+
+  return shelfTypeDictPending;
+}
+
+/**
  * 根据ID获取库房详情(含货架数据)
  */
 export async function getWarehouseById(warehouseId) {
@@ -947,16 +979,12 @@ export async function getWarehouseById(warehouseId) {
 
   const pending = (async () => {
     try {
-      // 同时拉取位置数据和新旧库房货架字典
-      const [positionRes, newDictRes, oldDictRes] = await Promise.all([
+      // 同时拉取位置数据和货架类型字典（字典已做全局缓存，所有库房复用）
+      const [positionRes, shelfTypeMap] = await Promise.all([
         getPositionMap({ nodeId: warehouseId, nodeType: '2' }),
-        getDictionaryList({ parentId: SHELF_TYPE_PARENT_ID, currentPage: 1, pageSize: 999 }),
-        getDictionaryList({ parentId: '2051955496598659073', currentPage: 1, pageSize: 999 })
+        getShelfTypeDict()
       ]);
       const positions = Array.isArray(positionRes.data) ? positionRes.data : [];
-      const newDictList = (newDictRes.data && newDictRes.data.list) || [];
-      const oldDictList = (oldDictRes.data && oldDictRes.data.list) || [];
-      const shelfTypeMap = buildShelfTypeMap(normalizeShelfTypeOptions([...newDictList, ...oldDictList]));
       const baseShelves = buildShelvesFromPositions(positions, shelfTypeMap);
 
       let detail = { id: warehouseId };
