@@ -23,3 +23,7 @@ export function updateBalanceArea(data) {
 export function deleteBalanceArea(id) {
   return request({ url: `/busin/balanceArea/delete/${id}`, method: 'post' });
 }
+
+export function checkCanDeleteBalanceArea(id) {
+  return request({ url: `/busin/balanceArea/checkCanDelete/${id}`, method: 'get' });
+}

@@ -78,6 +78,7 @@
 <script>
 import detail from './components/detail.vue';
 import { config, requestFun, btns, handleTbaleMap, getDefaultOptions } from './components/index.js'
+import { checkCanDeleteBalanceArea } from '@/api/warehouse/balanceArea';
 export default {
   components: { detail },
   data() {
@@ -213,8 +214,30 @@ export default {
     edit(row) {
       this.$refs.detail.open(row, 'edit');
     },
-    remove(row) {
-      this.$confirm('确定要删除该设备?')
+    async remove(row) {
+      let hasData = false;
+      let checkFailed = false;
+      try {
+        const res = await checkCanDeleteBalanceArea(row.id);
+        hasData = res && res.data === false;
+      } catch (error) {
+        console.error(error);
+        checkFailed = true;
+      }
+
+      let message = '确定要删除该平衡区吗？';
+      if (hasData) {
+        message = `当前平衡区 [${row.name || ''}] 下有数据，删除将同步删除其所有子节点，是否确定删除？`;
+      } else if (checkFailed) {
+        message = '校验接口调用失败，无法判断是否有数据，是否仍要删除？';
+      }
+
+      this.$confirm(message, '危险操作提示', {
+        type: hasData || checkFailed ? 'warning' : 'info',
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        distinguishCancelAndClose: true
+      })
         .then(() => {
           requestFun.delete({ ids: row.id }).then(res => {
             if (res.code === 1) {

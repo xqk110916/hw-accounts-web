@@ -224,7 +224,8 @@
           <el-table-column label="重量(毛,皮,净)" width="170" show-overflow-tooltip>
             <template slot-scope="scope">{{ getWeightText(scope.row) }}</template>
           </el-table-column>
-          <el-table-column prop="metalPercentage" label="金属量%" width="100" show-overflow-tooltip />
+          <el-table-column prop="metalPercentage" label="百分比含量" width="100" show-overflow-tooltip />
+          <el-table-column prop="elementQuantity" label="元素量" width="100" show-overflow-tooltip />
           <el-table-column label="操作" width="80" fixed="right">
             <template slot-scope="scope">
               <el-button type="text" size="mini" @click="removeContainer(scope.$index)">删除</el-button>
@@ -579,6 +580,7 @@ export default {
         tareWeight: row.tareWeight || '',
         netWeight: row.netWeight || '',
         metalPercentage: row.metalPercentage || '',
+        elementQuantity: row.elementQuantity || '',
         productionUnit: row.productionUnit || '',
         shelfCode: row.shelfCode || '',
         rowCode: row.rowCode || '',

@@ -48,7 +48,8 @@
         <el-table-column prop="grossWeight" label="毛重" min-width="80" show-overflow-tooltip></el-table-column>
         <el-table-column prop="tareWeight" label="皮重" min-width="80" show-overflow-tooltip></el-table-column>
         <el-table-column prop="netWeight" label="净重" min-width="80" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="metalPercentage" label="金属量" min-width="90" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="metalPercentage" label="百分比含量" min-width="90" show-overflow-tooltip></el-table-column>
+        <el-table-column prop="elementQuantity" label="元素量" min-width="90" show-overflow-tooltip></el-table-column>
         <el-table-column label="位置" min-width="100" show-overflow-tooltip>
           <template slot-scope="scope">{{ formatLocation(scope.row) }}</template>
         </el-table-column>

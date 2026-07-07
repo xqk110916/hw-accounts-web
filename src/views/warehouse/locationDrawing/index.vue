@@ -117,6 +117,7 @@ import LocationAddDialog from './components/LocationAddDialog.vue';
 import NodeDetailDrawer from './components/NodeDetailDrawer.vue';
 import WarehousePositionMapDialog from './components/WarehousePositionMapDialog.vue';
 import { getHierarchyTree, getHierarchyDetail, addHierarchyNode, updateHierarchyNode, deleteHierarchyNode } from '@/api/warehouse/locationMap';
+import { checkCanDeleteBalanceArea } from '@/api/warehouse/balanceArea';
 
 export default {
   name: 'LocationDrawing',
@@ -417,12 +418,32 @@ export default {
         this.$message.info(`当前仅支持在[平衡区]级别快捷添加子节点(库房): ${label}`);
       }
     },
-    remove(node, data) {
+    async remove(node, data) {
       const label = this.defaultProps.label(data);
-      this.$confirm(`确定要删除 [${label}] 以及它的所有子节点吗？`, '危险操作提示', {
+      let hasData = false;
+      let checkFailed = false;
+      if (data.nodeType === 1) {
+        try {
+          const res = await checkCanDeleteBalanceArea(data.id);
+          hasData = res && res.data === false;
+        } catch (error) {
+          console.error(error);
+          checkFailed = true;
+        }
+      }
+
+      let message = `确定要删除 [${label}] 以及它的所有子节点吗？`;
+      if (hasData) {
+        message = `当前平衡区 [${label}] 下有数据，删除将同步删除其所有子节点，是否确定删除？`;
+      } else if (checkFailed) {
+        message = `校验接口调用失败，无法判断是否有数据，是否仍要删除 [${label}] 以及它的所有子节点？`;
+      }
+
+      this.$confirm(message, '危险操作提示', {
         type: 'warning',
         confirmButtonText: '确定删除',
-        cancelButtonText: '取消'
+        cancelButtonText: '取消',
+        distinguishCancelAndClose: true
       }).then(async () => {
         try {
           await deleteHierarchyNode(data.id);

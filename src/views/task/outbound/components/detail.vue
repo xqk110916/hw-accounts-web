@@ -198,7 +198,8 @@
               {{ scope.row.grossWeight || 0 }}、{{ scope.row.tareWeight || 0 }}、{{ scope.row.netWeight || 0 }}
             </template>
           </el-table-column>
-          <el-table-column prop="metalPercentage" label="金属量%" width="100" show-overflow-tooltip />
+          <el-table-column prop="metalPercentage" label="百分比含量" width="100" show-overflow-tooltip />
+          <el-table-column prop="elementQuantity" label="元素量" width="100" show-overflow-tooltip />
           <el-table-column v-if="!isReadonlyMode" label="操作" width="80" fixed="right">
             <template slot-scope="scope">
               <span class="table_operation">
@@ -583,6 +584,7 @@ export default {
         netWeight: row.netWeight,
         tareWeight: row.tareWeight,
         metalPercentage: row.metalPercentage,
+        elementQuantity: row.elementQuantity,
         productionUnit: row.productionUnit,
         shelfCode: row.shelfCode,
         rowCode: row.rowCode,

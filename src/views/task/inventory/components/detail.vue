@@ -489,7 +489,7 @@ export default {
       if (!this.form.taskNum) return
       this.exportLoading = true
       try {
-        // 1. 并行：获取 Excel + 加载 JSZip + 加载各库房布局数据
+        // 1. 并行：获取后端文件 + 加载 JSZip + 加载各库房布局数据
         const excelPromise = exportInventory({ taskNum: this.form.taskNum })
         const jszipPromise = loadJSZip()
 
@@ -507,16 +507,9 @@ export default {
           ...warehousePromises,
         ])
 
-        // 2. 处理 Excel blob
-        const excelBlob = excelRes.data instanceof Blob ? excelRes.data : new Blob([excelRes.data])
-        const disposition = excelRes.headers && excelRes.headers['content-disposition']
-        let excelFileName = `实物盘存清单_${this.form.taskNum}.xlsx`
-        if (disposition) {
-          const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^";\n]+)/i)
-          if (match && match[1]) {
-            excelFileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
-          }
-        }
+        // 2. 处理后端返回的文件 blob
+        const backendBlob = excelRes.data instanceof Blob ? excelRes.data : new Blob([excelRes.data])
+        const backendFileName = this.resolveBackendFileName(excelRes.headers, this.form.taskNum)
 
         // 3. 渲染各库房平面图
         const planPromises = warehouseResults.map(({ wId, warehouse }) => {
@@ -534,15 +527,15 @@ export default {
 
         const planResults = (await Promise.all(planPromises)).filter(Boolean)
 
-        // 4. 如果没有平面图数据，直接下载 Excel
+        // 4. 如果没有平面图数据，直接下载后端文件
         if (planResults.length === 0) {
-          blobSaveExcel(excelBlob, excelFileName.replace(/\.xlsx$/i, ''))
+          blobSaveExcel(backendBlob, backendFileName)
           return
         }
 
         // 5. 打包 ZIP
         const zip = new ZipClass()
-        zip.file(excelFileName, excelBlob)
+        zip.file(backendFileName, backendBlob)
         planResults.forEach(({ tabName, blob }) => {
           const safeName = (tabName || '库房').replace(/[\\/:*?"<>|]/g, '_')
           zip.file(`${safeName}-盘存平面图.png`, blob)
@@ -557,6 +550,48 @@ export default {
       } finally {
         this.exportLoading = false
       }
+    },
+    /**
+     * 解析后端返回的文件名
+     * 优先从 Content-Disposition 解析 filename/filename*，解析不到则从 Content-Type 推断扩展名
+     */
+    resolveBackendFileName(headers, taskNum) {
+      const disposition = headers && headers['content-disposition']
+      if (disposition) {
+        // 优先 RFC 5987 格式：filename*=UTF-8''xxx
+        const starMatch = disposition.match(/filename\*=UTF-8''([^;\n]+)/i)
+        if (starMatch && starMatch[1]) {
+          try {
+            return decodeURIComponent(starMatch[1])
+          } catch (e) {
+            console.warn('解析 filename* 失败:', starMatch[1])
+          }
+        }
+        // 兼容 filename="xxx" / filename=xxx
+        const match = disposition.match(/filename=["']?([^";\n]+)["']?/i)
+        if (match && match[1]) {
+          try {
+            return decodeURIComponent(match[1].replace(/['"]/g, ''))
+          } catch (e) {
+            console.warn('解析 filename 失败:', match[1])
+          }
+        }
+      }
+
+      // 兜底：根据 Content-Type 推断扩展名
+      const contentType = headers && headers['content-type']
+      const extMap = {
+        'application/zip': '.zip',
+        'application/x-zip-compressed': '.zip',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+        'application/vnd.ms-excel': '.xls',
+        'application/pdf': '.pdf',
+        'application/msword': '.doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+      }
+      const mime = contentType ? contentType.split(';')[0].trim().toLowerCase() : ''
+      const ext = extMap[mime] || ''
+      return `实物盘存清单_${taskNum}${ext}`
     },
     handleExportToPad() {
       if (!this.form.taskNum) return
