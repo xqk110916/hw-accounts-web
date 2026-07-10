@@ -63,8 +63,8 @@
           <tr>
             <td class="label">净重</td>
             <td class="value">{{ formatWeight(detailValueRaw('netWeight')) }}</td>
-            <!-- <td class="label">重量单位</td>
-            <td class="value">{{ detailValue('weightUnit') }}</td> -->
+            <td class="label">元素量</td>
+            <td class="value">{{ formatWeight(detailValueRaw('elementQuantity')) }}</td>
           </tr>
           <tr>
             <td class="label location-highlight"> <i class="el-icon-location"></i> 当前位置</td>

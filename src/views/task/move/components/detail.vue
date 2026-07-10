@@ -132,6 +132,7 @@
               {{ scope.row.grossWeight || 0 }}、{{ scope.row.tareWeight || 0 }}、{{ scope.row.netWeight || 0 }}
             </template>
           </el-table-column>
+          <el-table-column prop="elementQuantity" label="元素量" width="100" show-overflow-tooltip />
           <el-table-column prop="sealCode1" label="封记编码1" width="120" show-overflow-tooltip />
           <el-table-column label="封记类型1" width="120" show-overflow-tooltip>
             <template slot-scope="scope">{{ getSealTypeLabel(scope.row.sealType1) }}</template>
@@ -302,8 +303,14 @@
           <tr>
             <td class="label">重量(毛/皮/净)</td>
             <td>{{ detailEditForm.grossWeight || 0 }} / {{ detailEditForm.tareWeight || 0 }} / {{ detailEditForm.netWeight || 0 }}</td>
-            <td class="label">封记编码</td>
-            <td>{{ [detailEditForm.sealCode1, detailEditForm.sealCode2].filter(Boolean).join('、') || '-' }}</td>
+            <td class="label">元素量</td>
+            <td>{{ detailEditForm.elementQuantity || '-' }}</td>
+          </tr>
+          <tr>
+            <td class="label">封记编码1</td>
+            <td>{{ detailEditForm.sealCode1 || '-' }}</td>
+            <td class="label">封记编码2</td>
+            <td>{{ detailEditForm.sealCode2 || '-' }}</td>
           </tr>
           <tr>
             <td class="label">封记类型1</td>
@@ -534,6 +541,7 @@ export default {
         grossWeight: row.grossWeight,
         netWeight: row.netWeight,
         tareWeight: row.tareWeight,
+        elementQuantity: row.elementQuantity,
         sealCode1: row.sealCode1,
         sealCode2: row.sealCode2,
         sealType1: row.sealType1,
@@ -633,6 +641,7 @@ export default {
         grossWeight: valueOrEmpty(inboundGoods.grossWeight),
         tareWeight: valueOrEmpty(inboundGoods.tareWeight),
         netWeight: valueOrEmpty(inboundGoods.netWeight),
+        elementQuantity: valueOrEmpty(inboundGoods.elementQuantity),
         sealCode1: inboundGoods.sealCode1,
         sealCode2: inboundGoods.sealCode2,
         sealType1: inboundGoods.sealType1,
@@ -691,6 +700,7 @@ export default {
         grossWeight: pos.grossWeight || '',
         tareWeight: pos.tareWeight || '',
         netWeight: pos.netWeight || '',
+        elementQuantity: pos.elementQuantity || '',
         sealCode1: pos.sealCode1 || '',
         sealCode2: pos.sealCode2 || '',
         sealType1: pos.sealType1 || '',
@@ -752,6 +762,7 @@ export default {
         grossWeight: '',
         tareWeight: '',
         netWeight: '',
+        elementQuantity: '',
         sealCode1: '',
         sealCode2: '',
         sealType1: '',
@@ -776,6 +787,7 @@ export default {
         grossWeight: '',
         tareWeight: '',
         netWeight: '',
+        elementQuantity: '',
         sealCode1: '',
         sealCode2: '',
         sealType1: '',
@@ -887,6 +899,7 @@ export default {
         grossWeight: row.grossWeight,
         netWeight: row.netWeight,
         tareWeight: row.tareWeight,
+        elementQuantity: row.elementQuantity,
         sealCode1: row.sealCode1,
         sealCode2: row.sealCode2,
         sealType1: row.sealType1,

@@ -754,6 +754,7 @@ function normalizePosition(item = {}) {
     grossWeight: valueOrEmpty(inboundGoods.grossWeight),
     tareWeight: valueOrEmpty(inboundGoods.tareWeight),
     netWeight: valueOrEmpty(inboundGoods.netWeight),
+    elementQuantity: valueOrEmpty(inboundGoods.elementQuantity),
     weightUnit: inboundGoods.weightUnit,
     productionUnit: inboundGoods.productionUnit,
     boxNum: inboundGoods.boxNum,
@@ -777,6 +778,7 @@ function normalizePosition(item = {}) {
     grossWeight: normalizedGoods.grossWeight,
     tareWeight: normalizedGoods.tareWeight,
     netWeight: normalizedGoods.netWeight,
+    elementQuantity: normalizedGoods.elementQuantity,
     weightUnit: normalizedGoods.weightUnit,
     warehouseType: String(item.warehouseType || '0'),
     areaCode: item.areaCode || ''

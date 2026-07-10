@@ -228,7 +228,9 @@
 
 - 库房列表来自 `GET /busin/locationMap/hierarchy/listByNodeType/2`。
 - 位置列表来自 `POST /busin/locationMap/positionMap`，请求体包含 `nodeId` 和 `nodeType: '2'`。
-- 原位置只允许选择 `status=1` 且有容器号的位置，选择后自动回填入库任务编号、容器号、材料代码、生产单位、重量、封记编码、封记类型和原排/行/列。
+- 原位置只允许选择 `status=1` 且有容器号的位置，选择后自动回填入库任务编号、容器号、材料代码、生产单位、重量、元素量（`elementQuantity`）、封记编码、封记类型和原排/行/列。
+- 明细编辑弹窗详情预览中，重量后展示“元素量”；“封记编码1”“封记编码2”分字段独立显示。
+- 移库明细表格与导入预览均展示“元素量”，导入后端会返回该字段；提交 `POST /busin/move/submit` 时 `goodsList` 同步传 `elementQuantity`。
 - 目标位置沿用入库管理规则：下拉展示全部位置，但 `status !== 0` 的位置置灰不可选。
 - 提交前会阻止原位置和目标位置完全相同的明细。
 - 明细中 `sourceWarehouse` / `targetWarehouse` 字段实际存储库房编号（`warehouseCode`），与后端交互时字段名保持不变；旧数据在重新编辑库房后会按新规则刷新为库房编号。

@@ -76,6 +76,7 @@
             {{ scope.row.grossWeight || 0 }}、{{ scope.row.tareWeight || 0 }}、{{ scope.row.netWeight || 0 }}
           </template>
         </el-table-column>
+        <el-table-column prop="elementQuantity" label="元素量" min-width="90" show-overflow-tooltip />
       </el-table>
     </div>
 

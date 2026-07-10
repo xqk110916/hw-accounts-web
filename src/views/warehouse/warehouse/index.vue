@@ -500,6 +500,7 @@ export default {
         grossWeight: inboundGoods.grossWeight || container.grossWeight || '',
         netWeight: inboundGoods.netWeight || container.netWeight || '',
         tareWeight: inboundGoods.tareWeight || container.tareWeight || '',
+        elementQuantity: inboundGoods.elementQuantity || container.elementQuantity || '',
         sealCode1: inboundGoods.sealCode1 || container.sealCode1 || '',
         sealCode2: inboundGoods.sealCode2 || container.sealCode2 || '',
         sealType1: inboundGoods.sealType1 || container.sealType1 || '',
